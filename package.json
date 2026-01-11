@@ -7,19 +7,21 @@
   "scripts": {
     "dev": "vite",
     "dev:sandbox": "wrangler pages dev dist --ip 0.0.0.0 --port 3000",
-    "dev:d1": "wrangler pages dev dist --d1=soothe-db-production --local --ip 0.0.0.0 --port 3000",
+    "dev:full": "wrangler pages dev dist --d1=soothe-db-production --local --ip 0.0.0.0 --port 3000",
     "build": "vite build",
     "preview": "wrangler pages dev dist",
     "deploy": "npm run build && wrangler pages deploy dist --project-name soothe-care-cube-jp",
     "deploy:prod": "npm run build && wrangler pages deploy dist --project-name soothe-care-cube-jp --branch main",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "db:create": "wrangler d1 create soothe-db-production",
     "db:migrate:local": "wrangler d1 migrations apply soothe-db-production --local",
     "db:migrate:prod": "wrangler d1 migrations apply soothe-db-production",
     "db:seed": "wrangler d1 execute soothe-db-production --local --file=./seed.sql",
     "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local && npm run db:seed",
     "db:console:local": "wrangler d1 execute soothe-db-production --local",
     "db:console:prod": "wrangler d1 execute soothe-db-production",
-    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true"
+    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
+    "test:api": "curl http://localhost:3000/api/health"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",

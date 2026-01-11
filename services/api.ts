@@ -2,9 +2,10 @@
  * Soothe Unified API Client (Production Ready)
  */
 
+// 開発環境と本番環境の自動切り替え
 const API_BASE = window.location.hostname === 'localhost' 
-  ? 'http://localhost:8787/api' 
-  : 'https://api.soothe-jp.workers.dev/api';
+  ? 'http://localhost:3000/api' 
+  : `${window.location.origin}/api`;
 
 async function call<T>(path: string, method: string = 'GET', body?: any): Promise<T> {
   const token = localStorage.getItem('auth_token');
