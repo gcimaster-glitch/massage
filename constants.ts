@@ -2,15 +2,29 @@
 import { Booking, BookingStatus, BookingType, IncidentSeverity, Role, RevenueConfig, MonthlyStatement, PayoutStatus, TherapistOffice, Incident } from './types';
 
 /**
+ * ============================================
  * サービス名称管理 (将来の名称変更時はここを修正)
+ * ============================================
+ * SERVICE名変更時の対応:
+ * 1. このファイルの BRAND セクションを更新
+ * 2. wrangler.jsonc の name フィールドを更新
+ * 3. package.json の name フィールドを更新
+ * 4. 全ページで BRAND.* を参照しているため、自動的に反映されます
  */
 export const BRAND = {
   NAME: 'Soothe Japan',
   SUB_NAME: 'x CARE CUBE',
   FULL_NAME: 'Soothe x CARE CUBE Japan',
-  SLOGAN: '癒やしを、インフラに。',
+  SLOGAN: '癒やしを、都市のインフラへ。',
   SUPPORT_EMAIL: 'support@soothe.jp',
-  INVOICE_PREFIX: 'T1234567890123'
+  INVOICE_PREFIX: 'T1234567890123',
+  
+  // API Endpoints
+  API: {
+    BASE_URL: import.meta.env.PROD 
+      ? 'https://soothe-care-cube-jp.pages.dev/api'
+      : 'http://localhost:3000/api'
+  }
 };
 
 export const MOCK_OFFICES: TherapistOffice[] = [

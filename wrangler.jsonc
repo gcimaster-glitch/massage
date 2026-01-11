@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "soothe-care-cube-jp",
+  "main": "src/index.tsx",
+  "compatibility_date": "2024-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "pages_build_output_dir": "./dist",
+
+  // D1 Database (SQLite for relational data)
+  // IMPORTANT: Create production database first: npx wrangler d1 create soothe-db-production
+  // Local development automatically uses local SQLite with --local flag
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "soothe-db-production",
+      "database_id": ""  // Will be filled after: npx wrangler d1 create soothe-db-production
+    }
+  ],
+
+  // R2 Storage (Object storage for images, files)
+  // IMPORTANT: Create bucket first: npx wrangler r2 bucket create soothe-storage
+  "r2_buckets": [
+    {
+      "binding": "STORAGE",
+      "bucket_name": "soothe-storage"
+    }
+  ],
+
+  // Environment Variables (Public - safe to commit)
+  "vars": {
+    "ENVIRONMENT": "production"
+  }
+
+  // Secrets (DO NOT commit - set via CLI):
+  // wrangler secret put STRIPE_SECRET
+  // wrangler secret put RESEND_API_KEY
+  // wrangler secret put GEMINI_API_KEY
+}
