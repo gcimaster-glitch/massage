@@ -30,10 +30,15 @@
 - [x] Stripe決済API統合準備完了
 - [x] Resendメール送信統合準備完了
 
-### ⏳ Phase C: Cloudflareデプロイ （**次のステップ**）
-- [ ] Cloudflareリソース作成 (D1, R2)
-- [ ] 環境変数（Secrets）設定
-- [ ] 本番デプロイ実行
+### ✅ Phase C: Cloudflareデプロイ （**完了🎉**）
+- [x] **Cloudflareリソース作成完了**
+  - D1データベース: `soothe-db-production` ✅
+  - R2バケット: `soothe-storage` ✅
+- [x] **本番デプロイ成功！**
+  - 🌐 本番URL: https://soothe-care-cube-jp.pages.dev
+  - 🔧 API動作確認済み
+  - 📊 D1データベースマイグレーション完了
+  - 📦 テストデータ投入完了
 
 ---
 
@@ -205,13 +210,23 @@ webapp/
 
 ## 🌐 主要URL
 
+### 🚀 本番環境（公開中！）
+- **🌐 本番サイト**: https://soothe-care-cube-jp.pages.dev
+- **📝 Strategy ページ**: https://soothe-care-cube-jp.pages.dev/#/strategy
+- **🔧 API Health Check**: https://soothe-care-cube-jp.pages.dev/api/health
+- **👥 セラピストAPI**: https://soothe-care-cube-jp.pages.dev/api/therapists
+
+### 🛠️ 開発環境
 - **🚀 開発サーバー**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai
 - **📝 Strategy ページ**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai/#/strategy
 - **🔧 API Health Check**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai/api/health
+
+### 📚 ドキュメント・リソース
 - **💾 GitHub Repository**: https://github.com/gcimaster-glitch/massage
 - **📦 プロジェクトバックアップ**: https://www.genspark.ai/api/files/s/ay9HK9Eq
-- **☁️ 本番環境**: https://soothe-care-cube-jp.pages.dev (デプロイ後)
-- **📚 ドキュメント**: [HANDOVER.md](./HANDOVER.md) を参照
+- **📚 HANDOVER.md**: [引継書](./HANDOVER.md)
+- **📚 Phase A 指示書**: [GENSPARK_DEVELOPER_INSTRUCTIONS.md](./GENSPARK_DEVELOPER_INSTRUCTIONS.md)
+- **📚 Phase B 設計書**: [BACKEND_INTEGRATION_PLAN.md](./BACKEND_INTEGRATION_PLAN.md)
 
 ---
 
