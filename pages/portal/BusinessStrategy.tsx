@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import PortalLayout from './PortalLayout';
 import { 
   BarChart3, Zap, ShieldCheck, Users, Building2, 
   ArrowUpRight, PieChart, Smartphone, Globe, 
-  Cpu, Heart, Briefcase, CheckCircle2, Sparkles, Move, Layers, Radio
+  Cpu, Heart, Briefcase, CheckCircle2, Sparkles, Move, Layers, Radio, X, Check
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -97,11 +97,59 @@ const BusinessStrategy: React.FC = () => {
                   </div>
                </div>
 
-               <div className="grid md:grid-cols-3 gap-12 relative">
+               <div className="grid md:grid-cols-3 gap-12 relative mb-20">
                   <div className="hidden md:block absolute top-1/2 left-[30%] right-[30%] h-1 border-t-4 border-dashed border-slate-100 -translate-y-1/2"></div>
                   <WinBox icon={<Users className="text-indigo-600" />} role="Therapists" split="65~75%" value="店舗維持費0で独立、高還元率を実現" />
                   <WinBox icon={<Building2 className="text-orange-500" />} role="Space Hosts" split="20~30%" value="遊休資産の自動収益化、完全無人運営" />
                   <WinBox icon={<Globe className="text-teal-600" />} role="Platform" split="10~15%" value="インフラ提供、集客代行、安全保障" />
+               </div>
+
+               {/* 比較表を追加 */}
+               <div className="bg-slate-50 rounded-[48px] p-10 border border-slate-100">
+                  <h4 className="text-2xl font-black mb-8 text-center">従来モデルとの比較</h4>
+                  <div className="overflow-x-auto">
+                     <table className="w-full">
+                        <thead>
+                           <tr className="border-b-2 border-slate-200">
+                              <th className="text-left py-4 px-6 font-black text-slate-900">項目</th>
+                              <th className="text-center py-4 px-6 font-black text-slate-400">従来の店舗型</th>
+                              <th className="text-center py-4 px-6 font-black text-teal-600">Soothe Model</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           <ComparisonRow 
+                              item="初期投資" 
+                              traditional="500-1000万円" 
+                              soothe="0円" 
+                              isGood={true}
+                           />
+                           <ComparisonRow 
+                              item="セラピスト収益率" 
+                              traditional="40-50%" 
+                              soothe="65-75%" 
+                              isGood={true}
+                           />
+                           <ComparisonRow 
+                              item="固定費/月" 
+                              traditional="30-50万円" 
+                              soothe="0円" 
+                              isGood={true}
+                           />
+                           <ComparisonRow 
+                              item="集客コスト" 
+                              traditional="自己負担" 
+                              soothe="プラットフォーム負担" 
+                              isGood={true}
+                           />
+                           <ComparisonRow 
+                              item="安全対策" 
+                              traditional="スタッフ常駐" 
+                              soothe="AI監視（自動）" 
+                              isGood={true}
+                           />
+                        </tbody>
+                     </table>
+                  </div>
                </div>
             </div>
 
@@ -169,6 +217,24 @@ const CheckListItem = ({ text }: { text: string }) => (
      <CheckCircle2 size={20} className="text-teal-400" />
      <span>{text}</span>
   </li>
+);
+
+const ComparisonRow = ({ item, traditional, soothe, isGood }: { item: string, traditional: string, soothe: string, isGood: boolean }) => (
+  <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+     <td className="py-5 px-6 font-bold text-slate-900">{item}</td>
+     <td className="py-5 px-6 text-center">
+        <div className="flex items-center justify-center gap-2">
+           <X size={16} className="text-red-400" />
+           <span className="font-semibold text-slate-500">{traditional}</span>
+        </div>
+     </td>
+     <td className="py-5 px-6 text-center">
+        <div className="flex items-center justify-center gap-2">
+           <Check size={16} className="text-teal-600" />
+           <span className="font-bold text-teal-600">{soothe}</span>
+        </div>
+     </td>
+  </tr>
 );
 
 const BoxIcon = ({ size, className }: any) => (
