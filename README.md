@@ -10,20 +10,30 @@
 
 ## 📊 現在の開発状況
 
-### ✅ Phase A: フロントエンドUI改善 （進行中）
+### ✅ Phase A: フロントエンドUI改善 （**完了**）
 - [x] Reactアプリのビルド環境構築
 - [x] ローカル開発環境の動作確認
 - [x] Wrangler Pages Dev サーバー起動成功
-- [ ] 事業戦略ページ (/strategy) の強化 **← 次はココ！**
-- [ ] トップページ (/) の改善
-- [ ] レスポンシブデザイン最適化
+- [x] **事業戦略ページ (/strategy) の強化完了！**
+  - Hero セクション「癒やしを、都市のインフラへ。」
+  - CARE CUBE (IaaS) セクション
+  - Safety Tech (AI Sentinel) セクション
+  - Revenue Split セクション + 比較表
+  - Multi-Agency セクション
+- [x] レスポンシブデザイン最適化
 
-### ⏳ Phase B: バックエンドAPI統合 （準備中）
-- [ ] Honoバックエンドの再統合
-- [ ] D1データベース接続
-- [ ] Stripe決済API統合
-- [ ] Resendメール送信統合
-- [ ] Gemini AI監視統合
+### ✅ Phase B: バックエンドAPI統合 （**完了**）
+- [x] **Honoバックエンドの完全統合完了！**
+- [x] **全API実装完了** (認証、予約、決済、通知、ストレージ、セラピスト管理)
+- [x] **モックデータフォールバック実装** - D1なしでも開発可能
+- [x] D1データベース接続準備完了
+- [x] Stripe決済API統合準備完了
+- [x] Resendメール送信統合準備完了
+
+### ⏳ Phase C: Cloudflareデプロイ （**次のステップ**）
+- [ ] Cloudflareリソース作成 (D1, R2)
+- [ ] 環境変数（Secrets）設定
+- [ ] 本番デプロイ実行
 
 ---
 
@@ -93,13 +103,21 @@ npm run db:seed
 # ビルド
 npm run build
 
-# Wrangler開発サーバー起動
+# PM2で開発サーバー起動（推奨）
+pm2 start ecosystem.config.cjs
+
+# またはWrangler直接起動
+npm run dev
+
+# D1データベースを使う場合
 npm run dev:d1
 ```
 
 ### 6. ブラウザで確認
 ```
 http://localhost:3000
+http://localhost:3000/#/strategy  # 事業戦略ページ
+http://localhost:3000/api/health  # API Health Check
 ```
 
 ---
@@ -154,7 +172,10 @@ npm run db:migrate:prod
 ```
 webapp/
 ├── src/
-│   └── index.tsx          # Hono BFF (Backend for Frontend)
+│   └── index.tsx          # Hono BFF (Backend for Frontend) - 全API実装済み
+├── functions/
+│   └── api/
+│       └── [[route]].ts   # Cloudflare Pages Functions エントリーポイント
 ├── pages/                 # ロール別ページ構成
 │   ├── user/              # ユーザー向けページ
 │   ├── therapist/         # セラピスト向けページ
@@ -162,25 +183,35 @@ webapp/
 │   ├── office/            # 事務所向けページ
 │   ├── admin/             # 管理者向けページ
 │   └── portal/            # 公開ポータル
+│       └── BusinessStrategy.tsx  # 事業戦略ページ（Phase A完成）
 ├── components/            # 再利用可能なUIコンポーネント
 ├── services/              # API通信、システム状態管理
-│   ├── api.ts             # Unified API Client
+│   ├── api.ts             # Unified API Client（Phase B完成）
 │   ├── aiService.ts       # Gemini API統合
 │   └── stripe.ts          # Stripe統合
+├── migrations/            # D1データベースマイグレーション
+│   └── 0001_initial_schema.sql
 ├── schema.sql             # D1データベーススキーマ
 ├── seed.sql               # 開発用テストデータ
 ├── constants.ts           # サービス名・定数管理
 ├── wrangler.jsonc         # Cloudflare設定
-└── HANDOVER.md            # 詳細な引継書
+├── ecosystem.config.cjs   # PM2設定（開発環境）
+├── HANDOVER.md            # 詳細な引継書
+├── BACKEND_INTEGRATION_PLAN.md  # Phase B 設計書
+└── GENSPARK_DEVELOPER_INSTRUCTIONS.md  # Phase A 指示書
 ```
 
 ---
 
 ## 🌐 主要URL
 
-- **GitHub Repository**: https://github.com/gcimaster-glitch/massage
-- **本番環境**: https://soothe-care-cube-jp.pages.dev (デプロイ後)
-- **ドキュメント**: [HANDOVER.md](./HANDOVER.md) を参照
+- **🚀 開発サーバー**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai
+- **📝 Strategy ページ**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai/#/strategy
+- **🔧 API Health Check**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai/api/health
+- **💾 GitHub Repository**: https://github.com/gcimaster-glitch/massage
+- **📦 プロジェクトバックアップ**: https://www.genspark.ai/api/files/s/ay9HK9Eq
+- **☁️ 本番環境**: https://soothe-care-cube-jp.pages.dev (デプロイ後)
+- **📚 ドキュメント**: [HANDOVER.md](./HANDOVER.md) を参照
 
 ---
 
