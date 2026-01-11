@@ -28,3 +28,19 @@ dist-ssr
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Wrangler
+.wrangler/
+.dev.vars
+wrangler.toml
+
+# PM2
+.pm2/
+pids/
+logs/
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+core
