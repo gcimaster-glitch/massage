@@ -3,6 +3,28 @@
 > **「癒やしを、都市のインフラへ。」**  
 > 日本版Soothe × CARE CUBEの統合ウェルネス・プラットフォーム
 
+**🌐 開発サーバー**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai  
+**📦 GitHub**: https://github.com/gcimaster-glitch/massage
+
+---
+
+## 📊 現在の開発状況
+
+### ✅ Phase A: フロントエンドUI改善 （進行中）
+- [x] Reactアプリのビルド環境構築
+- [x] ローカル開発環境の動作確認
+- [x] Wrangler Pages Dev サーバー起動成功
+- [ ] 事業戦略ページ (/strategy) の強化 **← 次はココ！**
+- [ ] トップページ (/) の改善
+- [ ] レスポンシブデザイン最適化
+
+### ⏳ Phase B: バックエンドAPI統合 （準備中）
+- [ ] Honoバックエンドの再統合
+- [ ] D1データベース接続
+- [ ] Stripe決済API統合
+- [ ] Resendメール送信統合
+- [ ] Gemini AI監視統合
+
 ---
 
 ## 🚀 プロジェクト概要
