@@ -1,13 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import pages from '@hono/vite-cloudflare-pages'
 
 export default defineConfig({
-  plugins: [
-    react(),
-    pages()
-  ],
+  plugins: [react()],
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: './index.html'
+      }
+    }
   }
 })
