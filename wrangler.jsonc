@@ -5,6 +5,7 @@
   "compatibility_date": "2024-01-01",
   "compatibility_flags": ["nodejs_compat"],
   "pages_build_output_dir": "./dist",
+  "migrations_dir": "migrations",
 
   // D1 Database (SQLite for relational data)
   // IMPORTANT: Create production database first: npx wrangler d1 create soothe-db-production
