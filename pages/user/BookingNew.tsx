@@ -172,7 +172,7 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
 
         {/* サイドバー: 決済モジュール */}
         <div className="lg:col-span-4 space-y-8">
-           <div className="bg-gray-900 text-white p-12 rounded-[72px] shadow-[0_60px_100px_rgba(0,0,0,0.3)] space-y-10 sticky top-24 overflow-hidden border-b-[16px] border-teal-600 group">
+           <div className="bg-gray-900 text-white p-8 md:p-10 rounded-[72px] shadow-[0_60px_100px_rgba(0,0,0,0.3)] space-y-10 sticky top-24 overflow-hidden border-b-[16px] border-teal-600 group">
               <div className="absolute top-0 right-0 w-80 h-80 bg-teal-500 rounded-full blur-[120px] opacity-10 translate-x-1/2 -translate-y-1/2 group-hover:scale-110 transition-transform duration-1000"></div>
               
               <div className="relative z-10 space-y-8">
@@ -193,7 +193,7 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
                           <p className="text-xs font-bold text-gray-500 italic">(消費税込)</p>
                        </div>
                        <div className="text-right">
-                          <span className="text-7xl font-black tracking-tighter tabular-nums">¥9,480</span>
+                          <span className="text-5xl md:text-6xl font-black tracking-tighter tabular-nums">¥9,480</span>
                        </div>
                     </div>
                  </div>
@@ -204,19 +204,19 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
                        <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all flex-shrink-0 mt-1 ${safetyAgreed ? 'bg-teal-50 border-teal-500 text-white shadow-lg' : 'border-white/20 group-hover/label:border-white/40'}`}>
                           {safetyAgreed && <Check size={18} strokeWidth={4} />}
                        </div>
-                       <div className="space-y-1">
+                       <div className="space-y-1 flex-1">
                           <p className="text-[11px] font-black leading-tight text-white group-hover/label:text-teal-300 transition-colors">利用規約および安全プロトコルに同意する</p>
-                          <p className="text-[9px] text-gray-500 font-bold leading-relaxed uppercase tracking-widest">I agree to the Soothe Japan Terms</p>
+                          <p className="text-[9px] text-gray-500 font-bold leading-relaxed uppercase tracking-widest break-words">I agree to the Soothe Japan Terms</p>
                        </div>
                     </label>
 
                     <button 
                       onClick={handleSubmit}
                       disabled={!safetyAgreed || isProcessing}
-                      className="w-full py-10 bg-teal-500 text-white rounded-[48px] font-black text-2xl shadow-[0_20px_50px_rgba(20,184,166,0.3)] hover:bg-teal-400 transition-all disabled:bg-gray-800 disabled:text-gray-600 disabled:shadow-none active:scale-[0.97] group/btn relative overflow-hidden"
+                      className="w-full py-8 bg-teal-500 text-white rounded-[48px] font-black text-xl shadow-[0_20px_50px_rgba(20,184,166,0.3)] hover:bg-teal-400 transition-all disabled:bg-gray-800 disabled:text-gray-600 disabled:shadow-none active:scale-[0.97] group/btn relative overflow-hidden"
                     >
-                       <span className="relative z-10 flex items-center justify-center gap-4">
-                          予約を確定する <ArrowRight size={32} className="group-hover/btn:translate-x-2 transition-transform" />
+                       <span className="relative z-10 flex items-center justify-center gap-3">
+                          予約を確定する <ArrowRight size={28} className="group-hover/btn:translate-x-2 transition-transform" />
                        </span>
                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-[1500ms]"></div>
                     </button>
