@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import authApp from './auth-routes'
 
 // ============================================
 // Type Definitions
@@ -11,6 +12,19 @@ type Bindings = {
   RESEND_API_KEY: string
   GEMINI_API_KEY: string
   JWT_SECRET: string
+  // Social Auth Provider Secrets
+  GOOGLE_CLIENT_ID: string
+  GOOGLE_CLIENT_SECRET: string
+  YAHOO_CLIENT_ID: string
+  YAHOO_CLIENT_SECRET: string
+  X_CLIENT_ID: string
+  X_CLIENT_SECRET: string
+  FACEBOOK_CLIENT_ID: string
+  FACEBOOK_CLIENT_SECRET: string
+  LINE_CLIENT_ID: string
+  LINE_CLIENT_SECRET: string
+  APPLE_CLIENT_ID: string
+  APPLE_CLIENT_SECRET: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -34,6 +48,11 @@ app.get('/api/health', (c) => {
     service: 'Soothe x CARE CUBE Japan API'
   })
 })
+
+// ============================================
+// Mount Social Auth Routes
+// ============================================
+app.route('/api/auth', authApp)
 
 // ============================================
 // Auth Routes
