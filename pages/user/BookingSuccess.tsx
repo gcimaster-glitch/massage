@@ -131,7 +131,7 @@ const BookingSuccess: React.FC = () => {
       </div>
 
       <div className="mt-20 text-center">
-         <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.5em]">Wellness Infrastructure by Soothe Japan</p>
+         <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.5em]">Wellness Infrastructure by HOGUSY</p>
       </div>
     </div>
   );

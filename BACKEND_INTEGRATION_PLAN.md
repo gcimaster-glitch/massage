@@ -275,7 +275,7 @@ payments.post('/create-session', async (c) => {
       'success_url': `${new URL(c.req.url).origin}/#/app/booking/success?id=${bookingId}`,
       'cancel_url': `${new URL(c.req.url).origin}/#/app/booking/new`,
       'line_items[0][price_data][currency]': 'jpy',
-      'line_items[0][price_data][product_data][name]': 'Soothe Wellness Session',
+      'line_items[0][price_data][product_data][name]': 'HOGUSY Wellness Session',
       'line_items[0][price_data][unit_amount]': amount.toString(),
       'line_items[0][quantity]': '1',
     })
@@ -310,14 +310,14 @@ export const onRequest: PagesFunction = async (context) => {
 
 ```jsonc
 {
-  "name": "soothe-care-cube-jp",
+  "name": "hogusy",
   "compatibility_date": "2024-01-01",
   "pages_build_output_dir": "./dist",
   
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "soothe-db-production",
+      "database_name": "hogusy-db-production",
       "database_id": "YOUR_DATABASE_ID"
     }
   ],
@@ -325,7 +325,7 @@ export const onRequest: PagesFunction = async (context) => {
   "r2_buckets": [
     {
       "binding": "STORAGE",
-      "bucket_name": "soothe-storage"
+      "bucket_name": "hogusy-storage"
     }
   ]
 }
@@ -335,13 +335,13 @@ export const onRequest: PagesFunction = async (context) => {
 
 ```bash
 # D1データベース作成
-npx wrangler d1 create soothe-db-production
+npx wrangler d1 create hogusy-db-production
 
 # database_id を wrangler.jsonc にコピー
 
 # マイグレーション適用
-npx wrangler d1 migrations apply soothe-db-production --local  # ローカル
-npx wrangler d1 migrations apply soothe-db-production          # 本番
+npx wrangler d1 migrations apply hogusy-db-production --local  # ローカル
+npx wrangler d1 migrations apply hogusy-db-production          # 本番
 ```
 
 ---
@@ -377,7 +377,7 @@ npx wrangler secret put JWT_SECRET
 npm run build
 
 # 開発サーバー起動
-npx wrangler pages dev dist --d1=soothe-db-production --local
+npx wrangler pages dev dist --d1=hogusy-db-production --local
 
 # APIテスト
 curl http://localhost:8788/api/health
@@ -391,7 +391,7 @@ curl http://localhost:8788/api/bookings
 npm run deploy
 
 # APIテスト
-curl https://soothe-care-cube-jp.pages.dev/api/health
+curl https://hogusy.pages.dev/api/health
 ```
 
 ---

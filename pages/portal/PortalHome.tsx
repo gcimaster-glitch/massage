@@ -26,7 +26,7 @@ const PortalHome: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/90"></div>
         <div className="relative z-10 text-center px-6 max-w-5xl space-y-8">
           <div className="inline-flex items-center gap-2 bg-teal-500/20 backdrop-blur-md text-teal-400 px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest border border-teal-500/30">
-             <Sparkles size={14} /> Wellness Infrastructure by Soothe
+             <Sparkles size={14} /> Wellness Infrastructure by HOGUSY
           </div>
           <h1 className="text-6xl md:text-[110px] font-black text-white leading-[0.85] tracking-tighter">
              探して、<br/>

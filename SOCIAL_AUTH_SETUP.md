@@ -2,7 +2,7 @@
 
 ## 📋 概要
 
-Soothe x CARE CUBE Japanでは、以下のソーシャルログインプロバイダーをサポートしています：
+HOGUSYでは、以下のソーシャルログインプロバイダーをサポートしています：
 
 - ✅ Google
 - ✅ Yahoo! JAPAN
@@ -88,7 +88,7 @@ CSRF保護用の一時的な状態管理
 5. アプリケーションの種類：「ウェブアプリケーション」
 6. 承認済みのリダイレクトURIを追加：
    - 開発: `http://localhost:3000/api/auth/oauth/google/callback`
-   - 本番: `https://soothe-care-cube-jp.pages.dev/api/auth/oauth/google/callback`
+   - 本番: `https://hogusy.pages.dev/api/auth/oauth/google/callback`
 7. クライアントIDとシークレットをコピー
 
 #### 環境変数に設定
@@ -113,7 +113,7 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET
 3. 「アプリケーション情報」でClient IDとSecretを取得
 4. リダイレクトURIを設定：
    - 開発: `http://localhost:3000/api/auth/oauth/yahoo/callback`
-   - 本番: `https://soothe-care-cube-jp.pages.dev/api/auth/oauth/yahoo/callback`
+   - 本番: `https://hogusy.pages.dev/api/auth/oauth/yahoo/callback`
 
 #### 環境変数に設定
 ```.env
@@ -132,7 +132,7 @@ YAHOO_CLIENT_SECRET=your_yahoo_client_secret
 4. Type of App: Web App
 5. Callback URIs:
    - 開発: `http://localhost:3000/api/auth/oauth/x/callback`
-   - 本番: `https://soothe-care-cube-jp.pages.dev/api/auth/oauth/x/callback`
+   - 本番: `https://hogusy.pages.dev/api/auth/oauth/x/callback`
 6. Client IDとClient Secretを取得
 
 #### 環境変数に設定
@@ -152,7 +152,7 @@ X_CLIENT_SECRET=your_x_client_secret
 4. 「設定」→「基本」でApp IDとApp Secretを取得
 5. 「有効なOAuthリダイレクトURI」を設定：
    - 開発: `http://localhost:3000/api/auth/oauth/facebook/callback`
-   - 本番: `https://soothe-care-cube-jp.pages.dev/api/auth/oauth/facebook/callback`
+   - 本番: `https://hogusy.pages.dev/api/auth/oauth/facebook/callback`
 
 #### 環境変数に設定
 ```.env
@@ -171,7 +171,7 @@ FACEBOOK_CLIENT_SECRET=your_facebook_app_secret
 4. Channel IDとChannel Secretを取得
 5. Callback URLを設定：
    - 開発: `http://localhost:3000/api/auth/oauth/line/callback`
-   - 本番: `https://soothe-care-cube-jp.pages.dev/api/auth/oauth/line/callback`
+   - 本番: `https://hogusy.pages.dev/api/auth/oauth/line/callback`
 
 #### 環境変数に設定
 ```.env
@@ -189,7 +189,7 @@ LINE_CLIENT_SECRET=your_line_channel_secret
 3. Service IDを作成
 4. Return URLsを設定：
    - 開発: `http://localhost:3000/api/auth/oauth/apple/callback`
-   - 本番: `https://soothe-care-cube-jp.pages.dev/api/auth/oauth/apple/callback`
+   - 本番: `https://hogusy.pages.dev/api/auth/oauth/apple/callback`
 5. Private Keyを生成してダウンロード
 
 #### 環境変数に設定

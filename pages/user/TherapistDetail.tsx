@@ -73,7 +73,7 @@ const TherapistDetail: React.FC = () => {
                          <span className="bg-white/20 backdrop-blur-md text-white text-[9px] font-black px-4 py-2 rounded-full border border-white/30 shadow-xl uppercase tracking-widest">国家資格保有</span>
                        )}
                        <span className="bg-teal-500 text-white text-[9px] font-black px-4 py-2 rounded-full shadow-xl flex items-center gap-1.5 border border-teal-400">
-                          <Sparkles size={12} /> Soothe 人気スタッフ
+                          <Sparkles size={12} /> HOGUSY 人気スタッフ
                        </span>
                     </div>
                  </div>

@@ -223,7 +223,7 @@ const SafetyProtocol = () => (
     </section>
 
     <div className="text-center py-6">
-       <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em]">© 2025 Soothe Japan Compliance & Trust</p>
+       <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em]">© 2025 HOGUSY Compliance & Trust</p>
     </div>
   </div>
 );

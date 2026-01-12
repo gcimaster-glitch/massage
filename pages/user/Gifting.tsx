@@ -61,7 +61,7 @@ const Gifting: React.FC = () => {
                     </div>
                  </div>
                  <div className="absolute bottom-10 right-10 flex items-center gap-2 opacity-30">
-                    <span className="text-[10px] font-black uppercase tracking-widest">Soothe Japan</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">HOGUSY</span>
                  </div>
               </div>
 

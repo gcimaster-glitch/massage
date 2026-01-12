@@ -1,7 +1,7 @@
-# 🏥 Soothe x CARE CUBE Japan
+# 🏥 HOGUSY
 
 > **「癒やしを、都市のインフラへ。」**  
-> 日本版Soothe × CARE CUBEの統合ウェルネス・プラットフォーム
+> 日本版HOGUSY × CARE CUBEの統合ウェルネス・プラットフォーム
 
 **🌐 開発サーバー**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai  
 **📦 GitHub**: https://github.com/gcimaster-glitch/massage
@@ -32,10 +32,10 @@
 
 ### ✅ Phase C: Cloudflareデプロイ （**完了🎉**）
 - [x] **Cloudflareリソース作成完了**
-  - D1データベース: `soothe-db-production` ✅
-  - R2バケット: `soothe-storage` ✅
+  - D1データベース: `hogusy-db-production` ✅
+  - R2バケット: `hogusy-storage` ✅
 - [x] **本番デプロイ成功！**
-  - 🌐 本番URL: https://soothe-care-cube-jp.pages.dev
+  - 🌐 本番URL: https://hogusy.pages.dev
   - 🔧 API動作確認済み
   - 📊 D1データベースマイグレーション完了
   - 📦 テストデータ投入完了
@@ -65,7 +65,7 @@
 
 ## 🚀 プロジェクト概要
 
-**Soothe x CARE CUBE Japan**は、セラピストとユーザーを安全につなぐ次世代ウェルネス・プラットフォームです。
+**HOGUSY**は、セラピストとユーザーを安全につなぐ次世代ウェルネス・プラットフォームです。
 
 ### 主な特徴
 
@@ -167,13 +167,13 @@ http://localhost:3000/api/health  # API Health Check
 
 2. **D1データベースを作成**
    ```bash
-   npx wrangler d1 create soothe-db-production
+   npx wrangler d1 create hogusy-db-production
    # 出力された database_id を wrangler.jsonc にコピー
    ```
 
 3. **R2バケットを作成**
    ```bash
-   npx wrangler r2 bucket create soothe-storage
+   npx wrangler r2 bucket create hogusy-storage
    ```
 
 4. **環境変数（Secrets）を設定**
@@ -188,7 +188,7 @@ http://localhost:3000/api/health  # API Health Check
 ```bash
 # 初回デプロイ
 npm run build
-npx wrangler pages project create soothe-care-cube-jp \
+npx wrangler pages project create hogusy \
   --production-branch main \
   --compatibility-date 2024-01-01
 
@@ -240,10 +240,10 @@ webapp/
 ## 🌐 主要URL
 
 ### 🚀 本番環境（公開中！）
-- **🌐 本番サイト**: https://soothe-care-cube-jp.pages.dev
-- **📝 Strategy ページ**: https://soothe-care-cube-jp.pages.dev/#/strategy
-- **🔧 API Health Check**: https://soothe-care-cube-jp.pages.dev/api/health
-- **👥 セラピストAPI**: https://soothe-care-cube-jp.pages.dev/api/therapists
+- **🌐 本番サイト**: https://hogusy.pages.dev
+- **📝 Strategy ページ**: https://hogusy.pages.dev/#/strategy
+- **🔧 API Health Check**: https://hogusy.pages.dev/api/health
+- **👥 セラピストAPI**: https://hogusy.pages.dev/api/therapists
 
 ### 🛠️ 開発環境
 - **🚀 開発サーバー**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai
@@ -317,7 +317,7 @@ npm run db:console:prod
 
 ## 📝 ライセンス
 
-© 2025 Soothe x CARE CUBE Japan. All Rights Reserved.
+© 2025 HOGUSY. All Rights Reserved.
 
 ---
 

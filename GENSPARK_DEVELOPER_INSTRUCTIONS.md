@@ -1,15 +1,15 @@
-# Genspark Developer 指示書: Soothe x CARE CUBE Japan フロントエンド改善
+# Genspark Developer 指示書: HOGUSY フロントエンド改善
 
 ## 📊 プロジェクト概要
 
-**プロジェクト名**: Soothe x CARE CUBE Japan  
+**プロジェクト名**: HOGUSY  
 **GitHub**: https://github.com/gcimaster-glitch/massage  
 **現在の動作URL**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai
 
 ### ビジネスコンセプト
 「癒やしを、都市のインフラへ。」
 
-日本版Soothe × CARE CUBEは、セラピストとユーザーを安全につなぐ次世代ウェルネス・プラットフォームです。
+日本版HOGUSY × CARE CUBEは、セラピストとユーザーを安全につなぐ次世代ウェルネス・プラットフォームです。
 
 ---
 
@@ -82,7 +82,7 @@
 └─────────────────────────────────┘
 
 比較表:
-| 項目 | 従来の店舗型 | Soothe |
+| 項目 | 従来の店舗型 | HOGUSY |
 |------|-------------|--------|
 | 初期投資 | 500-1000万円 | 0円 |
 | セラピスト収益率 | 40-50% | 65-75% |

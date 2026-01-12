@@ -93,7 +93,7 @@ const AffiliateRecruit: React.FC = () => {
             >
                今すぐパートナー登録 <ArrowRight size={32} />
             </button>
-            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-6">Soothe Japan Ecosystem</p>
+            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-6">HOGUSY Ecosystem</p>
          </div>
       </section>
     </PortalLayout>

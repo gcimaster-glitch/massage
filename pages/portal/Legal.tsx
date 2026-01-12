@@ -155,7 +155,7 @@ const LegalPage: React.FC = () => {
               特定商取引法に基づく表記
             </h2>
             <div className="space-y-6">
-              <InfoRow label="事業者名" value="株式会社Soothe Japan（仮称）" />
+              <InfoRow label="事業者名" value="株式会社HOGUSY（仮称）" />
               <InfoRow label="代表者" value="代表取締役 山田太郎（仮）" />
               <InfoRow label="所在地" value="〒100-0001 東京都千代田区千代田1-1-1" />
               <InfoRow label="電話番号" value="03-1234-5678" />

@@ -36,10 +36,10 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       <header className="fixed top-0 w-full z-[100] transition-all duration-500 px-6 py-4">
         <div className="max-w-7xl mx-auto h-20 bg-white/90 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] flex items-center justify-between px-8">
           <div className="flex items-center gap-2 cursor-pointer group" onClick={() => navigate('/')}>
-             <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-xl group-hover:bg-teal-600 transition-colors">S</div>
+             <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-xl group-hover:bg-teal-600 transition-colors">H</div>
              <div className="flex flex-col">
-                <span className="text-xl font-black text-gray-900 tracking-tighter leading-none">Soothe</span>
-                <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">x CARE CUBE</span>
+                <span className="text-xl font-black text-gray-900 tracking-tighter leading-none">HOGUSY</span>
+                <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">ほぐす、を、もっと身近に。</span>
              </div>
           </div>
 
@@ -116,12 +116,12 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-20">
             <div className="col-span-1 md:col-span-2 space-y-10">
               <div className="flex items-center gap-3">
-                 <div className="w-12 h-12 bg-teal-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl">S</div>
-                 <h2 className="text-3xl font-black tracking-tighter">Soothe <span className="text-teal-600 opacity-50">Japan</span></h2>
+                 <div className="w-12 h-12 bg-teal-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl">H</div>
+                 <h2 className="text-3xl font-black tracking-tighter">HOGUSY</h2>
               </div>
               <p className="text-gray-500 text-lg leading-relaxed max-w-md font-medium">
-                高度なセキュリティとIoTを統合した「CARE CUBE」と、
-                日本の誇るセラピストの技術。これらを繋ぎ、安全で自由なウェルネス体験を民主化します。
+                「ほぐす」をもっと身近に。HOGUSYは、プロのセラピストとあなたを繋ぐ、
+                安全で快適なウェルネス体験を提供します。
               </p>
             </div>
 
@@ -145,7 +145,7 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           </div>
           <div className="mt-20 pt-10 border-t border-white/5 text-center">
             <p className="text-[9px] text-gray-600 font-black uppercase tracking-[1em]">
-              © 2025 Soothe x CARE CUBE Japan. Operational Excellence.
+              © 2025 HOGUSY. All Rights Reserved.
             </p>
           </div>
         </div>

@@ -92,7 +92,7 @@ const AdminOffices: React.FC = () => {
                        >
                           <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center font-black">S</div>
                           <div className="flex-1">
-                             <p className="font-black text-sm uppercase tracking-widest">Soothe Japan (本部直属)</p>
+                             <p className="font-black text-sm uppercase tracking-widest">HOGUSY (本部直属)</p>
                           </div>
                           {targetOfficeId === 'NULL' && <Check size={20} />}
                        </button>

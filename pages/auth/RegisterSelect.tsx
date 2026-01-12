@@ -19,7 +19,7 @@ const RegisterSelect: React.FC = () => {
         <div className="text-center mb-16 mt-6 space-y-4">
           <span className="inline-block bg-teal-50 text-teal-600 px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.4em] border border-teal-100 shadow-sm">Join the Community</span>
           <h1 className="text-5xl font-black tracking-tighter text-gray-900">アカウント種別の選択</h1>
-          <p className="text-gray-400 font-bold text-sm max-w-md mx-auto">Soothe Japanへようこそ。あなたの目的に合ったアカウントをお選びください。</p>
+          <p className="text-gray-400 font-bold text-sm max-w-md mx-auto">HOGUSYへようこそ。あなたの目的に合ったアカウントをお選びください。</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-10">

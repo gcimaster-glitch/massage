@@ -1,7 +1,7 @@
-# 🏥 Soothe x CARE CUBE Japan - プロジェクト引継書
+# 🏥 HOGUSY - プロジェクト引継書
 
 > **「癒やしを、都市のインフラへ。」**  
-> 日本版Soothe × CARE CUBEの統合ウェルネス・プラットフォーム
+> 日本版HOGUSY × CARE CUBEの統合ウェルネス・プラットフォーム
 
 ---
 
@@ -161,7 +161,7 @@ pm2 start ecosystem.config.cjs
 pm2 logs --nostream
 
 # 停止
-pm2 delete soothe-care-cube-jp
+pm2 delete hogusy
 ```
 
 ### 6. ブラウザで確認
@@ -183,14 +183,14 @@ http://localhost:3000
 2. **D1データベースの作成（本番環境）**
    ```bash
    # D1データベースを作成
-   npx wrangler d1 create soothe-db-production
+   npx wrangler d1 create hogusy-db-production
    
    # 出力された database_id を wrangler.jsonc にコピー
    ```
 
 3. **R2バケットの作成**
    ```bash
-   npx wrangler r2 bucket create soothe-storage
+   npx wrangler r2 bucket create hogusy-storage
    ```
 
 4. **環境変数（Secrets）の設定**
@@ -213,7 +213,7 @@ http://localhost:3000
 npm run build
 
 # 2. Cloudflare Pagesプロジェクトの作成
-npx wrangler pages project create soothe-care-cube-jp \
+npx wrangler pages project create hogusy \
   --production-branch main \
   --compatibility-date 2024-01-01
 
@@ -232,12 +232,12 @@ npm run deploy
 npm run db:migrate:prod
 
 # 必要に応じて初期データを投入
-npx wrangler d1 execute soothe-db-production --file=./seed.sql
+npx wrangler d1 execute hogusy-db-production --file=./seed.sql
 ```
 
 ### デプロイ後の確認
 ```
-https://soothe-care-cube-jp.pages.dev
+https://hogusy.pages.dev
 ```
 
 ---
@@ -297,7 +297,7 @@ users (1) ─── (N) bookings (N) ─── (1) sites
 
 ### ベースURL
 - **開発環境**: `http://localhost:3000/api`
-- **本番環境**: `https://soothe-care-cube-jp.pages.dev/api`
+- **本番環境**: `https://hogusy.pages.dev/api`
 
 ### 認証
 - JWT (JSON Web Token) をAuthorizationヘッダーに含める
@@ -446,4 +446,4 @@ npm run build
 
 ---
 
-**© 2025 Soothe x CARE CUBE Japan. All Rights Reserved.**
+**© 2025 HOGUSY. All Rights Reserved.**

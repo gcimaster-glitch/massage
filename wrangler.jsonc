@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "soothe-care-cube-jp",
+  "name": "hogusy",
   "compatibility_date": "2024-01-01",
   "compatibility_flags": ["nodejs_compat"],
   "pages_build_output_dir": "./dist",
@@ -8,15 +8,15 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "soothe-db-production",
-      "database_id": "a6edc408-b695-491e-aa44-047adf9b9811"
+      "database_name": "hogusy-db-production",
+      "database_id": "a52752b1-c49f-4fdd-b3e1-6a5be501cb72"
     }
   ],
   
   "r2_buckets": [
     {
       "binding": "STORAGE",
-      "bucket_name": "soothe-storage"
+      "bucket_name": "hogusy-storage"
     }
   ],
   

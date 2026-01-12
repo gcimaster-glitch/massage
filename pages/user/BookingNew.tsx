@@ -206,7 +206,7 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
                        </div>
                        <div className="space-y-1 flex-1">
                           <p className="text-[11px] font-black leading-tight text-white group-hover/label:text-teal-300 transition-colors">利用規約および安全プロトコルに同意する</p>
-                          <p className="text-[9px] text-gray-500 font-bold leading-relaxed uppercase tracking-widest break-words">I agree to the Soothe Japan Terms</p>
+                          <p className="text-[9px] text-gray-500 font-bold leading-relaxed uppercase tracking-widest break-words">I agree to the HOGUSY Terms</p>
                        </div>
                     </label>
 

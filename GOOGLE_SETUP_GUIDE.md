@@ -1,6 +1,6 @@
 # Google サービス設定ガイド
 
-このドキュメントは、Soothe x CARE CUBE Japan プロジェクトで Google Maps と Google ログインを設定する手順をまとめたものです。
+このドキュメントは、HOGUSY プロジェクトで Google Maps と Google ログインを設定する手順をまとめたものです。
 
 ## 📋 必要な情報
 
@@ -52,7 +52,7 @@ GOOGLE_MAPS_API_KEY=AIzaSyB1234567890abcdefghijklmnopqrstuv
 ```bash
 cd /home/user/webapp
 npm run build
-pm2 restart soothe-care-cube-jp
+pm2 restart hogusy
 ```
 
 ## 🌐 本番環境の設定
@@ -61,11 +61,11 @@ pm2 restart soothe-care-cube-jp
 
 ```bash
 # Google OAuth
-npx wrangler pages secret put GOOGLE_CLIENT_ID --project-name soothe-care-cube-jp
-npx wrangler pages secret put GOOGLE_CLIENT_SECRET --project-name soothe-care-cube-jp
+npx wrangler pages secret put GOOGLE_CLIENT_ID --project-name hogusy
+npx wrangler pages secret put GOOGLE_CLIENT_SECRET --project-name hogusy
 
 # Google Maps API
-npx wrangler pages secret put GOOGLE_MAPS_API_KEY --project-name soothe-care-cube-jp
+npx wrangler pages secret put GOOGLE_MAPS_API_KEY --project-name hogusy
 ```
 
 ### デプロイ
@@ -83,7 +83,7 @@ npm run deploy:prod
 4. Google のログイン画面が表示されることを確認
 
 ### 本番環境
-1. https://soothe-care-cube-jp.pages.dev にアクセス
+1. https://hogusy.pages.dev にアクセス
 2. 同様の確認を実施
 
 ## ❌ トラブルシューティング

@@ -1,12 +1,12 @@
-// PM2 Configuration for Soothe x CARE CUBE Japan
+// PM2 Configuration for HOGUSY
 // Development environment with Wrangler Pages Dev + D1
 
 module.exports = {
   apps: [
     {
-      name: 'soothe-care-cube-jp',
+      name: 'hogusy',
       script: 'npx',
-      args: 'wrangler pages dev dist --d1=soothe-db-production --local --ip 0.0.0.0 --port 3000',
+      args: 'wrangler pages dev dist --d1=hogusy-db-production --local --ip 0.0.0.0 --port 3000',
       env: {
         NODE_ENV: 'development',
         PORT: 3000

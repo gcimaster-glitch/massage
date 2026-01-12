@@ -25,7 +25,7 @@ const SignupUser: React.FC = () => {
               <Sparkles className="absolute -top-4 -right-4 text-yellow-500 animate-pulse" size={32} />
            </div>
            <div className="space-y-4">
-              <h1 className="text-4xl font-black tracking-tighter text-gray-900">ようこそ Soothe Japan へ！</h1>
+              <h1 className="text-4xl font-black tracking-tighter text-gray-900">ようこそ HOGUSY へ！</h1>
               <p className="text-gray-500 font-bold leading-relaxed text-lg">
                  仮登録が完了しました。ご登録のメールアドレスに送信された認証リンクをクリックして、サービスを開始してください。
               </p>

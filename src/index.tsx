@@ -45,7 +45,7 @@ app.get('/api/health', (c) => {
   return c.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    service: 'Soothe x CARE CUBE Japan API'
+    service: 'HOGUSY API'
   })
 })
 
@@ -286,7 +286,7 @@ app.post('/api/payments/create-session', async (c) => {
       'success_url': `${new URL(c.req.url).origin}/#/app/booking/success?id=${bookingId}`,
       'cancel_url': `${new URL(c.req.url).origin}/#/app/booking/new`,
       'line_items[0][price_data][currency]': 'jpy',
-      'line_items[0][price_data][product_data][name]': 'Soothe Wellness Session',
+      'line_items[0][price_data][product_data][name]': 'HOGUSY Wellness Session',
       'line_items[0][price_data][unit_amount]': amount.toString(),
       'line_items[0][quantity]': '1',
     })
@@ -314,7 +314,7 @@ app.post('/api/notify/email', async (c) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Soothe <noreply@soothe.jp>',
+      from: 'HOGUSY <noreply@hogusy.jp>',
       to,
       subject,
       html,
