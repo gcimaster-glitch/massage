@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import RegisterSelect from './pages/auth/RegisterSelect';
@@ -126,7 +126,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
         {/* Public Portal */}
         <Route path="/" element={<PortalHome />} />
@@ -229,7 +229,7 @@ const App: React.FC = () => {
           </button>
         </div>
       )}
-    </HashRouter>
+    </BrowserRouter>
   );
 };
 
