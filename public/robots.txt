@@ -1,0 +1,33 @@
+# robots.txt for HOGUSY
+# https://hogusy.com/robots.txt
+
+# Allow all user agents
+User-agent: *
+Allow: /
+
+# Disallow admin pages
+Disallow: /admin
+Disallow: /admin/
+
+# Disallow auth pages (no need to index)
+Disallow: /auth
+Disallow: /auth/
+
+# Disallow therapist dashboard
+Disallow: /t
+Disallow: /t/
+
+# Disallow host dashboard
+Disallow: /h
+Disallow: /h/
+
+# Disallow office dashboard
+Disallow: /o
+Disallow: /o/
+
+# Disallow API endpoints
+Disallow: /api
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://hogusy.com/sitemap.xml
