@@ -102,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout }) => {
             </div>
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 bg-gray-100 rounded-xl"><Menu size={20}/></button>
          </div>
-         <div className="max-w-6xl mx-auto p-4 md:p-12">
+         <div className="max-w-6xl mx-auto p-4 pt-20 md:p-12">
             {children}
          </div>
       </main>
