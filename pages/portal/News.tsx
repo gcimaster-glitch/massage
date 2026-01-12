@@ -11,7 +11,7 @@ const NewsPage: React.FC = () => {
 
   return (
     <PortalLayout>
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 pt-32 pb-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">お知らせ</h1>
         <div className="space-y-4">
           {news.map((item, idx) => (

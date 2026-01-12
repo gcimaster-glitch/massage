@@ -45,10 +45,10 @@ const TherapistListPage: React.FC = () => {
 
   return (
     <PortalLayout>
-      <div className="bg-[#F8F9FA] min-h-screen pb-32 font-sans text-gray-900">
+      <div className="bg-[#F8F9FA] min-h-screen pb-32 pt-[72px] font-sans text-gray-900">
         
         {/* 1. 精密検索・パンくずエリア */}
-        <section className="bg-white border-b border-gray-200 sticky top-20 z-40 shadow-sm">
+        <section className="bg-white border-b border-gray-200 sticky top-[72px] z-40 shadow-sm">
            <div className="max-w-7xl mx-auto px-4">
               <div className="py-2 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest overflow-hidden">
                  <Link to="/" className="hover:text-teal-600 transition-colors">Soothe</Link>
