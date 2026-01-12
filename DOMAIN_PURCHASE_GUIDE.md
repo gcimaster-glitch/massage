@@ -464,7 +464,7 @@ curl -I http://hogusy.com
 **解決方法**:
 1. WHOIS で所有者を確認: https://www.whois.com/whois/hogusy.com
 2. 代替ドメインを検討:
-   - hogusy.jp
+   - hogusy.com
    - hogusy.co
    - hogusy.io
    - gethogusy.com

@@ -12,7 +12,7 @@
 - **ローカル**: `.dev.vars` に API キー設定完了
 - **本番**: Cloudflare Pages Secrets に設定完了
 - **API**: `/api/notify/email` エンドポイント実装・動作確認済み
-- **状態**: 🟡 **ドメイン検証待ち**（`hogusy.jp`）
+- **状態**: 🟡 **ドメイン検証待ち**（`hogusy.com`）
 
 #### 2. プロジェクト基本設定
 - **サービス名**: HOGUSY（ほぐす、を、もっと身近に。）
@@ -37,11 +37,11 @@
 ### ⏳ 次に必要な設定
 
 #### 1. Resend ドメイン検証
-**目的**: `noreply@hogusy.jp` からメール送信を可能にする
+**目的**: `noreply@hogusy.com` からメール送信を可能にする
 
 **手順**:
 1. https://resend.com/domains にアクセス
-2. `hogusy.jp` を追加
+2. `hogusy.com` を追加
 3. 表示される DNS レコードを Cloudflare DNS に追加:
    - MX レコード（2個）
    - TXT レコード（SPF）
@@ -181,7 +181,7 @@ JWT_SECRET=***                           # 未設定
 #### 優先度: 中（推奨）
 3. **Resend でドメイン検証**（約10分）
    - https://resend.com/domains にアクセス
-   - `hogusy.jp` を追加
+   - `hogusy.com` を追加
    - 表示される DNS レコードを確認
    - Cloudflare DNS に追加（私がサポート可能）
 

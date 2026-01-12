@@ -229,7 +229,7 @@ curl -I https://www.hogusy.com | grep -i location
 ### Q: hogusy.com が取得できない場合は？
 
 **A**: 代替ドメインを検討してください：
-- hogusy.jp（日本向けに最適）
+- hogusy.com（日本向けに最適）
 - hogusy.co
 - hogusy.io
 - gethogusy.com

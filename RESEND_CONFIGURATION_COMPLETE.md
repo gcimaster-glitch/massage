@@ -32,11 +32,11 @@
 ```json
 {
   "statusCode": 403,
-  "message": "The hogusy.jp domain is not verified. Please, add and verify your domain on https://resend.com/domains"
+  "message": "The hogusy.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 }
 ```
 
-**解決方法**: `hogusy.jp` ドメインを Resend で検証する必要があります。
+**解決方法**: `hogusy.com` ドメインを Resend で検証する必要があります。
 
 ---
 
@@ -48,7 +48,7 @@
 3. 「Add Domain」をクリック
 
 ### Step 2: ドメインを追加
-1. ドメイン名に **`hogusy.jp`** を入力
+1. ドメイン名に **`hogusy.com`** を入力
 2. Region: **US East (N. Virginia)** を選択（推奨）
 3. 「Add」をクリック
 
@@ -98,7 +98,7 @@ curl -X POST http://localhost:3000/api/notify/email \
 
 ### ドメイン検証後（本番送信）
 ```bash
-# hogusy.jp ドメインからメール送信
+# hogusy.com ドメインからメール送信
 curl -X POST https://hogusy.pages.dev/api/notify/email \
   -H "Content-Type: application/json" \
   -d '{
@@ -140,7 +140,7 @@ app.post('/api/notify/email', async (c) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'HOGUSY <noreply@hogusy.jp>',  // ← ドメイン検証後に使用可能
+      from: 'HOGUSY <noreply@hogusy.com>',  // ← ドメイン検証後に使用可能
       to,
       subject,
       html,
@@ -263,7 +263,7 @@ app.post('/api/notify/email', async (c) => {
 - [x] API エンドポイントの動作確認
 
 ### 次に実施
-- [ ] Resend で `hogusy.jp` ドメインを追加
+- [ ] Resend で `hogusy.com` ドメインを追加
 - [ ] Cloudflare DNS に必要なレコードを追加
 - [ ] ドメイン検証を完了
 - [ ] 本番環境でメール送信テスト
@@ -286,11 +286,11 @@ Resend の API キー設定が完了しました！🎉
 
 次は **Resend でドメイン検証** を実施してください：
 1. https://resend.com/domains にアクセス
-2. `hogusy.jp` を追加
+2. `hogusy.com` を追加
 3. 表示される DNS レコードを Cloudflare に設定
 4. 検証完了を待つ（5分〜24時間）
 
-ドメイン検証が完了すれば、`noreply@hogusy.jp` から本番メールを送信できます！
+ドメイン検証が完了すれば、`noreply@hogusy.com` から本番メールを送信できます！
 
 ---
 

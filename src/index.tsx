@@ -314,7 +314,7 @@ app.post('/api/notify/email', async (c) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'HOGUSY <noreply@hogusy.jp>',
+      from: 'HOGUSY <noreply@hogusy.com>',
       to,
       subject,
       html,
