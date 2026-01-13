@@ -2,5 +2,9 @@
   {
     "tag": "0001_initial_schema",
     "breakingChanges": []
+  },
+  {
+    "tag": "0002_add_missing_tables",
+    "breakingChanges": []
   }
 ]
