@@ -445,4 +445,225 @@ app.get('/api/therapists/:id', async (c) => {
   }
 })
 
+// ============================================
+// Sites Routes (施設一覧・検索)
+// ============================================
+app.get('/api/sites', async (c) => {
+  const area = c.req.query('area')
+  const type = c.req.query('type')
+  const search = c.req.query('search')
+  
+  try {
+    if (!c.env.DB) {
+      return c.json([])
+    }
+    
+    // Check if we're using area or area_code
+    const { results: schemaCheck } = await c.env.DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='sites'"
+    ).all()
+    
+    const useAreaCode = schemaCheck.length > 0 && 
+                        schemaCheck[0].sql.includes('area_code')
+    
+    const areaColumn = useAreaCode ? 's.area_code' : 's.area'
+    const latColumn = useAreaCode ? 's.latitude' : 's.lat'
+    const lngColumn = useAreaCode ? 's.longitude' : 's.lng'
+    
+    let query = `
+      SELECT s.id, s.name, s.type, s.address, ${areaColumn} as area, 
+             ${latColumn} as lat, ${lngColumn} as lng, s.host_id,
+             u.name as host_name
+      FROM sites s
+      LEFT JOIN users u ON s.host_id = u.id
+      WHERE 1=1
+    `
+    const params: any[] = []
+    
+    if (area) {
+      query += ` AND ${areaColumn} = ?`
+      params.push(area)
+    }
+    
+    if (type) {
+      query += ' AND s.type = ?'
+      params.push(type)
+    }
+    
+    if (search) {
+      query += ' AND (s.name LIKE ? OR s.address LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`)
+    }
+    
+    query += ' ORDER BY s.name LIMIT 100'
+    
+    const { results } = await c.env.DB.prepare(query).bind(...params).all()
+    return c.json(results)
+  } catch (e) {
+    console.error('Sites API error:', e)
+    return c.json([], 500)
+  }
+})
+
+app.get('/api/sites/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    if (!c.env.DB) {
+      return c.json({ error: 'Database not available' }, 503)
+    }
+    
+    // Check schema
+    const { results: schemaCheck } = await c.env.DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='sites'"
+    ).all()
+    
+    const useAreaCode = schemaCheck.length > 0 && 
+                        schemaCheck[0].sql.includes('area_code')
+    
+    const areaColumn = useAreaCode ? 's.area_code' : 's.area'
+    const latColumn = useAreaCode ? 's.latitude' : 's.lat'
+    const lngColumn = useAreaCode ? 's.longitude' : 's.lng'
+    
+    const { results } = await c.env.DB.prepare(`
+      SELECT s.id, s.name, s.type, s.address, ${areaColumn} as area,
+             ${latColumn} as lat, ${lngColumn} as lng, s.host_id,
+             u.name as host_name, u.email as host_email, u.phone as host_phone
+      FROM sites s
+      LEFT JOIN users u ON s.host_id = u.id
+      WHERE s.id = ?
+    `).bind(id).all()
+    
+    if (results.length === 0) {
+      return c.json({ error: 'Site not found' }, 404)
+    }
+    
+    return c.json(results[0])
+  } catch (e) {
+    console.error('Site detail error:', e)
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+// ============================================
+// Offices Routes (事務所一覧・詳細)
+// ============================================
+app.get('/api/offices', async (c) => {
+  try {
+    if (!c.env.DB) {
+      return c.json([])
+    }
+    
+    const { results } = await c.env.DB.prepare(`
+      SELECT o.id, o.name, o.area_code as area, o.manager_name, o.contact_email,
+             o.commission_rate, o.therapist_count, o.status,
+             u.name as owner_name
+      FROM offices o
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.status = 'APPROVED'
+      ORDER BY o.therapist_count DESC
+    `).all()
+    
+    return c.json(results)
+  } catch (e) {
+    console.error('Offices API error:', e)
+    return c.json([], 500)
+  }
+})
+
+app.get('/api/offices/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    if (!c.env.DB) {
+      return c.json({ error: 'Database not available' }, 503)
+    }
+    
+    // 事務所情報
+    const { results: offices } = await c.env.DB.prepare(`
+      SELECT o.*, u.name as owner_name, u.email as owner_email, u.phone as owner_phone
+      FROM offices o
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.id = ?
+    `).bind(id).all()
+    
+    if (offices.length === 0) {
+      return c.json({ error: 'Office not found' }, 404)
+    }
+    
+    // 所属セラピスト一覧
+    const { results: therapists } = await c.env.DB.prepare(`
+      SELECT u.id, u.name, u.avatar_url, tp.rating, tp.review_count,
+             tp.specialties, tp.approved_areas
+      FROM therapist_profiles tp
+      JOIN users u ON tp.user_id = u.id
+      WHERE tp.office_id = ?
+      ORDER BY tp.rating DESC, tp.review_count DESC
+    `).bind(id).all()
+    
+    return c.json({
+      ...offices[0],
+      therapists
+    })
+  } catch (e) {
+    console.error('Office detail error:', e)
+    return c.json({ error: 'Internal server error' }, 500)
+  }
+})
+
+// ============================================
+// Therapists Search with Filters
+// ============================================
+app.get('/api/therapists/search', async (c) => {
+  const area = c.req.query('area')
+  const officeId = c.req.query('officeId')
+  const specialty = c.req.query('specialty')
+  const minRating = c.req.query('minRating')
+  
+  try {
+    if (!c.env.DB) {
+      return c.json([])
+    }
+    
+    let query = `
+      SELECT u.id, u.name, u.avatar_url, tp.rating, tp.review_count,
+             tp.specialties, tp.approved_areas, tp.office_id,
+             o.name as office_name
+      FROM users u
+      JOIN therapist_profiles tp ON u.id = tp.user_id
+      LEFT JOIN therapist_offices o ON tp.office_id = o.id
+      WHERE u.role = 'THERAPIST' AND tp.is_active = TRUE
+    `
+    const params: any[] = []
+    
+    if (officeId) {
+      query += ' AND tp.office_id = ?'
+      params.push(officeId)
+    }
+    
+    if (minRating) {
+      query += ' AND tp.rating >= ?'
+      params.push(parseFloat(minRating))
+    }
+    
+    if (area) {
+      query += ' AND tp.approved_areas LIKE ?'
+      params.push(`%${area}%`)
+    }
+    
+    if (specialty) {
+      query += ' AND tp.specialties LIKE ?'
+      params.push(`%${specialty}%`)
+    }
+    
+    query += ' ORDER BY tp.rating DESC, tp.review_count DESC LIMIT 50'
+    
+    const { results } = await c.env.DB.prepare(query).bind(...params).all()
+    return c.json(results)
+  } catch (e) {
+    console.error('Therapist search error:', e)
+    return c.json([], 500)
+  }
+})
+
 export default app
