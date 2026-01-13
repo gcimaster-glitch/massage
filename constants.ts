@@ -12,17 +12,17 @@ import { Booking, BookingStatus, BookingType, IncidentSeverity, Role, RevenueCon
  * 4. 全ページで BRAND.* を参照しているため、自動的に反映されます
  */
 export const BRAND = {
-  NAME: 'Soothe Japan',
-  SUB_NAME: 'x CARE CUBE',
-  FULL_NAME: 'Soothe x CARE CUBE Japan',
-  SLOGAN: '癒やしを、都市のインフラへ。',
-  SUPPORT_EMAIL: 'support@soothe.jp',
+  NAME: 'HOGUSY',
+  SUB_NAME: 'ほぐす、を、もっと身近に。',
+  FULL_NAME: 'HOGUSY（ホグシー）',
+  SLOGAN: 'ほぐす、を、もっと身近に。',
+  SUPPORT_EMAIL: 'support@hogusy.com',
   INVOICE_PREFIX: 'T1234567890123',
   
   // API Endpoints
   API: {
     BASE_URL: import.meta.env.PROD 
-      ? 'https://soothe-care-cube-jp.pages.dev/api'
+      ? 'https://hogusy.com/api'
       : 'http://localhost:3000/api'
   }
 };
