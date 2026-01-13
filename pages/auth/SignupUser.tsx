@@ -68,7 +68,7 @@ const SignupUser: React.FC = () => {
         {/* Google Sign-Up */}
         <div className="mb-8">
           <button
-            onClick={() => window.location.href = '/api/auth/oauth/google?role=USER&redirect=/app'}
+            onClick={() => window.location.href = '/api/auth/oauth/google?role=USER&redirectPath=/app'}
             type="button"
             className="w-full p-4 border-2 border-gray-200 rounded-[24px] flex items-center justify-center gap-3 transition-all hover:border-teal-500 hover:shadow-lg active:scale-[0.98] bg-white"
           >

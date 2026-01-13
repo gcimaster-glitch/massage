@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import authApp from './auth-routes'
 import mapsApp from './maps-routes'
+import adminApp from './admin-routes'
 
 // ============================================
 // Type Definitions
@@ -60,6 +61,11 @@ app.route('/api/auth', authApp)
 // Mount Google Maps Routes
 // ============================================
 app.route('/api/maps', mapsApp)
+
+// ============================================
+// Mount Admin Routes
+// ============================================
+app.route('/api/admin', adminApp)
 
 // ============================================
 // Auth Routes
