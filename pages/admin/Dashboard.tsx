@@ -160,6 +160,8 @@ const AdminDashboard: React.FC = () => {
                   <GovLink label="健康経営・法人管理" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/corporate')} />
                   {/* Fixed: Replaced Building with Building2 which is correctly imported */}
                   <GovLink label="提携事務所監査" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/offices')} />
+                  <GovLink label="セラピスト事務所管理" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/office-management')} />
+                  <GovLink label="CARE CUBE施設管理" icon={<MapPin size={18}/>} onClick={() => navigate('/admin/site-management')} />
                   <GovLink label="アフィリエイト管理" icon={<Heart size={18}/>} onClick={() => navigate('/admin/affiliates')} />
                   <GovLink label="送金/Stripe監視" icon={<JapaneseYen size={18}/>} onClick={() => navigate('/admin/stripe')} />
                   <GovLink label="配信テンプレート" icon={<MessageSquare size={18}/>} onClick={() => navigate('/admin/emails')} />

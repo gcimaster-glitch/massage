@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { MOCK_SITES, MOCK_THERAPISTS, MASTER_COURSES, MASTER_OPTIONS, MOCK_AREAS } from '../../constants';
+import { MASTER_COURSES, MASTER_OPTIONS } from '../../constants';
 import { BookingType, Role } from '../../types';
 // Added ArrowRight to fix "Cannot find name" error on line 218
 import { 
@@ -15,6 +15,22 @@ interface BookingNewProps {
   onAutoLogin: (role: Role, name: string) => void;
 }
 
+interface Site {
+  id: string
+  name: string
+  type: string
+  address: string
+  area: string
+}
+
+interface Therapist {
+  id: string
+  name: string
+  rating: number
+  review_count: number
+  specialties: string
+}
+
 const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -24,17 +40,55 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
   const typeParam = searchParams.get('type') as BookingType;
   const bookingType = typeParam === BookingType.MOBILE ? BookingType.MOBILE : BookingType.ONSITE;
   const therapistId = searchParams.get('therapistId') || 'auto';
+  const siteIdParam = searchParams.get('siteId') || '';
   const isAutoMatch = therapistId === 'auto';
 
-  const targetTherapist = isAutoMatch ? null : (MOCK_THERAPISTS.find(t => t.id === therapistId) || MOCK_THERAPISTS[0]);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState(siteIdParam);
+  const [selectedTherapistId, setSelectedTherapistId] = useState(therapistId);
 
   const [selectedCourseId, setSelectedCourseId] = useState(searchParams.get('service') || 'mc_1');
   const [date, setDate] = useState(searchParams.get('date') || new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState(searchParams.get('time') || '14:00');
   const [safetyAgreed, setSafetyAgreed] = useState(false);
 
+  useEffect(() => {
+    fetchSites();
+    fetchTherapists();
+  }, []);
+
+  const fetchSites = async () => {
+    try {
+      const res = await fetch('/api/sites');
+      const data = await res.json();
+      setSites(data);
+    } catch (e) {
+      console.error('Failed to fetch sites:', e);
+    }
+  };
+
+  const fetchTherapists = async () => {
+    try {
+      const res = await fetch('/api/therapists');
+      const data = await res.json();
+      setTherapists(data);
+    } catch (e) {
+      console.error('Failed to fetch therapists:', e);
+    }
+  };
+
+  const targetTherapist = isAutoMatch ? null : therapists.find(t => t.id === therapistId);
+  const selectedSite = sites.find(s => s.id === selectedSiteId);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedSiteId && bookingType === BookingType.ONSITE) {
+      alert('施設を選択してください');
+      return;
+    }
+    
     setIsProcessing(true);
 
     // プロセスシミュレーション
@@ -45,11 +99,13 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
     setProcessStep(3); // 完了
     
     const booking = systemStore.createBooking({
-      therapistId: therapistId,
+      therapistId: selectedTherapistId,
       type: bookingType,
       scheduledStart: `${date}T${time}:00`,
       serviceName: MASTER_COURSES.find(c => c.id === selectedCourseId)?.name || 'ボディケア',
-      location: bookingType === BookingType.ONSITE ? 'CARE CUBE 渋谷ANNEX' : '東京都港区六本木 1-2-3'
+      location: bookingType === BookingType.ONSITE 
+        ? (selectedSite?.name || 'CARE CUBE 渋谷ANNEX')
+        : '東京都港区六本木 1-2-3'
     });
 
     setTimeout(() => {
@@ -159,12 +215,44 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
 
               <div className="p-8 bg-indigo-50 rounded-[40px] border border-indigo-100 flex items-start gap-6">
                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm flex-shrink-0"><MapPin size={24}/></div>
-                 <div className="space-y-1">
+                 <div className="flex-1 space-y-3">
                     <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">実施場所</p>
-                    <p className="text-lg font-black text-indigo-900">{bookingType === BookingType.ONSITE ? 'CARE CUBE 渋谷ANNEX' : 'ご指定の住所（自宅・ホテル）'}</p>
-                    <p className="text-xs font-bold text-indigo-400 leading-relaxed">
-                       {bookingType === BookingType.ONSITE ? 'ブースの解錠コードは、予約確定後のマイページに表示されます。' : '住所の詳細はセラピストのみに安全に開示されます。'}
-                    </p>
+                    {bookingType === BookingType.ONSITE ? (
+                      <>
+                        {selectedSite ? (
+                          <>
+                            <p className="text-lg font-black text-indigo-900">{selectedSite.name}</p>
+                            <p className="text-xs font-bold text-indigo-400">{selectedSite.address}</p>
+                            <button 
+                              onClick={() => navigate(`/app/sites?type=${selectedSite.type}&area=${selectedSite.area}`)}
+                              className="mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 underline"
+                            >
+                              施設を変更する →
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-lg font-black text-indigo-900">施設を選択してください</p>
+                            <button 
+                              onClick={() => navigate('/app/sites')}
+                              className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold text-sm"
+                            >
+                              施設を選ぶ →
+                            </button>
+                          </>
+                        )}
+                        <p className="text-xs font-bold text-indigo-400 leading-relaxed">
+                          ブースの解錠コードは、予約確定後のマイページに表示されます。
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-lg font-black text-indigo-900">ご指定の住所（自宅・ホテル）</p>
+                        <p className="text-xs font-bold text-indigo-400 leading-relaxed">
+                          住所の詳細はセラピストのみに安全に開示されます。
+                        </p>
+                      </>
+                    )}
                  </div>
               </div>
            </div>

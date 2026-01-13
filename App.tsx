@@ -36,6 +36,7 @@ import WellnessJournal from './pages/user/WellnessJournal';
 import SubscriptionPlans from './pages/user/SubscriptionPlans';
 import Gifting from './pages/user/Gifting';
 import SiteMapSearch from './pages/user/SiteMapSearch';
+import SitesList from './pages/user/SitesList';
 import KYCVerification from './pages/shared/KYCVerification';
 import SupportCenter from './pages/shared/SupportCenter';
 
@@ -84,6 +85,8 @@ import AdminBookingLogs from './pages/admin/BookingLogs';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminPricingApprovals from './pages/admin/AdminPricingApprovals';
 import AdminOfficeManagement from './pages/admin/OfficeManagement';
+import AdminTherapistOfficeManagement from './pages/admin/OfficeManagement';
+import AdminSiteManagement from './pages/admin/SiteManagement';
 import AdminCorporateDashboard from './pages/admin/CorporateDashboard';
 import AdminSupportInbox from './pages/admin/SupportInbox';
 import AdminMarketingDashboard from './pages/admin/MarketingDashboard';
@@ -149,6 +152,7 @@ const App: React.FC = () => {
         {/* User App */}
         <Route path="/app" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserHome /></RequireAuth>} />
         <Route path="/app/map" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN, Role.THERAPIST, Role.HOST]} currentUser={currentUser} onLogout={handleLogout}><SiteMapSearch /></RequireAuth>} />
+        <Route path="/app/sites" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><SitesList /></RequireAuth>} />
         <Route path="/app/site/:siteId" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><SiteDetail /></RequireAuth>} />
         <Route path="/app/therapist/:therapistId" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><TherapistDetail /></RequireAuth>} />
         <Route path="/app/booking/new" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNew onAutoLogin={handleLogin} /></RequireAuth>} />
@@ -215,6 +219,8 @@ const App: React.FC = () => {
         <Route path="/admin/analytics" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminAnalytics /></RequireAuth>} />
         <Route path="/admin/pricing-approvals" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminPricingApprovals /></RequireAuth>} />
         <Route path="/admin/offices" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminOfficeManagement /></RequireAuth>} />
+        <Route path="/admin/office-management" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminTherapistOfficeManagement /></RequireAuth>} />
+        <Route path="/admin/site-management" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSiteManagement /></RequireAuth>} />
         <Route path="/admin/corporate" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminCorporateDashboard /></RequireAuth>} />
         <Route path="/admin/support" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSupportInbox /></RequireAuth>} />
         <Route path="/admin/marketing" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminMarketingDashboard /></RequireAuth>} />

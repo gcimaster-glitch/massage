@@ -1,181 +1,249 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
-import React, { useState } from 'react';
-import { Building2, Users, ArrowRightLeft, Plus, Search, MapPin, MoreVertical, JapaneseYen, Check, X, ShieldCheck } from 'lucide-react';
-import { MOCK_OFFICES, MOCK_THERAPISTS } from '../../constants';
+interface Office {
+  id: string
+  name: string
+  area: string
+  manager_name: string
+  contact_email: string
+  commission_rate: number
+  therapist_count: number
+  status: string
+  owner_name?: string
+}
 
-const AdminOffices: React.FC = () => {
-  const [offices, setOffices] = useState(MOCK_OFFICES);
-  const [therapists, setTherapists] = useState(MOCK_THERAPISTS);
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [selectedTherapistId, setSelectedTherapistId] = useState('');
-  const [targetOfficeId, setTargetOfficeId] = useState('');
+interface Therapist {
+  id: string
+  name: string
+  rating: number
+  review_count: number
+  specialties: string
+  approved_areas: string
+}
 
-  const handleTransfer = () => {
-    if (!selectedTherapistId || !targetOfficeId) return;
-    
-    setTherapists(therapists.map(t => 
-      t.id === selectedTherapistId ? { ...t, officeId: targetOfficeId === 'NULL' ? null : targetOfficeId } : t
-    ));
-    
-    const therapistName = therapists.find(t => t.id === selectedTherapistId)?.name;
-    const officeName = targetOfficeId === 'NULL' ? '本部直属' : offices.find(o => o.id === targetOfficeId)?.name;
-    
-    alert(`${therapistName} さんを ${officeName} へ移籍処理しました。`);
-    setShowTransferModal(false);
-    setSelectedTherapistId('');
-    setTargetOfficeId('');
-  };
+export default function OfficeManagement() {
+  const [offices, setOffices] = useState<Office[]>([])
+  const [selectedOffice, setSelectedOffice] = useState<string | null>(null)
+  const [therapists, setTherapists] = useState<Therapist[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchOffices()
+  }, [])
+
+  useEffect(() => {
+    if (selectedOffice) {
+      fetchOfficeTherapists(selectedOffice)
+    }
+  }, [selectedOffice])
+
+  const fetchOffices = async () => {
+    try {
+      const res = await fetch('/api/offices')
+      const data = await res.json()
+      setOffices(data)
+    } catch (e) {
+      console.error('Failed to fetch offices:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchOfficeTherapists = async (officeId: string) => {
+    try {
+      const res = await fetch(`/api/offices/${officeId}`)
+      const data = await res.json()
+      setTherapists(data.therapists || [])
+    } catch (e) {
+      console.error('Failed to fetch therapists:', e)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
+            <i className="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+            <p className="text-gray-600">読み込み中...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-10 pb-20 text-gray-900 font-sans">
-      <div className="flex justify-between items-end px-4">
-        <div>
-           <h1 className="text-4xl font-black text-gray-900 tracking-tighter">提携エージェンシー管理</h1>
-           <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Agency & Branch Governance</p>
-        </div>
-        <div className="flex gap-4">
-           <button 
-             onClick={() => setShowTransferModal(true)}
-             className="bg-white border-4 border-indigo-50 text-indigo-600 px-10 py-4 rounded-[28px] font-black text-xs flex items-center gap-3 hover:bg-indigo-50 transition-all shadow-sm active:scale-95"
-           >
-              <ArrowRightLeft size={18} /> セラピスト所属変更
-           </button>
-           <button className="bg-gray-900 text-white px-10 py-4 rounded-[28px] font-black text-xs flex items-center gap-3 hover:bg-teal-600 transition-all shadow-2xl">
-              <Plus size={18} /> 新規オフィス加盟
-           </button>
-        </div>
-      </div>
-
-      {/* 移籍モーダル（高度なUI） */}
-      {showTransferModal && (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-xl flex items-center justify-center p-6 overflow-y-auto">
-           <div className="bg-white rounded-[64px] w-full max-w-4xl p-12 shadow-2xl space-y-12 animate-fade-in-up border border-white/10 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
-              
-              <div className="flex justify-between items-start relative z-10">
-                 <div>
-                    <h2 className="text-4xl font-black text-gray-900 tracking-tighter flex items-center gap-5"><ArrowRightLeft className="text-indigo-600" size={40} /> 所属変更手続き</h2>
-                    <p className="text-gray-400 text-sm font-bold mt-2">移籍を実行すると、報酬配分と運営権限が即座に切り替わります</p>
-                 </div>
-                 <button onClick={() => setShowTransferModal(false)} className="p-4 bg-gray-100 rounded-[24px] hover:bg-gray-200 transition-colors shadow-inner"><X/></button>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-12 relative z-10">
-                 {/* 左：セラピスト選択 */}
-                 <div className="space-y-6">
-                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-4">1. 対象セラピストを選択</p>
-                    <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                       {therapists.map(t => (
-                         <button 
-                           key={t.id}
-                           onClick={() => setSelectedTherapistId(t.id)}
-                           className={`w-full p-6 rounded-[32px] border-4 flex items-center gap-5 transition-all text-left ${selectedTherapistId === t.id ? 'bg-gray-900 text-white border-gray-900 shadow-xl' : 'bg-gray-50 border-transparent hover:border-indigo-100'}`}
-                         >
-                            <img src={t.imageUrl} className="w-12 h-12 rounded-2xl object-cover shadow-md" />
-                            <div className="flex-1 min-w-0">
-                               <p className="font-black text-sm truncate">{t.name}</p>
-                               <p className="text-[9px] opacity-40 font-bold uppercase tracking-tighter mt-1">{t.officeId ? '移籍可能' : '本部直属'}</p>
-                            </div>
-                            {selectedTherapistId === t.id && <Check size={20} className="text-teal-400" />}
-                         </button>
-                       ))}
-                    </div>
-                 </div>
-
-                 {/* 右：移籍先選択 */}
-                 <div className="space-y-6">
-                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-4">2. 移籍先の組織を指定</p>
-                    <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                       <button 
-                         onClick={() => setTargetOfficeId('NULL')}
-                         className={`w-full p-6 rounded-[32px] border-4 flex items-center gap-5 transition-all text-left ${targetOfficeId === 'NULL' ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-gray-50 border-transparent hover:border-indigo-100'}`}
-                       >
-                          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center font-black">S</div>
-                          <div className="flex-1">
-                             <p className="font-black text-sm uppercase tracking-widest">HOGUSY (本部直属)</p>
-                          </div>
-                          {targetOfficeId === 'NULL' && <Check size={20} />}
-                       </button>
-                       {offices.map(o => (
-                         <button 
-                           key={o.id}
-                           onClick={() => setTargetOfficeId(o.id)}
-                           className={`w-full p-6 rounded-[32px] border-4 flex items-center gap-5 transition-all text-left ${targetOfficeId === o.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-gray-50 border-transparent hover:border-indigo-100'}`}
-                         >
-                            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center"><Building2 size={24}/></div>
-                            <div className="flex-1">
-                               <p className="font-black text-sm">{o.name}</p>
-                            </div>
-                            {targetOfficeId === o.id && <Check size={20} />}
-                         </button>
-                       ))}
-                    </div>
-                 </div>
-              </div>
-
-              <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-10">
-                 <div className="bg-teal-50 p-8 rounded-[40px] border border-teal-100 flex items-start gap-4 flex-1">
-                    <ShieldCheck className="text-teal-600 mt-1 flex-shrink-0" />
-                    <p className="text-xs text-teal-800 font-bold leading-relaxed">
-                       移籍完了後、セラピストには「所属変更の通知」がメール配信されます。
-                       当月分までの売上精算は移籍前の所属、翌月以降は移籍後の所属として計算されます。
-                    </p>
-                 </div>
-                 <button 
-                   disabled={!selectedTherapistId || !targetOfficeId}
-                   onClick={handleTransfer} 
-                   className="w-full md:w-auto bg-gray-900 text-white px-16 py-7 rounded-[32px] font-black text-xl shadow-2xl hover:bg-teal-600 transition-all active:scale-95 disabled:bg-gray-100 disabled:text-gray-300 disabled:shadow-none"
-                 >
-                    所属変更を実行
-                 </button>
-              </div>
-           </div>
-        </div>
-      )}
-
-      {/* エージェンシー一覧 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
-        {offices.map(office => (
-          <div key={office.id} className="bg-white p-10 rounded-[56px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative">
-             <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500 opacity-20"></div>
-             <div className="flex justify-between items-start mb-8">
-                <div className="flex items-center gap-5">
-                   <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[24px] flex items-center justify-center font-black text-2xl border border-indigo-100 shadow-inner group-hover:scale-110 transition-transform">
-                      <Building2 />
-                   </div>
-                   <div>
-                      <h3 className="text-2xl font-black text-gray-900 tracking-tight">{office.name}</h3>
-                      <p className="text-[11px] font-black text-gray-400 flex items-center gap-2 mt-1 uppercase tracking-widest"><MapPin size={12} className="text-indigo-500" /> {office.area} Base</p>
-                   </div>
-                </div>
-                <button className="p-3 text-gray-200 group-hover:text-gray-500 transition-colors"><MoreVertical /></button>
-             </div>
-
-             <div className="grid grid-cols-2 gap-6 mb-10">
-                <div className="bg-gray-50 p-6 rounded-[32px] shadow-inner">
-                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">専属契約数</p>
-                   <p className="text-3xl font-black text-gray-900 flex items-center gap-3 leading-none">{office.therapistCount} <span className="text-xs font-bold text-gray-300">名</span></p>
-                </div>
-                <div className="bg-gray-50 p-6 rounded-[32px] shadow-inner">
-                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">ロイヤリティ</p>
-                   <p className="text-3xl font-black text-teal-600 flex items-center gap-1 leading-none">{office.commissionRate}<span className="text-xs font-bold text-gray-300">%</span></p>
-                </div>
-             </div>
-
-             <div className="flex items-center justify-between pt-8 border-t border-gray-50">
-                <div>
-                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">公式責任者</p>
-                   <p className="text-base font-black text-gray-700">{office.managerName}</p>
-                </div>
-                <button className="bg-gray-900 text-white px-8 py-3 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-xl active:scale-95">
-                   詳細・監査ボードを開く
-                </button>
-             </div>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* ヘッダー */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <i className="fas fa-building mr-3 text-blue-600"></i>
+                事務所管理
+              </h1>
+              <p className="text-gray-600">セラピスト事務所の管理と統計</p>
+            </div>
+            <Link
+              to="/admin"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            >
+              <i className="fas fa-arrow-left mr-2"></i>
+              管理画面へ戻る
+            </Link>
           </div>
-        ))}
+        </div>
+
+        {/* 統計サマリー */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <i className="fas fa-building text-2xl text-blue-600"></i>
+              </div>
+              <div className="ml-4">
+                <p className="text-gray-600 text-sm">総事務所数</p>
+                <p className="text-2xl font-bold text-gray-900">{offices.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <i className="fas fa-user-md text-2xl text-green-600"></i>
+              </div>
+              <div className="ml-4">
+                <p className="text-gray-600 text-sm">総セラピスト数</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {offices.reduce((sum, o) => sum + o.therapist_count, 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <i className="fas fa-percentage text-2xl text-purple-600"></i>
+              </div>
+              <div className="ml-4">
+                <p className="text-gray-600 text-sm">平均コミッション率</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(offices.reduce((sum, o) => sum + o.commission_rate, 0) / offices.length).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 事務所一覧 */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">
+              事務所一覧
+            </h2>
+          </div>
+
+          <div className="divide-y divide-gray-200">
+            {offices.map((office) => (
+              <div
+                key={office.id}
+                className={`p-6 hover:bg-gray-50 cursor-pointer transition ${
+                  selectedOffice === office.id ? 'bg-blue-50' : ''
+                }`}
+                onClick={() => setSelectedOffice(office.id)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 mr-3">
+                        {office.name}
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        office.status === 'APPROVED' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {office.status === 'APPROVED' ? '承認済み' : office.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                      <div>
+                        <p className="text-xs text-gray-500">エリア</p>
+                        <p className="text-sm font-medium text-gray-900">{office.area}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">管理者</p>
+                        <p className="text-sm font-medium text-gray-900">{office.manager_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">セラピスト数</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          <i className="fas fa-user-md mr-1 text-blue-600"></i>
+                          {office.therapist_count}名
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">コミッション率</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {office.commission_rate}%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center text-sm text-gray-600">
+                      <i className="fas fa-envelope mr-2"></i>
+                      {office.contact_email}
+                    </div>
+                  </div>
+
+                  <button
+                    className="ml-4 text-blue-600 hover:text-blue-800"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedOffice(office.id)
+                    }}
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+
+                {/* 所属セラピスト（選択時） */}
+                {selectedOffice === office.id && therapists.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-4">
+                      所属セラピスト ({therapists.length}名)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {therapists.map((therapist) => (
+                        <div
+                          key={therapist.id}
+                          className="flex items-center p-4 bg-gray-50 rounded-lg"
+                        >
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                            {therapist.name.charAt(0)}
+                          </div>
+                          <div className="ml-4 flex-1">
+                            <h5 className="font-medium text-gray-900">{therapist.name}</h5>
+                            <div className="flex items-center text-sm text-gray-600 mt-1">
+                              <i className="fas fa-star text-yellow-400 mr-1"></i>
+                              {therapist.rating} ({therapist.review_count}件)
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
-  );
-};
-
-export default AdminOffices;
+  )
+}
