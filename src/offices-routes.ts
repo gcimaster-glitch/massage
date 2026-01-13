@@ -20,12 +20,19 @@ officesApp.get('/', async (c) => {
       return c.json([])
     }
     
+    // Get offices with therapist count
     const { results } = await c.env.DB.prepare(`
       SELECT 
-        to.id, to.name, to.area, to.manager_name, to.contact_email,
-        to.commission_rate, 
-        (SELECT COUNT(*) FROM therapist_profiles WHERE office_id = to.id) as therapist_count
+        to.id, 
+        to.name, 
+        to.area, 
+        to.manager_name, 
+        to.contact_email,
+        to.commission_rate,
+        COUNT(tp.user_id) as therapist_count
       FROM therapist_offices to
+      LEFT JOIN therapist_profiles tp ON tp.office_id = to.id
+      GROUP BY to.id, to.name, to.area, to.manager_name, to.contact_email, to.commission_rate
       ORDER BY therapist_count DESC
     `).all()
     
