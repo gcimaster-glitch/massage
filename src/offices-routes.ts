@@ -20,23 +20,32 @@ officesApp.get('/', async (c) => {
       return c.json([])
     }
     
-    // Get offices with therapist count
-    const { results } = await c.env.DB.prepare(`
-      SELECT 
-        to.id, 
-        to.name, 
-        to.area, 
-        to.manager_name, 
-        to.contact_email,
-        to.commission_rate,
-        COUNT(tp.user_id) as therapist_count
-      FROM therapist_offices to
-      LEFT JOIN therapist_profiles tp ON tp.office_id = to.id
-      GROUP BY to.id, to.name, to.area, to.manager_name, to.contact_email, to.commission_rate
-      ORDER BY therapist_count DESC
+    // Get all offices first
+    const { results: offices } = await c.env.DB.prepare(`
+      SELECT id, name, area, manager_name, contact_email, commission_rate
+      FROM therapist_offices
     `).all()
     
-    return c.json(results)
+    // Get therapist counts for each office
+    const officesWithCounts = await Promise.all(
+      offices.map(async (office: any) => {
+        const { results: counts } = await c.env.DB.prepare(`
+          SELECT COUNT(*) as count
+          FROM therapist_profiles
+          WHERE office_id = ?
+        `).bind(office.id).all()
+        
+        return {
+          ...office,
+          therapist_count: counts[0]?.count || 0
+        }
+      })
+    )
+    
+    // Sort by therapist count
+    officesWithCounts.sort((a, b) => b.therapist_count - a.therapist_count)
+    
+    return c.json(officesWithCounts)
   } catch (e) {
     console.error('Offices API error:', e)
     return c.json({ error: 'Internal server error' }, 500)
