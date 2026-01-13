@@ -1,0 +1,11 @@
+# Cloudflare Pages GitHub Integration Settings
+
+Repository: gcimaster-glitch/massage
+Production Branch: main
+Build Command: npm run build
+Build Output Directory: dist
+Root Directory: /
+
+Environment Variables (already set):
+- RESEND_API_KEY
+- (Google services to be added later)
