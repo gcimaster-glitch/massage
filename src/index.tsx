@@ -404,7 +404,13 @@ app.get('/api/therapists', async (c) => {
       LIMIT 50
     `).all()
     
-    return c.json(results)
+    // Map avatar URLs to local static files
+    const therapistsWithLocalImages = results.map((t: any) => ({
+      ...t,
+      avatar_url: `/therapists/${t.id}.jpg`
+    }))
+    
+    return c.json(therapistsWithLocalImages)
   } catch (e) {
     // エラーが発生した場合もモックデータを返す
     return c.json([
