@@ -3,6 +3,8 @@ import { cors } from 'hono/cors'
 import authApp from './auth-routes'
 import mapsApp from './maps-routes'
 import adminApp from './admin-routes'
+import sitesApp from './sites-routes'
+import officesApp from './offices-routes'
 
 // ============================================
 // Type Definitions
@@ -66,6 +68,16 @@ app.route('/api/maps', mapsApp)
 // Mount Admin Routes
 // ============================================
 app.route('/api/admin', adminApp)
+
+// ============================================
+// Mount Sites Routes
+// ============================================
+app.route('/api/sites', sitesApp)
+
+// ============================================
+// Mount Offices Routes
+// ============================================
+app.route('/api/offices', officesApp)
 
 // ============================================
 // Auth Routes
