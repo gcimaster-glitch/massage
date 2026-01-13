@@ -397,10 +397,10 @@ app.get('/api/therapists', async (c) => {
     }
     
     const { results } = await c.env.DB.prepare(`
-      SELECT u.id, u.name, tp.rating, tp.review_count, tp.specialties, tp.approved_areas
+      SELECT u.id, u.name, u.avatar_url, tp.rating, tp.review_count, tp.specialties, tp.approved_areas, tp.bio
       FROM users u
       JOIN therapist_profiles tp ON u.id = tp.user_id
-      WHERE u.role = 'THERAPIST' AND tp.is_active = TRUE
+      WHERE u.role = 'THERAPIST'
       LIMIT 50
     `).all()
     

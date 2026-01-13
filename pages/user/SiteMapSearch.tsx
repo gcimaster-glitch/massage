@@ -22,6 +22,7 @@ const SiteMapSearch: React.FC = () => {
   const [viewMode, setViewMode] = useState<'MAP' | 'LIST'>('MAP');
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [sites, setSites] = useState<any[]>([]);
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -47,9 +48,24 @@ const SiteMapSearch: React.FC = () => {
     };
   }, []);
 
+  // Fetch sites from API
+  useEffect(() => {
+    fetchSites();
+  }, []);
+
+  const fetchSites = async () => {
+    try {
+      const res = await fetch('/api/sites');
+      const data = await res.json();
+      setSites(data);
+    } catch (e) {
+      console.error('Failed to fetch sites:', e);
+    }
+  };
+
   // マップを初期化
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current || googleMapRef.current) return;
+    if (!mapLoaded || !mapRef.current || googleMapRef.current || sites.length === 0) return;
 
     // デフォルトの中心位置（東京駅）
     const defaultCenter = { lat: 35.6812, lng: 139.7671 };
@@ -147,37 +163,23 @@ const SiteMapSearch: React.FC = () => {
     googleMapRef.current = map;
 
     // サイトのマーカーを追加
-    const siteLocations = [
-      { id: 'site1', name: 'ホテルグランド東京', lat: 35.6895, lng: 139.6917 }, // 新宿
-      { id: 'site2', name: 'CARE CUBE 渋谷', lat: 35.6595, lng: 139.7004 }, // 渋谷
-      { id: 'site3', name: 'ウェルネス六本木', lat: 35.6627, lng: 139.7318 }, // 六本木
-      { id: 'site4', name: 'リラックス銀座', lat: 35.6719, lng: 139.7650 }, // 銀座
-    ];
-
-    siteLocations.forEach((location) => {
-      const site = MOCK_SITES.find(s => s.id === location.id) || {
-        id: location.id,
-        name: location.name,
-        address: '東京都',
-        area: 'TOKYO'
-      };
-
+    sites.forEach((site) => {
       // 施設タイプに応じた鮮やかなカラー
-      const getMarkerColor = (name: string) => {
-        if (name.includes('CARE CUBE')) return '#FF6B35'; // 鮮やかなオレンジ
-        if (name.includes('ホテル')) return '#5B4FFF'; // 鮮やかな紫
-        if (name.includes('ウェルネス')) return '#00C896'; // 鮮やかなエメラルド
+      const getMarkerColor = (type: string) => {
+        if (type === 'CARE_CUBE') return '#FF6B35'; // 鮮やかなオレンジ
+        if (type === 'HOTEL') return '#5B4FFF'; // 鮮やかな紫
+        if (type === 'PRIVATE_SPACE') return '#00C896'; // 鮮やかなエメラルド
         return '#FF4081'; // デフォルトはピンク
       };
 
       const marker = new window.google.maps.Marker({
-        position: { lat: location.lat, lng: location.lng },
+        position: { lat: site.lat, lng: site.lng },
         map: map,
-        title: location.name,
+        title: site.name,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 14,
-          fillColor: getMarkerColor(location.name),
+          fillColor: getMarkerColor(site.type),
           fillOpacity: 0.95,
           strokeColor: '#ffffff',
           strokeWeight: 3,
@@ -187,13 +189,13 @@ const SiteMapSearch: React.FC = () => {
 
       marker.addListener('click', () => {
         setSelectedSite(site);
-        map.panTo({ lat: location.lat, lng: location.lng });
+        map.panTo({ lat: site.lat, lng: site.lng });
       });
 
       markersRef.current.push(marker);
     });
 
-  }, [mapLoaded]);
+  }, [mapLoaded, sites]);
 
   // 現在地を取得
   const getCurrentLocation = () => {

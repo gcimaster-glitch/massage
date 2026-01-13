@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import PortalLayout from './PortalLayout';
-import { MOCK_THERAPISTS, MOCK_AREAS, MASTER_COURSES } from '../../constants';
+import { MOCK_AREAS, MASTER_COURSES } from '../../constants';
 import { 
   Star, MapPin, Search, Calendar, Clock, Filter, 
   ChevronRight, CheckCircle2, ShieldCheck, Zap, Award, 
@@ -14,14 +14,40 @@ import {
 const TherapistListPage: React.FC = () => {
   const navigate = useNavigate();
   
+  // API State
+  const [therapists, setTherapists] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   // Filter States
   const [area, setArea] = useState('');
   const [category, setCategory] = useState('');
   const [sortBy, setSortBy] = useState('RECOMMENDED'); 
   const [showFilterModal, setShowFilterModal] = useState(false);
 
+  useEffect(() => {
+    fetchTherapists();
+  }, []);
+
+  const fetchTherapists = async () => {
+    try {
+      const res = await fetch('/api/therapists');
+      const data = await res.json();
+      setTherapists(data.map((t: any) => ({
+        ...t,
+        areas: JSON.parse(t.approved_areas || '[]'),
+        categories: JSON.parse(t.specialties || '[]'),
+        reviewCount: t.review_count,
+        imageUrl: t.avatar_url || `https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop`
+      })));
+    } catch (e) {
+      console.error('Failed to fetch therapists:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredAndSortedTherapists = useMemo(() => {
-    let result = MOCK_THERAPISTS.filter(t => {
+    let result = therapists.filter(t => {
       if (area && !t.areas.includes(area)) return false;
       if (category && !t.categories.includes(category)) return false;
       return true;
@@ -39,7 +65,7 @@ const TherapistListPage: React.FC = () => {
     });
 
     return result;
-  }, [area, category, sortBy]);
+  }, [therapists, area, category, sortBy]);
 
   const currentAreaName = MOCK_AREAS.find(a => a.id === area)?.name || '東京都';
 
@@ -154,11 +180,18 @@ const TherapistListPage: React.FC = () => {
               </div>
 
               {/* リスト表示 */}
-              <div className="grid gap-10">
-                 {filteredAndSortedTherapists.map(t => (
+              {loading ? (
+                <div className="text-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-500">読み込み中...</p>
+                </div>
+              ) : (
+                <div className="grid gap-10">
+                  {filteredAndSortedTherapists.map(t => (
                     <TherapistCatalogCard key={t.id} therapist={t} onBook={() => navigate(`/app/therapist/${t.id}`)} />
-                 ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Pagination (Mock) */}
               {filteredAndSortedTherapists.length > 0 && (
