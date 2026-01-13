@@ -54,25 +54,87 @@ const SiteMapSearch: React.FC = () => {
     // デフォルトの中心位置（東京駅）
     const defaultCenter = { lat: 35.6812, lng: 139.7671 };
 
-    // マップを作成
+    // マップを作成（モノクロベース + 視認性の高いラベル）
     const map = new window.google.maps.Map(mapRef.current, {
       center: defaultCenter,
       zoom: 13,
       styles: [
+        // 背景全体をモノクロに
         {
           featureType: 'all',
           elementType: 'geometry',
-          stylers: [{ color: '#f5f5f5' }]
+          stylers: [{ color: '#f0f0f0' }]
         },
+        // 水域を薄いグレーに
         {
           featureType: 'water',
           elementType: 'geometry',
-          stylers: [{ color: '#c9e9f6' }]
+          stylers: [{ color: '#d8e4e8' }]
         },
+        {
+          featureType: 'water',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#7a9ca5' }]
+        },
+        // 道路を白に
         {
           featureType: 'road',
           elementType: 'geometry',
           stylers: [{ color: '#ffffff' }]
+        },
+        {
+          featureType: 'road',
+          elementType: 'geometry.stroke',
+          stylers: [{ color: '#d9d9d9' }]
+        },
+        // 道路ラベルを視認しやすく
+        {
+          featureType: 'road',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#5a5a5a' }]
+        },
+        {
+          featureType: 'road.arterial',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#3a3a3a' }]
+        },
+        // 区名・地名ラベルを強調
+        {
+          featureType: 'administrative.locality',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#2d2d2d' }]
+        },
+        {
+          featureType: 'administrative.neighborhood',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#4a4a4a' }]
+        },
+        // ポイント・施設名を控えめに
+        {
+          featureType: 'poi',
+          elementType: 'geometry',
+          stylers: [{ color: '#e5e5e5' }]
+        },
+        {
+          featureType: 'poi',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#8a8a8a' }]
+        },
+        {
+          featureType: 'poi.park',
+          elementType: 'geometry',
+          stylers: [{ color: '#d9ead3' }]
+        },
+        // 鉄道・交通を薄めに
+        {
+          featureType: 'transit',
+          elementType: 'geometry',
+          stylers: [{ color: '#e0e0e0' }]
+        },
+        {
+          featureType: 'transit.station',
+          elementType: 'labels.text.fill',
+          stylers: [{ color: '#6a6a6a' }]
         }
       ],
       disableDefaultUI: true,
@@ -100,17 +162,25 @@ const SiteMapSearch: React.FC = () => {
         area: 'TOKYO'
       };
 
+      // 施設タイプに応じた鮮やかなカラー
+      const getMarkerColor = (name: string) => {
+        if (name.includes('CARE CUBE')) return '#FF6B35'; // 鮮やかなオレンジ
+        if (name.includes('ホテル')) return '#5B4FFF'; // 鮮やかな紫
+        if (name.includes('ウェルネス')) return '#00C896'; // 鮮やかなエメラルド
+        return '#FF4081'; // デフォルトはピンク
+      };
+
       const marker = new window.google.maps.Marker({
         position: { lat: location.lat, lng: location.lng },
         map: map,
         title: location.name,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: '#14B8A6',
-          fillOpacity: 1,
+          scale: 14,
+          fillColor: getMarkerColor(location.name),
+          fillOpacity: 0.95,
           strokeColor: '#ffffff',
-          strokeWeight: 4,
+          strokeWeight: 3,
         },
         animation: window.google.maps.Animation.DROP,
       });
@@ -139,18 +209,18 @@ const SiteMapSearch: React.FC = () => {
           if (googleMapRef.current) {
             googleMapRef.current.setCenter(pos);
             
-            // 現在地マーカーを追加
+            // 現在地マーカーを追加（鮮やかなブルー）
             new window.google.maps.Marker({
               position: pos,
               map: googleMapRef.current,
               title: '現在地',
               icon: {
                 path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 10,
-                fillColor: '#3B82F6',
-                fillOpacity: 1,
+                scale: 12,
+                fillColor: '#2196F3',
+                fillOpacity: 0.9,
                 strokeColor: '#ffffff',
-                strokeWeight: 3,
+                strokeWeight: 4,
               },
             });
           }
