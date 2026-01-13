@@ -30,21 +30,20 @@ sitesApp.get('/', async (c) => {
     
     let query = `
       SELECT s.id, s.name, s.type, s.address, 
-             COALESCE(s.area_code, s.area) as area, 
-             COALESCE(s.latitude, s.lat) as lat, 
-             COALESCE(s.longitude, s.lng) as lng, 
-             s.host_id, s.cube_serial_number, 
-             COALESCE(s.status, s.is_active) as is_active,
+             s.area_code as area, 
+             s.latitude as lat, 
+             s.longitude as lng, 
+             s.host_id,
              u.name as host_name
       FROM sites s
       LEFT JOIN users u ON s.host_id = u.id
-      WHERE (s.is_active = TRUE OR s.is_active IS NULL)
+      WHERE 1=1
     `
     const params: any[] = []
     
     if (area) {
-      query += ' AND (s.area = ? OR s.area_code = ?)'
-      params.push(area, area)
+      query += ' AND s.area_code = ?'
+      params.push(area)
     }
     
     if (type) {
