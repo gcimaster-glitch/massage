@@ -216,6 +216,8 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       const jwt = createJWT(
         {
           userId: user.id,
+          email: user.email,
+          userName: user.name,
           role: user.role,
           sessionId: sessionId,
         },
@@ -242,6 +244,8 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       const jwt = createJWT(
         {
           userId: mockUser.id,
+          email: mockUser.email,
+          userName: mockUser.name,
           role: mockUser.role,
         },
         'dev-secret',

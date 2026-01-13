@@ -21,16 +21,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     if (token) {
       setIsSubmitting(true);
       
-      // Parse JWT token to get user role
+      // Parse JWT token to get user info
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const role = payload.role || Role.USER;
+        const userName = payload.userName || payload.email || 'Google User';
         
         // Store token
         localStorage.setItem('auth_token', token);
         
-        // Auto-login with the role from token
-        onLogin(role);
+        // Auto-login with the role and name from token
+        onLogin(role, userName);
         
         const paths: Record<string, string> = {
           [Role.ADMIN]: '/admin',
