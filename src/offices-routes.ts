@@ -32,7 +32,7 @@ officesApp.get('/', async (c) => {
     return c.json(results)
   } catch (e) {
     console.error('Offices API error:', e)
-    return c.json([], 500)
+    return c.json({ error: 'Internal server error' }, 500)
   }
 })
 
@@ -65,7 +65,7 @@ officesApp.get('/:id', async (c) => {
              tp.specialties, tp.approved_areas, tp.bio
       FROM therapist_profiles tp
       JOIN users u ON tp.user_id = u.id
-      WHERE tp.office_id = ? AND tp.is_active = TRUE
+      WHERE tp.office_id = ?
       ORDER BY tp.rating DESC, tp.review_count DESC
     `).bind(id).all()
     
@@ -95,14 +95,14 @@ officesApp.get('/:id/stats', async (c) => {
     const { results: therapistCount } = await c.env.DB.prepare(`
       SELECT COUNT(*) as count
       FROM therapist_profiles
-      WHERE office_id = ? AND is_active = TRUE
+      WHERE office_id = ?
     `).bind(id).all()
     
     // 平均評価
     const { results: avgRating } = await c.env.DB.prepare(`
       SELECT AVG(rating) as avg_rating, SUM(review_count) as total_reviews
       FROM therapist_profiles
-      WHERE office_id = ? AND is_active = TRUE
+      WHERE office_id = ?
     `).bind(id).all()
     
     // 予約数（過去30日）
