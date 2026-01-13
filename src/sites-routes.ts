@@ -28,11 +28,25 @@ sitesApp.get('/', async (c) => {
       return c.json([])
     }
     
+    // Detect which schema we're using by checking if area_code column exists
+    const schemaCheck = await c.env.DB.prepare(`
+      SELECT COUNT(*) as has_area_code 
+      FROM pragma_table_info('sites') 
+      WHERE name='area_code'
+    `).first()
+    
+    const hasAreaCode = schemaCheck && (schemaCheck.has_area_code as number) > 0
+    
+    // Build query based on detected schema
+    const areaCol = hasAreaCode ? 's.area_code' : 's.area'
+    const latCol = hasAreaCode ? 's.latitude' : 's.lat'
+    const lngCol = hasAreaCode ? 's.longitude' : 's.lng'
+    
     let query = `
       SELECT s.id, s.name, s.type, s.address, 
-             s.area_code as area, 
-             s.latitude as lat, 
-             s.longitude as lng, 
+             ${areaCol} as area, 
+             ${latCol} as lat, 
+             ${lngCol} as lng, 
              s.host_id,
              u.name as host_name
       FROM sites s
@@ -42,7 +56,7 @@ sitesApp.get('/', async (c) => {
     const params: any[] = []
     
     if (area) {
-      query += ' AND s.area_code = ?'
+      query += ` AND ${areaCol} = ?`
       params.push(area)
     }
     
