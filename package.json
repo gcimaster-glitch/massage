@@ -1,5 +1,5 @@
 {
-  "name": "massage",
+  "name": "hogusy",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,8 +9,8 @@
     "dev:full": "wrangler pages dev dist --d1=hogusy-db-production --local --ip 0.0.0.0 --port 3000",
     "build": "vite build",
     "preview": "wrangler pages dev dist",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name massage",
-    "deploy:prod": "npm run build && wrangler pages deploy dist --project-name massage --branch main",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name hogusy",
+    "deploy:prod": "npm run build && wrangler pages deploy dist --project-name hogusy --branch main",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "db:create": "wrangler d1 create hogusy-db-production",
     "db:migrate:local": "wrangler d1 migrations apply hogusy-db-production --local",

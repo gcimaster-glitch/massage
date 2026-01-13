@@ -1,10 +1,10 @@
-// PM2 Configuration for HOGUSY (massage project)
+// PM2 Configuration for HOGUSY
 // Development environment with Wrangler Pages Dev + D1
 
 module.exports = {
   apps: [
     {
-      name: 'massage',
+      name: 'hogusy',
       script: 'npx',
       args: 'wrangler pages dev dist --d1=hogusy-db-production --local --ip 0.0.0.0 --port 3000',
       env: {
