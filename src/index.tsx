@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import authApp from './auth-routes'
+import mapsApp from './maps-routes'
 
 // ============================================
 // Type Definitions
@@ -12,6 +13,7 @@ type Bindings = {
   RESEND_API_KEY: string
   GEMINI_API_KEY: string
   JWT_SECRET: string
+  GOOGLE_MAPS_API_KEY: string
   // Social Auth Provider Secrets
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
@@ -53,6 +55,11 @@ app.get('/api/health', (c) => {
 // Mount Social Auth Routes
 // ============================================
 app.route('/api/auth', authApp)
+
+// ============================================
+// Mount Google Maps Routes
+// ============================================
+app.route('/api/maps', mapsApp)
 
 // ============================================
 // Auth Routes
