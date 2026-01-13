@@ -135,7 +135,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </>
         )}
 
-        <div className="mt-10 text-center pt-6 border-t border-gray-50">
+        <div className="mt-10 text-center pt-6 border-t border-gray-50 space-y-4">
+           <p className="text-sm font-bold text-gray-400">
+              アカウントをお持ちでない方は{' '}
+              <button 
+                onClick={() => navigate('/auth/register-select')} 
+                className="text-teal-600 font-black hover:underline transition-colors"
+              >
+                新規登録
+              </button>
+           </p>
            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
               HOGUSY<br/>
               Wellness Platform v1.0
