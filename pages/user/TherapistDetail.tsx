@@ -38,28 +38,6 @@ const TherapistDetail: React.FC = () => {
     fetchTherapist();
   }, [therapistId]);
 
-  const menuData = useMemo(() => {
-    const approved = (displayTherapist as any).approvedMenu;
-    if (!approved) return { courses: [], options: [] };
-    return {
-      courses: (approved.courses || []).map((ac: any) => ({
-        ...MASTER_COURSES.find(mc => mc.id === ac.masterId),
-        price: ac.price
-      })),
-      options: (approved.options || []).map((ao: any) => ({
-        ...MASTER_OPTIONS.find(mo => mo.id === ao.masterId),
-        price: ao.price
-      }))
-    };
-  }, [displayTherapist]);
-
-  // 日本標準の空き状況シミュレーション
-  const scheduleData = useMemo(() => {
-    const days = ['本日', '明日', '5/24(土)', '5/25(日)', '5/26(月)', '5/27(火)', '5/28(水)'];
-    const times = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
-    return { days, times };
-  }, []);
-
   // Loading state
   if (loading) {
     return (
@@ -96,6 +74,28 @@ const TherapistDetail: React.FC = () => {
     categories: therapist.specialties || [],
     bio: therapist.bio || 'プロフェッショナルなセラピストです。',
   };
+
+  const menuData = useMemo(() => {
+    const approved = (displayTherapist as any).approvedMenu;
+    if (!approved) return { courses: [], options: [] };
+    return {
+      courses: (approved.courses || []).map((ac: any) => ({
+        ...MASTER_COURSES.find(mc => mc.id === ac.masterId),
+        price: ac.price
+      })),
+      options: (approved.options || []).map((ao: any) => ({
+        ...MASTER_OPTIONS.find(mo => mo.id === ao.masterId),
+        price: ao.price
+      }))
+    };
+  }, [displayTherapist]);
+
+  // 日本標準の空き状況シミュレーション
+  const scheduleData = useMemo(() => {
+    const days = ['本日', '明日', '5/24(土)', '5/25(日)', '5/26(月)', '5/27(火)', '5/28(水)'];
+    const times = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
+    return { days, times };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] pb-40 animate-fade-in font-sans text-gray-900">
