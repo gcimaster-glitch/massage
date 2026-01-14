@@ -5,6 +5,7 @@ import mapsApp from './maps-routes'
 import adminApp from './admin-routes'
 import sitesApp from './sites-routes'
 import officesApp from './offices-routes'
+import therapistEditApp from './therapist-edit-routes'
 
 // ============================================
 // Type Definitions
@@ -78,6 +79,11 @@ app.route('/api/sites', sitesApp)
 // Mount Offices Routes
 // ============================================
 app.route('/api/offices', officesApp)
+
+// ============================================
+// Mount Therapist Edit Routes
+// ============================================
+app.route('/api/therapist-edits', therapistEditApp)
 
 // ============================================
 // Auth Routes
