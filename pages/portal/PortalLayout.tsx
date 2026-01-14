@@ -140,6 +140,7 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
               <ul className="space-y-4 text-sm font-black">
                 <li><Link to="/legal" className="text-gray-400 hover:text-white transition-colors">利用規約</Link></li>
                 <li><Link to="/legal" className="text-gray-400 hover:text-white transition-colors">プライバシーポリシー</Link></li>
+                <li><Link to="/commercial-transaction" className="text-gray-400 hover:text-white transition-colors">特定商取引法に基づく表記</Link></li>
               </ul>
             </div>
           </div>

@@ -105,6 +105,7 @@ import AdminMarketingDashboard from './pages/admin/MarketingDashboard';
 import Chat from './pages/shared/Chat';
 import Notifications from './pages/shared/Notifications';
 import Legal from './pages/shared/Legal';
+import CommercialTransaction from './pages/shared/CommercialTransaction';
 
 import { Role } from './types';
 
@@ -153,6 +154,7 @@ const App: React.FC = () => {
         <Route path="/therapists" element={<TherapistListPage />} />
         <Route path="/fee" element={<FeeStructure />} />
         <Route path="/legal" element={<Legal />} />
+        <Route path="/commercial-transaction" element={<CommercialTransaction />} />
 
         {/* Auth - Old unified login (kept for compatibility) */}
         <Route path="/auth/login" element={<Login onLogin={handleLogin} />} />
