@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_SITES } from '../../constants';
+import QuickBookingPanel from '../../components/QuickBookingPanel';
 
 // Google Maps の型定義
 declare global {
@@ -20,6 +21,7 @@ declare global {
 const SiteMapSearch: React.FC = () => {
   const navigate = useNavigate();
   const [selectedSite, setSelectedSite] = useState<any>(null);
+  const [selectedTherapist, setSelectedTherapist] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'MAP' | 'LIST'>('MAP');
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -27,6 +29,7 @@ const SiteMapSearch: React.FC = () => {
   const [therapists, setTherapists] = useState<any[]>([]);
   const [showTherapists, setShowTherapists] = useState(false);
   const [loadingTherapists, setLoadingTherapists] = useState(false);
+  const [showQuickBooking, setShowQuickBooking] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -424,17 +427,27 @@ const SiteMapSearch: React.FC = () => {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
+                          setShowQuickBooking(true);
+                        }}
+                        className="flex-1 bg-gradient-to-r from-teal-600 to-blue-600 text-white px-6 py-3 rounded-xl font-black text-base hover:from-teal-700 hover:to-blue-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                      >
+                         <Zap size={20} />
+                         今すぐ予約
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
                           fetchTherapists();
                         }}
                         disabled={loadingTherapists}
-                        className="flex-1 bg-teal-600 text-white px-6 py-3 rounded-xl font-bold text-base hover:bg-teal-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex-1 bg-white text-gray-900 px-6 py-3 rounded-xl font-bold text-base hover:bg-gray-50 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 border-2 border-gray-200"
                       >
                          {loadingTherapists ? (
                            <>読み込み中...</>
                          ) : (
                            <>
                              <Users size={20} />
-                             セラピストを見る
+                             セラピスト一覧
                            </>
                          )}
                       </button>
@@ -443,9 +456,9 @@ const SiteMapSearch: React.FC = () => {
                           e.stopPropagation();
                           navigate(`/app/site/${selectedSite.id}`);
                         }}
-                        className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-xl font-bold text-base hover:bg-gray-800 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                        className="flex-1 sm:flex-none bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold text-base hover:bg-gray-200 transition-all active:scale-95 flex items-center justify-center gap-2"
                       >
-                         予約する <ArrowRight size={20} />
+                         詳細 <ArrowRight size={20} />
                       </button>
                    </div>
                 </div>
@@ -508,11 +521,7 @@ const SiteMapSearch: React.FC = () => {
                   return (
                   <div
                     key={therapist.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/app/therapist/${therapist.id}`);
-                    }}
-                    className={`bg-white border-2 rounded-2xl p-5 hover:shadow-xl transition-all cursor-pointer group relative ${
+                    className={`bg-white border-2 rounded-2xl p-5 hover:shadow-xl transition-all relative ${
                       isAvailable 
                         ? 'border-teal-300 hover:border-teal-500' 
                         : 'border-gray-200 hover:border-gray-400 opacity-75'
@@ -537,6 +546,9 @@ const SiteMapSearch: React.FC = () => {
                               ? 'border-teal-300 group-hover:border-teal-500' 
                               : 'border-gray-300 grayscale'
                           }`}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(therapist.name)}&background=14b8a6&color=fff`;
+                          }}
                         />
                         {!isAvailable && (
                           <div className="absolute inset-0 bg-gray-900/30 rounded-xl flex items-center justify-center">
@@ -547,7 +559,7 @@ const SiteMapSearch: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <h4 className={`font-black text-lg mb-1 truncate transition-colors ${
                           isAvailable 
-                            ? 'text-gray-900 group-hover:text-teal-600' 
+                            ? 'text-gray-900' 
                             : 'text-gray-600'
                         }`}>
                           {therapist.name}
@@ -591,17 +603,38 @@ const SiteMapSearch: React.FC = () => {
                     )}
 
                     {/* アクションボタン */}
-                    {isAvailable ? (
-                      <button className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white py-3 rounded-xl text-sm font-bold group-hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                        <Users size={16} />
-                        今すぐ予約する
-                      </button>
-                    ) : (
-                      <button className="w-full bg-gray-300 text-gray-600 py-3 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
-                        <Clock size={16} />
-                        予約受付終了
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      {isAvailable ? (
+                        <>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTherapist(therapist);
+                              setShowTherapists(false);
+                              setShowQuickBooking(true);
+                            }}
+                            className="flex-1 bg-gradient-to-r from-teal-600 to-blue-600 text-white py-3 rounded-xl text-sm font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                          >
+                            <Zap size={16} />
+                            今すぐ予約
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/app/therapist/${therapist.id}`);
+                            }}
+                            className="px-4 bg-white border-2 border-gray-200 text-gray-700 py-3 rounded-xl text-sm font-bold hover:border-gray-300 transition-all flex items-center justify-center"
+                          >
+                            詳細
+                          </button>
+                        </>
+                      ) : (
+                        <button className="w-full bg-gray-300 text-gray-600 py-3 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                          <Clock size={16} />
+                          予約受付終了
+                        </button>
+                      )}
+                    </div>
                   </div>
                   );
                 })}
@@ -643,6 +676,17 @@ const SiteMapSearch: React.FC = () => {
             </button>
          </div>
       </div>
+      
+      {/* クイック予約パネル */}
+      <QuickBookingPanel
+        isOpen={showQuickBooking}
+        onClose={() => {
+          setShowQuickBooking(false);
+          setSelectedTherapist(null);
+        }}
+        preSelectedSite={selectedSite}
+        preSelectedTherapist={selectedTherapist}
+      />
     </div>
   );
 };
