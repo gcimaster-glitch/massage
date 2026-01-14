@@ -38,42 +38,19 @@ const TherapistDetail: React.FC = () => {
     fetchTherapist();
   }, [therapistId]);
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader size={48} className="animate-spin text-teal-600 mx-auto" />
-          <p className="text-gray-400 font-bold">セラピスト情報を読み込み中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!therapist) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle size={48} className="text-red-400 mx-auto" />
-          <p className="text-gray-600 font-bold">セラピストが見つかりませんでした</p>
-          <button onClick={() => navigate(-1)} className="text-teal-600 hover:underline">
-            戻る
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Ensure therapist has required fields
-  const displayTherapist = {
-    ...therapist,
-    imageUrl: therapist.avatar_url || `/therapists/${therapist.id}.jpg`,
-    name: therapist.name || '名前未設定',
-    rating: therapist.rating || 5.0,
-    reviewCount: therapist.review_count || 0,
-    categories: therapist.specialties || [],
-    bio: therapist.bio || 'プロフェッショナルなセラピストです。',
-  };
+  // useMemo hooks must be before any conditional returns
+  const displayTherapist = useMemo(() => {
+    if (!therapist) return null;
+    return {
+      ...therapist,
+      imageUrl: therapist.avatar_url || `/therapists/${therapist.id}.jpg`,
+      name: therapist.name || '名前未設定',
+      rating: therapist.rating || 5.0,
+      reviewCount: therapist.review_count || 0,
+      categories: therapist.specialties || [],
+      bio: therapist.bio || 'プロフェッショナルなセラピストです。',
+    };
+  }, [therapist]);
 
   const menuData = useMemo(() => {
     if (!therapist) return { courses: [], options: [] };
@@ -97,6 +74,32 @@ const TherapistDetail: React.FC = () => {
     const times = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
     return { days, times };
   }, []);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader size={48} className="animate-spin text-teal-600 mx-auto" />
+          <p className="text-gray-400 font-bold">セラピスト情報を読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!therapist || !displayTherapist) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle size={48} className="text-red-400 mx-auto" />
+          <p className="text-gray-600 font-bold">セラピストが見つかりませんでした</p>
+          <button onClick={() => navigate(-1)} className="text-teal-600 hover:underline">
+            戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] pb-40 animate-fade-in font-sans text-gray-900">
