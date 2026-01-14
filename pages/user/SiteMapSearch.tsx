@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   MapPin, Navigation, Search, Filter, 
   Building2, Star, Clock, ArrowRight, X, 
-  Map as MapIcon, Layers, Target, Zap, ShieldCheck, Locate
+  Map as MapIcon, Layers, Target, Zap, ShieldCheck, Locate,
+  Users, Phone, Wifi, Coffee, Award, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_SITES } from '../../constants';
@@ -23,6 +24,9 @@ const SiteMapSearch: React.FC = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [sites, setSites] = useState<any[]>([]);
+  const [therapists, setTherapists] = useState<any[]>([]);
+  const [showTherapists, setShowTherapists] = useState(false);
+  const [loadingTherapists, setLoadingTherapists] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -60,6 +64,21 @@ const SiteMapSearch: React.FC = () => {
       setSites(data);
     } catch (e) {
       console.error('Failed to fetch sites:', e);
+    }
+  };
+
+  // セラピスト一覧を取得
+  const fetchTherapists = async () => {
+    setLoadingTherapists(true);
+    try {
+      const res = await fetch('/api/therapists');
+      const data = await res.json();
+      setTherapists(data);
+      setShowTherapists(true);
+    } catch (e) {
+      console.error('Failed to fetch therapists:', e);
+    } finally {
+      setLoadingTherapists(false);
     }
   };
 
@@ -189,6 +208,7 @@ const SiteMapSearch: React.FC = () => {
 
       marker.addListener('click', () => {
         setSelectedSite(site);
+        setShowTherapists(false);
         map.panTo({ lat: site.lat, lng: site.lng });
       });
 
@@ -236,11 +256,36 @@ const SiteMapSearch: React.FC = () => {
     }
   };
 
+  // 地図クリックで詳細を閉じる
+  useEffect(() => {
+    if (!googleMapRef.current) return;
+    
+    const listener = googleMapRef.current.addListener('click', () => {
+      setSelectedSite(null);
+      setShowTherapists(false);
+    });
+    
+    return () => {
+      if (listener) listener.remove();
+    };
+  }, [googleMapRef.current]);
+
   return (
-    <div className="h-[calc(100vh-100px)] animate-fade-in text-gray-900 font-sans flex flex-col relative overflow-hidden bg-slate-100 rounded-3xl shadow-2xl border border-white">
+    <div className="h-screen animate-fade-in text-gray-900 font-sans flex flex-col relative overflow-hidden bg-slate-100">
+      
+      {/* 左上ロゴエリア */}
+      <div className="absolute top-4 left-4 z-50">
+        <button
+          onClick={() => navigate('/app')}
+          className="bg-white/95 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-3 group"
+        >
+          <Home size={24} className="text-teal-600 group-hover:scale-110 transition-transform" />
+          <span className="font-black text-xl text-gray-900">HOGUSY</span>
+        </button>
+      </div>
       
       {/* 検索バー */}
-      <div className="absolute top-8 left-8 right-8 z-30 flex flex-col md:flex-row gap-4">
+      <div className="absolute top-20 left-4 right-4 md:left-8 md:right-8 z-30 flex flex-col md:flex-row gap-4">
          <div className="flex-1 bg-white/95 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-gray-200 flex items-center gap-4">
             <Search className="ml-2 text-gray-400" size={24} />
             <input 
@@ -287,55 +332,189 @@ const SiteMapSearch: React.FC = () => {
       </div>
 
       {/* 選択されたサイトの詳細 */}
-      {selectedSite && (
-        <div className="absolute bottom-8 left-8 right-8 z-40 animate-fade-in-up">
-           <div className="bg-white/95 backdrop-blur-2xl p-8 md:p-10 rounded-3xl shadow-2xl border border-gray-200 flex flex-col md:flex-row items-center gap-8">
-              <div className="w-full md:w-64 h-48 rounded-2xl overflow-hidden shadow-lg border-4 border-white flex-shrink-0">
-                 <img 
-                   src={`https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=400&h=300`} 
-                   className="w-full h-full object-cover" 
-                   alt={selectedSite.name}
-                 />
+      {selectedSite && !showTherapists && (
+        <div className="absolute bottom-8 left-4 right-4 md:left-8 md:right-8 z-40 animate-fade-in-up max-h-[70vh] overflow-y-auto">
+           <div className="bg-white/95 backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-2xl border border-gray-200">
+              {/* 閉じるボタン */}
+              <div className="flex justify-end mb-4">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedSite(null);
+                  }} 
+                  className="p-2 bg-gray-100 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-all"
+                >
+                  <X size={20}/>
+                </button>
               </div>
-              
-              <div className="flex-1 space-y-6">
-                 <div className="flex justify-between items-start gap-4">
-                    <div>
-                       <span className="bg-teal-50 text-teal-600 px-4 py-2 rounded-lg text-xs font-bold border border-teal-200 mb-3 inline-block">
-                         今すぐ予約可能
-                       </span>
-                       <h2 className="text-3xl font-black text-gray-900">{selectedSite.name}</h2>
-                       <p className="text-gray-500 font-bold flex items-center gap-2 mt-3 text-base">
-                          <MapPin size={18} className="text-teal-500" /> {selectedSite.address}
-                       </p>
+
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* 画像 */}
+                <div className="w-full md:w-80 h-56 rounded-2xl overflow-hidden shadow-lg border-4 border-white flex-shrink-0">
+                   <img 
+                     src={`https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=600&h=400`} 
+                     className="w-full h-full object-cover" 
+                     alt={selectedSite.name}
+                   />
+                </div>
+                
+                {/* 詳細情報 */}
+                <div className="flex-1 space-y-4">
+                   <div>
+                      <span className="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-200 mb-2 inline-block">
+                        今すぐ予約可能
+                      </span>
+                      <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">{selectedSite.name}</h2>
+                      <p className="text-gray-500 font-bold flex items-center gap-2 text-sm">
+                         <MapPin size={16} className="text-teal-500" /> {selectedSite.address}
+                      </p>
+                   </div>
+                   
+                   {/* 評価・営業時間 */}
+                   <div className="flex flex-wrap gap-3">
+                      <div className="flex items-center gap-2 text-yellow-500 font-black text-base bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-200">
+                         <Star size={16} fill="currentColor" /> 4.9
+                      </div>
+                      <div className="flex items-center gap-2 font-bold text-gray-600 text-xs bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                         <Clock size={16} className="text-teal-500" /> 24時間営業
+                      </div>
+                      <div className="flex items-center gap-2 font-bold text-teal-600 text-xs bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200">
+                         <Zap size={16} /> 即時予約対応
+                      </div>
+                   </div>
+
+                   {/* 施設情報 */}
+                   <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Wifi size={16} className="text-teal-500" />
+                        <span className="font-medium">Wi-Fi完備</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Coffee size={16} className="text-teal-500" />
+                        <span className="font-medium">ドリンク無料</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <ShieldCheck size={16} className="text-teal-500" />
+                        <span className="font-medium">完全個室</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Award size={16} className="text-teal-500" />
+                        <span className="font-medium">高評価施設</span>
+                      </div>
+                   </div>
+
+                   {/* アクション */}
+                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetchTherapists();
+                        }}
+                        disabled={loadingTherapists}
+                        className="flex-1 bg-teal-600 text-white px-6 py-3 rounded-xl font-bold text-base hover:bg-teal-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                         {loadingTherapists ? (
+                           <>読み込み中...</>
+                         ) : (
+                           <>
+                             <Users size={20} />
+                             セラピストを見る
+                           </>
+                         )}
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/app/site/${selectedSite.id}`);
+                        }}
+                        className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-xl font-bold text-base hover:bg-gray-800 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                      >
+                         予約する <ArrowRight size={20} />
+                      </button>
+                   </div>
+                </div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* セラピスト一覧パネル */}
+      {showTherapists && (
+        <div className="absolute bottom-8 left-4 right-4 md:left-8 md:right-8 z-40 animate-fade-in-up max-h-[70vh] overflow-y-auto">
+           <div className="bg-white/95 backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-2xl border border-gray-200">
+              {/* ヘッダー */}
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900">
+                    {selectedSite?.name} - セラピスト一覧
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">{therapists.length}名のセラピストが対応可能</p>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTherapists(false);
+                  }} 
+                  className="p-2 bg-gray-100 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-all"
+                >
+                  <X size={20}/>
+                </button>
+              </div>
+
+              {/* セラピストリスト */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {therapists.slice(0, 6).map((therapist) => (
+                  <div
+                    key={therapist.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/app/therapist/${therapist.id}`);
+                    }}
+                    className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-xl transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <img
+                        src={therapist.avatar_url || '/default-avatar.png'}
+                        alt={therapist.name}
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-black text-gray-900 truncate">{therapist.name}</h4>
+                        <div className="flex items-center gap-1 text-sm mt-1">
+                          <Star size={14} className="text-amber-400 fill-amber-400" />
+                          <span className="font-bold text-gray-900">{therapist.rating}</span>
+                          <span className="text-gray-500">({therapist.review_count})</span>
+                        </div>
+                      </div>
                     </div>
-                    <button 
-                      onClick={() => setSelectedSite(null)} 
-                      className="p-3 bg-gray-100 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-all"
-                    >
-                      <X size={20}/>
+                    
+                    {therapist.bio && (
+                      <p className="text-xs text-gray-600 line-clamp-2 mb-3">
+                        {therapist.bio}
+                      </p>
+                    )}
+
+                    <button className="w-full bg-teal-50 text-teal-600 py-2 rounded-lg text-sm font-bold group-hover:bg-teal-600 group-hover:text-white transition-all">
+                      詳細を見る
                     </button>
-                 </div>
-                 
-                 <div className="flex flex-wrap gap-6">
-                    <div className="flex items-center gap-2 text-yellow-500 font-black text-lg bg-yellow-50 px-4 py-2 rounded-xl border border-yellow-200">
-                       <Star size={18} fill="currentColor" /> 4.9
-                    </div>
-                    <div className="flex items-center gap-3 font-bold text-gray-600 text-sm">
-                       <Clock size={18} className="text-teal-500" /> 24時間営業
-                    </div>
-                    <div className="flex items-center gap-3 font-bold text-teal-600 text-sm">
-                       <Zap size={18} className="animate-pulse" /> 即時予約対応
-                    </div>
-                 </div>
+                  </div>
+                ))}
               </div>
-              
-              <button 
-                onClick={() => navigate(`/app/site/${selectedSite.id}`)}
-                className="w-full md:w-auto bg-gray-900 text-white px-12 py-5 rounded-2xl font-black text-lg hover:bg-teal-600 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
-              >
-                 このブースを選ぶ <ArrowRight size={24} />
-              </button>
+
+              {/* 全員を見るボタン */}
+              {therapists.length > 6 && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/therapists');
+                    }}
+                    className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
+                  >
+                    全{therapists.length}名のセラピストを見る
+                  </button>
+                </div>
+              )}
            </div>
         </div>
       )}
