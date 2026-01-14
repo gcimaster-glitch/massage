@@ -70,7 +70,26 @@ const TherapistDetail: React.FC = () => {
 
   // 日本標準の空き状況シミュレーション
   const scheduleData = useMemo(() => {
-    const days = ['本日', '明日', '5/24(土)', '5/25(日)', '5/26(月)', '5/27(火)', '5/28(水)'];
+    const today = new Date();
+    const days = [];
+    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      if (i === 0) {
+        days.push('本日');
+      } else if (i === 1) {
+        days.push('明日');
+      } else {
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const dayName = dayNames[date.getDay()];
+        days.push(`${month}/${day}(${dayName})`);
+      }
+    }
+    
     const times = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
     return { days, times };
   }, []);
@@ -127,7 +146,15 @@ const TherapistDetail: React.FC = () => {
            <div className="flex flex-col lg:flex-row gap-12 items-start">
               <div className="w-full lg:w-[400px] space-y-4">
                  <div className="aspect-[4/5] rounded-[56px] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] border-8 border-white relative group">
-                    <img src={displayTherapist.imageUrl} className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" alt={displayTherapist.name} />
+                    <img 
+                      src={displayTherapist.imageUrl} 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayTherapist.name)}&size=400&background=14b8a6&color=fff&bold=true`;
+                      }}
+                      className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" 
+                      alt={displayTherapist.name} 
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
                     <div className="absolute bottom-8 left-8 right-8 flex flex-wrap gap-2">
                        {displayTherapist.categories.includes('LICENSED') && (
