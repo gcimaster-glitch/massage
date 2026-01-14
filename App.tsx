@@ -29,6 +29,7 @@ import FeeStructure from './pages/portal/FeeStructure';
 
 // --- User (Client) ---
 import UserHome from './pages/user/UserHome';
+import UserHomeNew from './pages/user/UserHomeNew';
 import SiteDetail from './pages/user/SiteDetail';
 import TherapistDetail from './pages/user/TherapistDetail';
 import BookingNew from './pages/user/BookingNew';
@@ -171,12 +172,15 @@ const App: React.FC = () => {
         <Route path="/auth/signup/host" element={<SignupHost />} />
         <Route path="/auth/signup/office" element={<SignupOffice />} />
 
-        {/* User App */}
-        <Route path="/app" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserHome /></RequireAuth>} />
-        <Route path="/app/map" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN, Role.THERAPIST, Role.HOST]} currentUser={currentUser} onLogout={handleLogout}><SiteMapSearch /></RequireAuth>} />
-        <Route path="/app/sites" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><SitesList /></RequireAuth>} />
-        <Route path="/app/site/:siteId" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><SiteDetail /></RequireAuth>} />
-        <Route path="/app/therapist/:therapistId" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><TherapistDetail /></RequireAuth>} />
+        {/* User App - Public pages (no auth required) */}
+        <Route path="/app" element={<UserHomeNew currentUser={currentUser} />} />
+        <Route path="/app/home-old" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserHome /></RequireAuth>} />
+        <Route path="/app/map" element={<SiteMapSearch />} />
+        <Route path="/app/sites" element={<SitesList />} />
+        <Route path="/app/site/:siteId" element={<SiteDetail />} />
+        <Route path="/app/therapist/:therapistId" element={<TherapistDetail />} />
+        
+        {/* User App - Auth required pages */}
         <Route path="/app/booking/new" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNew onAutoLogin={handleLogin} /></RequireAuth>} />
         <Route path="/app/booking/success" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingSuccess /></RequireAuth>} />
         <Route path="/app/booking/:bookingId" element={<RequireAuth allowedRoles={[Role.USER, Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><BookingDetail /></RequireAuth>} />

@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import PortalLayout from './PortalLayout';
 import { MOCK_AREAS, MASTER_COURSES } from '../../constants';
 import { 
@@ -8,11 +7,13 @@ import {
   ChevronRight, CheckCircle2, ShieldCheck, Zap, Award, 
   ThumbsUp, Heart, SlidersHorizontal, Info, ChevronLeft,
   ChevronRight as ChevronRightIcon, Map as MapIcon,
-  Tag, Timer, UserCheck, Sparkles, Scissors, Users
+  Tag, Timer, UserCheck, Sparkles, Scissors, Users, Home
 } from 'lucide-react';
 
 const TherapistListPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode'); // 'dispatch' or null
   
   // API State
   const [therapists, setTherapists] = useState<any[]>([]);
@@ -72,6 +73,21 @@ const TherapistListPage: React.FC = () => {
   return (
     <PortalLayout>
       <div className="bg-[#F8F9FA] min-h-screen pb-32 pt-[72px] font-sans text-gray-900">
+        
+        {/* モード表示バナー（出張予約の場合） */}
+        {mode === 'dispatch' && (
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex items-center justify-center gap-3">
+                <Home size={24} />
+                <div className="text-center">
+                  <p className="font-black text-lg">出張予約モード</p>
+                  <p className="text-sm text-white/90">ご自宅・ホテルへセラピストが訪問します</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* 1. 精密検索・パンくずエリア */}
         <section className="bg-white border-b border-gray-200 sticky top-[72px] z-40 shadow-sm">
