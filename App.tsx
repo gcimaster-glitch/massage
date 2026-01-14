@@ -100,6 +100,7 @@ import AdminSiteManagement from './pages/admin/SiteManagement';
 import AdminCorporateDashboard from './pages/admin/CorporateDashboard';
 import AdminSupportInbox from './pages/admin/SupportInbox';
 import AdminMarketingDashboard from './pages/admin/MarketingDashboard';
+import ImageUpload from './pages/admin/ImageUpload';
 
 // --- Shared ---
 import Chat from './pages/shared/Chat';
@@ -252,6 +253,7 @@ const App: React.FC = () => {
         <Route path="/admin/corporate" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminCorporateDashboard /></RequireAuth>} />
         <Route path="/admin/support" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSupportInbox /></RequireAuth>} />
         <Route path="/admin/marketing" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminMarketingDashboard /></RequireAuth>} />
+        <Route path="/admin/images" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><ImageUpload /></RequireAuth>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
