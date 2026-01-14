@@ -73,7 +73,23 @@ const SiteMapSearch: React.FC = () => {
     try {
       const res = await fetch('/api/therapists');
       const data = await res.json();
-      setTherapists(data);
+      
+      // 「今予約できる」セラピストを優先的にソート
+      // 実際にはAPIから availability データを取得する想定
+      // ここでは仮に id が奇数のセラピストを「予約可能」とする
+      const sortedData = data.sort((a: any, b: any) => {
+        // 予約可能なセラピストを優先（実際にはAPIからのデータを使用）
+        const aAvailable = parseInt(a.id.replace(/\D/g, '')) % 2 === 1;
+        const bAvailable = parseInt(b.id.replace(/\D/g, '')) % 2 === 1;
+        
+        if (aAvailable && !bAvailable) return -1;
+        if (!aAvailable && bAvailable) return 1;
+        
+        // 同じ予約状態の場合は評価順
+        return b.rating - a.rating;
+      });
+      
+      setTherapists(sortedData);
       setShowTherapists(true);
     } catch (e) {
       console.error('Failed to fetch therapists:', e);
@@ -459,10 +475,16 @@ const SiteMapSearch: React.FC = () => {
                   <h3 className="text-2xl md:text-3xl font-black mb-2">
                     {selectedSite?.name}
                   </h3>
-                  <p className="text-white/90 font-medium flex items-center gap-2">
+                  <p className="text-white/90 font-medium flex items-center gap-2 mb-2">
                     <Users size={20} />
-                    {therapists.length}名のセラピストが対応可能
+                    {therapists.length}名のセラピストが在籍
                   </p>
+                  <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5 w-fit">
+                    <Zap size={16} className="text-yellow-300" />
+                    <span className="text-sm font-bold">
+                      今予約できる: {therapists.filter((t: any) => parseInt(t.id.replace(/\D/g, '')) % 2 === 1).length}名
+                    </span>
+                  </div>
                 </div>
                 <button 
                   onClick={(e) => {
@@ -479,29 +501,55 @@ const SiteMapSearch: React.FC = () => {
             {/* セラピストリスト（スクロール可能） */}
             <div className="p-6 md:p-8 overflow-y-auto max-h-[calc(85vh-140px)]">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {therapists.map((therapist) => (
+                {therapists.map((therapist) => {
+                  // 予約可能かどうかを判定（実際にはAPIからのデータを使用）
+                  const isAvailable = parseInt(therapist.id.replace(/\D/g, '')) % 2 === 1;
+                  
+                  return (
                   <div
                     key={therapist.id}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/app/therapist/${therapist.id}`);
                     }}
-                    className="bg-white border-2 border-gray-200 rounded-2xl p-5 hover:border-teal-500 hover:shadow-xl transition-all cursor-pointer group"
+                    className={`bg-white border-2 rounded-2xl p-5 hover:shadow-xl transition-all cursor-pointer group relative ${
+                      isAvailable 
+                        ? 'border-teal-300 hover:border-teal-500' 
+                        : 'border-gray-200 hover:border-gray-400 opacity-75'
+                    }`}
                   >
+                    {/* 予約可能バッジ（右上） */}
+                    {isAvailable && (
+                      <div className="absolute top-3 right-3 bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg animate-pulse">
+                        <Zap size={12} fill="currentColor" />
+                        予約可
+                      </div>
+                    )}
+
                     {/* セラピスト画像とヘッダー */}
                     <div className="flex items-start gap-4 mb-4">
                       <div className="relative">
                         <img
                           src={therapist.avatar_url || '/default-avatar.png'}
                           alt={therapist.name}
-                          className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200 group-hover:border-teal-500 transition-all"
+                          className={`w-20 h-20 rounded-xl object-cover border-2 transition-all ${
+                            isAvailable 
+                              ? 'border-teal-300 group-hover:border-teal-500' 
+                              : 'border-gray-300 grayscale'
+                          }`}
                         />
-                        <div className="absolute -bottom-1 -right-1 bg-teal-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                          対応可
-                        </div>
+                        {!isAvailable && (
+                          <div className="absolute inset-0 bg-gray-900/30 rounded-xl flex items-center justify-center">
+                            <Clock size={24} className="text-white" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-black text-lg text-gray-900 mb-1 truncate group-hover:text-teal-600 transition-colors">
+                        <h4 className={`font-black text-lg mb-1 truncate transition-colors ${
+                          isAvailable 
+                            ? 'text-gray-900 group-hover:text-teal-600' 
+                            : 'text-gray-600'
+                        }`}>
                           {therapist.name}
                         </h4>
                         <div className="flex items-center gap-1.5 mb-1">
@@ -543,12 +591,20 @@ const SiteMapSearch: React.FC = () => {
                     )}
 
                     {/* アクションボタン */}
-                    <button className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white py-3 rounded-xl text-sm font-bold group-hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                      <Users size={16} />
-                      このセラピストを予約
-                    </button>
+                    {isAvailable ? (
+                      <button className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white py-3 rounded-xl text-sm font-bold group-hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <Users size={16} />
+                        今すぐ予約する
+                      </button>
+                    ) : (
+                      <button className="w-full bg-gray-300 text-gray-600 py-3 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                        <Clock size={16} />
+                        予約受付終了
+                      </button>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* 全員を見るボタン */}
