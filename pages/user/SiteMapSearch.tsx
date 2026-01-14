@@ -438,84 +438,135 @@ const SiteMapSearch: React.FC = () => {
         </div>
       )}
 
-      {/* セラピスト一覧パネル */}
+      {/* セラピスト一覧モーダル */}
       {showTherapists && (
-        <div className="absolute bottom-8 left-4 right-4 md:left-8 md:right-8 z-40 animate-fade-in-up max-h-[70vh] overflow-y-auto">
-           <div className="bg-white/95 backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-2xl border border-gray-200">
-              {/* ヘッダー */}
-              <div className="flex justify-between items-center mb-6">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowTherapists(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[85vh] overflow-hidden m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ヘッダー */}
+            <div className="bg-gradient-to-r from-teal-600 to-blue-600 text-white p-6 md:p-8">
+              <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-2xl font-black text-gray-900">
-                    {selectedSite?.name} - セラピスト一覧
+                  <h3 className="text-2xl md:text-3xl font-black mb-2">
+                    {selectedSite?.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">{therapists.length}名のセラピストが対応可能</p>
+                  <p className="text-white/90 font-medium flex items-center gap-2">
+                    <Users size={20} />
+                    {therapists.length}名のセラピストが対応可能
+                  </p>
                 </div>
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowTherapists(false);
                   }} 
-                  className="p-2 bg-gray-100 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-all"
+                  className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-all"
                 >
-                  <X size={20}/>
+                  <X size={24} className="text-white"/>
                 </button>
               </div>
+            </div>
 
-              {/* セラピストリスト */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {therapists.slice(0, 6).map((therapist) => (
+            {/* セラピストリスト（スクロール可能） */}
+            <div className="p-6 md:p-8 overflow-y-auto max-h-[calc(85vh-140px)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                {therapists.map((therapist) => (
                   <div
                     key={therapist.id}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/app/therapist/${therapist.id}`);
                     }}
-                    className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-xl transition-all cursor-pointer group"
+                    className="bg-white border-2 border-gray-200 rounded-2xl p-5 hover:border-teal-500 hover:shadow-xl transition-all cursor-pointer group"
                   >
-                    <div className="flex items-start gap-3 mb-3">
-                      <img
-                        src={therapist.avatar_url || '/default-avatar.png'}
-                        alt={therapist.name}
-                        className="w-16 h-16 rounded-lg object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-black text-gray-900 truncate">{therapist.name}</h4>
-                        <div className="flex items-center gap-1 text-sm mt-1">
-                          <Star size={14} className="text-amber-400 fill-amber-400" />
-                          <span className="font-bold text-gray-900">{therapist.rating}</span>
-                          <span className="text-gray-500">({therapist.review_count})</span>
+                    {/* セラピスト画像とヘッダー */}
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="relative">
+                        <img
+                          src={therapist.avatar_url || '/default-avatar.png'}
+                          alt={therapist.name}
+                          className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200 group-hover:border-teal-500 transition-all"
+                        />
+                        <div className="absolute -bottom-1 -right-1 bg-teal-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          対応可
                         </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-black text-lg text-gray-900 mb-1 truncate group-hover:text-teal-600 transition-colors">
+                          {therapist.name}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Star size={16} className="text-amber-400 fill-amber-400" />
+                          <span className="font-bold text-gray-900">{therapist.rating}</span>
+                          <span className="text-gray-500 text-sm">({therapist.review_count}件)</span>
+                        </div>
+                        {therapist.experience_years && (
+                          <p className="text-xs text-gray-600 flex items-center gap-1">
+                            <Award size={12} className="text-teal-500" />
+                            経験{therapist.experience_years}年
+                          </p>
+                        )}
                       </div>
                     </div>
                     
+                    {/* 略歴 */}
                     {therapist.bio && (
-                      <p className="text-xs text-gray-600 line-clamp-2 mb-3">
+                      <p className="text-sm text-gray-600 line-clamp-3 mb-4 leading-relaxed">
                         {therapist.bio}
                       </p>
                     )}
 
-                    <button className="w-full bg-teal-50 text-teal-600 py-2 rounded-lg text-sm font-bold group-hover:bg-teal-600 group-hover:text-white transition-all">
-                      詳細を見る
+                    {/* 専門分野タグ */}
+                    {therapist.specialties && (
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {(typeof therapist.specialties === 'string' 
+                          ? JSON.parse(therapist.specialties) 
+                          : therapist.specialties
+                        ).slice(0, 3).map((specialty: string, idx: number) => (
+                          <span 
+                            key={idx}
+                            className="text-xs font-medium px-2 py-1 bg-teal-50 text-teal-700 rounded-lg border border-teal-200"
+                          >
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* アクションボタン */}
+                    <button className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white py-3 rounded-xl text-sm font-bold group-hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                      <Users size={16} />
+                      このセラピストを予約
                     </button>
                   </div>
                 ))}
               </div>
 
               {/* 全員を見るボタン */}
-              {therapists.length > 6 && (
-                <div className="mt-6 text-center">
+              {therapists.length > 9 && (
+                <div className="mt-8 text-center">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate('/therapists');
                     }}
-                    className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
+                    className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-lg"
                   >
                     全{therapists.length}名のセラピストを見る
                   </button>
                 </div>
               )}
-           </div>
+            </div>
+          </div>
         </div>
       )}
 
