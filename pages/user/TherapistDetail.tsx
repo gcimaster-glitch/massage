@@ -267,10 +267,12 @@ const TherapistDetail: React.FC = () => {
                                             <td key={di} className="py-4 px-2">
                                                <button 
                                                  onClick={() => isAvailable && navigate(`/app/booking/new?therapistId=${displayTherapist.id}`)}
-                                                 className={`w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
-                                                 isAvailable ? 'text-teal-600 hover:bg-teal-500 hover:text-white hover:shadow-lg scale-110' : 'text-gray-100 cursor-not-allowed'
+                                                 className={`w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all font-black ${
+                                                 isAvailable ? 'text-teal-600 hover:bg-teal-500 hover:text-white hover:shadow-lg scale-110' : 
+                                                 isBusy ? 'text-red-500 bg-red-50 cursor-not-allowed border-2 border-red-200' : 
+                                                 'text-gray-400 bg-gray-50 cursor-not-allowed border-2 border-gray-200'
                                                }`}>
-                                                  {isAvailable ? <span className="text-2xl leading-none">○</span> : isBusy ? <Ban size={16} /> : <span className="text-xl opacity-20">×</span>}
+                                                  {isAvailable ? <span className="text-2xl leading-none">○</span> : isBusy ? <Ban size={18} className="text-red-500" strokeWidth={3} /> : <span className="text-2xl leading-none text-gray-400">×</span>}
                                                </button>
                                             </td>
                                          );

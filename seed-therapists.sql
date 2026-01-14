@@ -7,17 +7,17 @@
 -- ========================================
 
 INSERT OR IGNORE INTO users (id, email, name, phone, role, email_verified, kyc_status, avatar_url, created_at) VALUES
-('t1', 'therapist1@hogusy.com', '田中 美咲', '09011112222', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/5E4lhmcM', CURRENT_TIMESTAMP),
-('t2', 'therapist2@hogusy.com', '佐藤 健太', '09022223333', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/oCSPytfm', CURRENT_TIMESTAMP),
-('t3', 'therapist3@hogusy.com', '鈴木 大輔', '09033334444', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/RjhRIuO4', CURRENT_TIMESTAMP),
-('t4', 'therapist4@hogusy.com', '高橋 愛', '09044445555', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/MKMGQpvo', CURRENT_TIMESTAMP),
-('t5', 'therapist5@hogusy.com', '伊藤 麻衣', '09055556666', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/s31DJVwW', CURRENT_TIMESTAMP),
-('t6', 'therapist6@hogusy.com', '渡辺 優子', '09066667777', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/mfEv9uKC', CURRENT_TIMESTAMP),
-('t7', 'therapist7@hogusy.com', '山本 さくら', '09077778888', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/NyPqAq4f', CURRENT_TIMESTAMP),
-('t8', 'therapist8@hogusy.com', '中村 綾香', '09088889999', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/APbcW89u', CURRENT_TIMESTAMP),
-('t9', 'therapist9@hogusy.com', '小林 結衣', '09099990000', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/8x2RmY2l', CURRENT_TIMESTAMP),
-('t10', 'therapist10@hogusy.com', '加藤 春菜', '09010101111', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/Atf2vOtW', CURRENT_TIMESTAMP),
-('t11', 'therapist11@hogusy.com', '吉田 誠', '09011112222', 'THERAPIST', 1, 'VERIFIED', 'https://www.genspark.ai/api/files/s/jm3UzHzJ', CURRENT_TIMESTAMP);
+('t1', 'therapist1@hogusy.com', '田中 美咲', '09011112222', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t2', 'therapist2@hogusy.com', '佐藤 健太', '09022223333', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t3', 'therapist3@hogusy.com', '鈴木 大輔', '09033334444', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t4', 'therapist4@hogusy.com', '高橋 愛', '09044445555', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t5', 'therapist5@hogusy.com', '伊藤 麻衣', '09055556666', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t6', 'therapist6@hogusy.com', '渡辺 優子', '09066667777', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t7', 'therapist7@hogusy.com', '山本 さくら', '09077778888', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t8', 'therapist8@hogusy.com', '中村 綾香', '09088889999', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t9', 'therapist9@hogusy.com', '小林 結衣', '09099990000', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t10', 'therapist10@hogusy.com', '加藤 春菜', '09010101111', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP),
+('t11', 'therapist11@hogusy.com', '吉田 誠', '09011112222', 'THERAPIST', 1, 'VERIFIED', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&auto=format', CURRENT_TIMESTAMP);
 
 -- ========================================
 -- Therapist Profiles
