@@ -60,17 +60,38 @@ const UserHomeNew: React.FC<UserHomeNewProps> = ({ currentUser }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section - 2択の大きなボタン */}
-      <div className="bg-gradient-to-br from-teal-500 via-blue-500 to-indigo-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-24">
-          {/* Welcome Message */}
+      {/* Hero Section - 動画背景付き2択ボタン */}
+      <div className="relative bg-black text-white overflow-hidden">
+        {/* 背景動画 */}
+        <div className="absolute inset-0 z-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-50"
+          >
+            <source src="/videos/hero-background.mp4" type="video/mp4" />
+          </video>
+          {/* グラデーションオーバーレイ */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-16 md:py-24">
+          {/* 新しいキャッチコピー */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-black mb-4">
-              {currentUser ? `おかえりなさい、${currentUser.name}さん` : 'ようこそ、HOGUSYへ'}
-            </h1>
-            <p className="text-xl md:text-2xl font-medium text-white/90">
-              あなたに最適なセラピー体験をお選びください
+            <p className="text-lg md:text-xl font-medium text-white/80 mb-4 tracking-wider">
+              どこでも、いつでも
             </p>
+            <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
+              心と身体を、<br />
+              <span className="text-teal-400">ととのえる。</span>
+            </h1>
+            {currentUser && (
+              <p className="text-lg md:text-xl font-medium text-white/90 mt-4">
+                おかえりなさい、{currentUser.name}さん
+              </p>
+            )}
           </div>
 
           {/* 2択の大きなボタン */}
@@ -78,9 +99,9 @@ const UserHomeNew: React.FC<UserHomeNewProps> = ({ currentUser }) => {
             {/* ①出張で呼ぶ */}
             <button
               onClick={handleDispatchBooking}
-              className="group relative bg-white/10 backdrop-blur-lg border-2 border-white/30 rounded-3xl p-8 md:p-10 hover:bg-white/20 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
+              className="group relative bg-white/15 backdrop-blur-xl border-2 border-white/40 rounded-3xl p-8 md:p-10 hover:bg-white/25 hover:border-white/60 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
             >
-              <div className="absolute top-6 right-6 bg-amber-400 text-amber-900 text-xs font-black px-3 py-1 rounded-full">
+              <div className="absolute top-6 right-6 bg-amber-400 text-amber-900 text-xs font-black px-3 py-1 rounded-full shadow-lg">
                 KYC必須
               </div>
               
@@ -119,9 +140,9 @@ const UserHomeNew: React.FC<UserHomeNewProps> = ({ currentUser }) => {
             {/* ②CARE CUBEを探す */}
             <button
               onClick={handleCubSearch}
-              className="group relative bg-white/10 backdrop-blur-lg border-2 border-white/30 rounded-3xl p-8 md:p-10 hover:bg-white/20 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
+              className="group relative bg-white/15 backdrop-blur-xl border-2 border-white/40 rounded-3xl p-8 md:p-10 hover:bg-white/25 hover:border-white/60 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
             >
-              <div className="absolute top-6 right-6 bg-green-400 text-green-900 text-xs font-black px-3 py-1 rounded-full">
+              <div className="absolute top-6 right-6 bg-green-400 text-green-900 text-xs font-black px-3 py-1 rounded-full shadow-lg">
                 おすすめ
               </div>
               
@@ -160,8 +181,8 @@ const UserHomeNew: React.FC<UserHomeNewProps> = ({ currentUser }) => {
 
           {/* KYC未済の場合の注意書き */}
           {currentUser && currentUser.kycStatus !== 'VERIFIED' && (
-            <div className="mt-8 max-w-2xl mx-auto bg-amber-400/20 backdrop-blur-sm border border-amber-300/50 rounded-2xl p-4 text-center">
-              <div className="flex items-center justify-center gap-2 text-amber-100">
+            <div className="mt-8 max-w-2xl mx-auto bg-amber-500/25 backdrop-blur-md border border-amber-400/50 rounded-2xl p-5 text-center shadow-xl">
+              <div className="flex items-center justify-center gap-2 text-white">
                 <Shield size={20} />
                 <span className="font-bold">
                   出張予約をご利用いただくには、本人確認（KYC）が必要です
@@ -172,23 +193,23 @@ const UserHomeNew: React.FC<UserHomeNewProps> = ({ currentUser }) => {
 
           {/* 非会員の場合の注意書き */}
           {!currentUser && (
-            <div className="mt-8 max-w-2xl mx-auto bg-white/10 backdrop-blur-sm border border-white/30 rounded-2xl p-4 text-center">
-              <div className="flex items-center justify-center gap-2 text-white/90">
+            <div className="mt-8 max-w-2xl mx-auto bg-white/15 backdrop-blur-md border border-white/40 rounded-2xl p-5 text-center shadow-xl">
+              <div className="flex items-center justify-center gap-2 text-white">
                 <User size={20} />
                 <span className="font-bold">
                   予約にはログインまたは会員登録が必要です
                 </span>
               </div>
-              <div className="mt-3 flex gap-3 justify-center">
+              <div className="mt-4 flex gap-3 justify-center">
                 <button
                   onClick={() => navigate('/auth/login/user')}
-                  className="px-6 py-2 bg-white text-teal-600 font-bold rounded-xl hover:bg-white/90 transition-colors"
+                  className="px-6 py-2.5 bg-white text-teal-600 font-bold rounded-xl hover:bg-white/90 transition-colors shadow-lg"
                 >
                   ログイン
                 </button>
                 <button
                   onClick={() => navigate('/auth/signup/user')}
-                  className="px-6 py-2 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors"
+                  className="px-6 py-2.5 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors shadow-lg"
                 >
                   新規登録
                 </button>
