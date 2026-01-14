@@ -3,6 +3,12 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
+import LoginUser from './pages/auth/LoginUser';
+import LoginTherapist from './pages/auth/LoginTherapist';
+import LoginOffice from './pages/auth/LoginOffice';
+import LoginHost from './pages/auth/LoginHost';
+import LoginAffiliate from './pages/auth/LoginAffiliate';
+import LoginAdmin from './pages/auth/LoginAdmin';
 import RegisterSelect from './pages/auth/RegisterSelect';
 import SignupUser from './pages/auth/SignupUser';
 import SignupTherapist from './pages/auth/SignupTherapist';
@@ -147,8 +153,18 @@ const App: React.FC = () => {
         <Route path="/fee" element={<FeeStructure />} />
         <Route path="/legal" element={<Legal />} />
 
-        {/* Auth */}
+        {/* Auth - Old unified login (kept for compatibility) */}
         <Route path="/auth/login" element={<Login onLogin={handleLogin} />} />
+        
+        {/* Auth - Role-specific login pages */}
+        <Route path="/auth/login/user" element={<LoginUser onLogin={handleLogin} />} />
+        <Route path="/auth/login/therapist" element={<LoginTherapist onLogin={handleLogin} />} />
+        <Route path="/auth/login/office" element={<LoginOffice onLogin={handleLogin} />} />
+        <Route path="/auth/login/host" element={<LoginHost onLogin={handleLogin} />} />
+        <Route path="/auth/login/affiliate" element={<LoginAffiliate onLogin={handleLogin} />} />
+        <Route path="/auth/login/admin" element={<LoginAdmin onLogin={handleLogin} />} />
+        
+        {/* Registration */}
         <Route path="/auth/register-select" element={<RegisterSelect />} />
         <Route path="/auth/signup/user" element={<SignupUser />} />
         <Route path="/auth/signup/therapist" element={<SignupTherapist />} />

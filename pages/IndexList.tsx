@@ -23,61 +23,61 @@ const IndexList: React.FC = () => {
     {
       id: 'user',
       name: '会員ポータル',
-      path: '/user',
-      loginPath: '/user/login',
+      path: '/app',
+      loginPath: '/auth/login/user',
       icon: <Users size={32} />,
       description: '出張マッサージ予約・CARE CUBE予約',
-      color: 'from-blue-500 to-blue-600',
+      color: 'from-teal-500 to-blue-500',
       features: ['出張予約（KYC必須）', 'CARE CUBE予約', 'マイページ', '予約履歴']
     },
     {
       id: 'therapist',
       name: 'セラピストポータル',
-      path: '/therapist',
-      loginPath: '/therapist/login',
+      path: '/t',
+      loginPath: '/auth/login/therapist',
       icon: <Stethoscope size={32} />,
       description: 'セラピスト専用ダッシュボード',
-      color: 'from-teal-500 to-teal-600',
+      color: 'from-indigo-500 to-purple-500',
       features: ['スケジュール管理', '予約確認', '売上確認', 'プロフィール編集']
     },
     {
       id: 'office',
       name: 'セラピストオフィスポータル',
-      path: '/office',
-      loginPath: '/office/login',
+      path: '/o',
+      loginPath: '/auth/login/office',
       icon: <Building2 size={32} />,
       description: '事務所管理者専用',
-      color: 'from-purple-500 to-purple-600',
+      color: 'from-blue-500 to-cyan-500',
       features: ['所属セラピスト管理', '編集承認', '売上管理', '事務所情報編集']
     },
     {
       id: 'host',
       name: '施設ホストポータル',
-      path: '/host',
-      loginPath: '/host/login',
+      path: '/h',
+      loginPath: '/auth/login/host',
       icon: <Home size={32} />,
       description: 'CARE CUBE・ホテル等施設管理',
-      color: 'from-green-500 to-green-600',
+      color: 'from-orange-500 to-amber-500',
       features: ['施設管理', '予約状況確認', '売上確認', '施設情報編集']
     },
     {
       id: 'affiliate',
       name: 'アフィリエイターポータル',
       path: '/affiliate',
-      loginPath: '/affiliate/login',
+      loginPath: '/auth/login/affiliate',
       icon: <TrendingUp size={32} />,
       description: '紹介報酬管理',
-      color: 'from-orange-500 to-orange-600',
+      color: 'from-purple-500 to-pink-500',
       features: ['紹介実績確認', '報酬確認', '支払い履歴', 'アフィリエイトリンク']
     },
     {
       id: 'admin',
       name: '総管理者ポータル',
       path: '/admin',
-      loginPath: '/admin/login',
+      loginPath: '/auth/login/admin',
       icon: <Shield size={32} />,
       description: 'プラットフォーム完全管理',
-      color: 'from-red-500 to-red-600',
+      color: 'from-gray-900 to-gray-700',
       features: ['全ユーザー管理', 'KYC承認', '売上管理', 'システム設定']
     }
   ]
