@@ -1,25 +1,45 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Star, MapPin, Award, CheckCircle, Clock, ArrowLeft, 
   Heart, MessageSquare, ShieldCheck, Zap, JapaneseYen, 
   ChevronRight, ThumbsUp, Calendar, Info, Camera,
   UserCheck, Sparkles, Quote, Check, ExternalLink, Scissors, LayoutGrid, Plus, MoreHorizontal, ArrowRight,
-  Shield, Tag, Coffee, Wind, Music, User, Smartphone, Target, Move, AlertCircle, Ban
+  Shield, Tag, Coffee, Wind, Music, User, Smartphone, Target, Move, AlertCircle, Ban, Loader
 } from 'lucide-react';
 import { MOCK_THERAPISTS, MASTER_COURSES, MASTER_OPTIONS, MOCK_AREAS } from '../../constants';
 
 const TherapistDetail: React.FC = () => {
   const { therapistId } = useParams();
   const navigate = useNavigate();
-  const therapist = MOCK_THERAPISTS.find(t => t.id === therapistId) || MOCK_THERAPISTS[0];
   
+  const [therapist, setTherapist] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'BIO' | 'MENU' | 'REVIEW' | 'GALLERY'>('BIO');
   const [isFavorite, setIsFavorite] = useState(false);
 
+  // Fetch therapist data from API
+  useEffect(() => {
+    const fetchTherapist = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/therapists/${therapistId}`);
+        const data = await res.json();
+        setTherapist(data);
+      } catch (e) {
+        console.error('Failed to fetch therapist:', e);
+        // Fallback to mock data
+        setTherapist(MOCK_THERAPISTS.find(t => t.id === therapistId) || MOCK_THERAPISTS[0]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTherapist();
+  }, [therapistId]);
+
   const menuData = useMemo(() => {
-    const approved = (therapist as any).approvedMenu;
+    const approved = (displayTherapist as any).approvedMenu;
     if (!approved) return { courses: [], options: [] };
     return {
       courses: (approved.courses || []).map((ac: any) => ({
@@ -31,7 +51,7 @@ const TherapistDetail: React.FC = () => {
         price: ao.price
       }))
     };
-  }, [therapist]);
+  }, [displayTherapist]);
 
   // 日本標準の空き状況シミュレーション
   const scheduleData = useMemo(() => {
@@ -39,6 +59,43 @@ const TherapistDetail: React.FC = () => {
     const times = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
     return { days, times };
   }, []);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader size={48} className="animate-spin text-teal-600 mx-auto" />
+          <p className="text-gray-400 font-bold">セラピスト情報を読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!therapist) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle size={48} className="text-red-400 mx-auto" />
+          <p className="text-gray-600 font-bold">セラピストが見つかりませんでした</p>
+          <button onClick={() => navigate(-1)} className="text-teal-600 hover:underline">
+            戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure therapist has required fields
+  const displayTherapist = {
+    ...therapist,
+    imageUrl: therapist.avatar_url || `/therapists/${therapist.id}.jpg`,
+    name: therapist.name || '名前未設定',
+    rating: therapist.rating || 5.0,
+    reviewCount: therapist.review_count || 0,
+    categories: therapist.specialties || [],
+    bio: therapist.bio || 'プロフェッショナルなセラピストです。',
+  };
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] pb-40 animate-fade-in font-sans text-gray-900">
@@ -66,10 +123,10 @@ const TherapistDetail: React.FC = () => {
            <div className="flex flex-col lg:flex-row gap-12 items-start">
               <div className="w-full lg:w-[400px] space-y-4">
                  <div className="aspect-[4/5] rounded-[56px] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] border-8 border-white relative group">
-                    <img src={therapist.imageUrl} className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" alt={therapist.name} />
+                    <img src={displayTherapist.imageUrl} className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" alt={displayTherapist.name} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
                     <div className="absolute bottom-8 left-8 right-8 flex flex-wrap gap-2">
-                       {therapist.categories.includes('LICENSED') && (
+                       {displayTherapist.categories.includes('LICENSED') && (
                          <span className="bg-white/20 backdrop-blur-md text-white text-[9px] font-black px-4 py-2 rounded-full border border-white/30 shadow-xl uppercase tracking-widest">国家資格保有</span>
                        )}
                        <span className="bg-teal-500 text-white text-[9px] font-black px-4 py-2 rounded-full shadow-xl flex items-center gap-1.5 border border-teal-400">
@@ -98,14 +155,17 @@ const TherapistDetail: React.FC = () => {
                        <span className="bg-teal-50 text-teal-600 text-[10px] font-black px-4 py-1.5 rounded-full border border-teal-100 flex items-center gap-2 uppercase tracking-widest shadow-sm">
                           <CheckCircle size={14}/> ID VERIFIED
                        </span>
-                       <span className="bg-gray-900 text-white text-[10px] font-black px-4 py-1.5 rounded-full flex items-center gap-2 uppercase tracking-[0.2em] shadow-lg">
-                          <Zap size={14} className="text-teal-400" /> 本日即時予約OK
-                       </span>
+                       {/* Check if therapist is available now (demo: odd IDs are available) */}
+                       {parseInt(displayTherapist.id.replace(/\D/g, '')) % 2 === 1 && (
+                         <span className="bg-gray-900 text-white text-[10px] font-black px-4 py-1.5 rounded-full flex items-center gap-2 uppercase tracking-[0.2em] shadow-lg">
+                            <Zap size={14} className="text-teal-400 animate-pulse" /> 本日即時予約OK
+                         </span>
+                       )}
                     </div>
                     <div>
                        <div className="flex flex-col md:flex-row md:items-end gap-4">
-                          <h1 className="text-6xl font-black tracking-tighter text-gray-900 leading-none">{therapist.name}</h1>
-                          <span className="text-lg font-bold text-gray-300 tracking-[0.3em] uppercase mb-1">TANAKA YUKI</span>
+                          <h1 className="text-6xl font-black tracking-tighter text-gray-900 leading-none">{displayTherapist.name}</h1>
+                          <span className="text-lg font-bold text-gray-300 tracking-[0.3em] uppercase mb-1">THERAPIST</span>
                        </div>
                        <p className="text-lg font-bold text-gray-400 mt-6 flex flex-wrap items-center gap-4">
                           <span>業界歴 <span className="text-gray-900">12年</span></span>
@@ -118,24 +178,24 @@ const TherapistDetail: React.FC = () => {
                  <div className="flex flex-wrap items-center gap-x-12 gap-y-6">
                     <div className="flex items-center gap-4">
                        <div className="flex text-yellow-400">
-                          {[1, 2, 3, 4, 5].map(i => <Star key={i} size={24} fill="currentColor" />)}
+                          {[1, 2, 3, 4, 5].map(i => <Star key={i} size={24} fill={i <= Math.floor(displayTherapist.rating) ? "currentColor" : "none"} />)}
                        </div>
                        <div className="flex items-baseline gap-1">
-                          <span className="text-4xl font-black text-gray-900 tabular-nums">{therapist.rating}</span>
+                          <span className="text-4xl font-black text-gray-900 tabular-nums">{displayTherapist.rating.toFixed(1)}</span>
                           <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">/ 5.0</span>
                        </div>
                     </div>
                     <div className="h-10 w-px bg-gray-100 hidden md:block"></div>
                     <div>
                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Reviews</p>
-                       <p className="text-2xl font-black text-gray-900 leading-none tabular-nums">{therapist.reviewCount}<span className="text-sm ml-1 text-gray-300 font-bold">件</span></p>
+                       <p className="text-2xl font-black text-gray-900 leading-none tabular-nums">{displayTherapist.reviewCount}<span className="text-sm ml-1 text-gray-300 font-bold">件</span></p>
                     </div>
                  </div>
 
                  <div className="bg-gray-50 p-10 rounded-[48px] border border-gray-100 relative group overflow-hidden">
                     <Quote className="text-teal-500/30 mb-4" size={32} />
                     <p className="text-gray-700 font-bold text-xl leading-relaxed italic pl-4">
-                       「デスクワークで固まった首や肩甲骨の深層筋へ。指圧とストレッチを組み合わせた『痛気持ちいい』絶妙な圧で、翌朝の圧倒的な軽さを実現します。」
+                       {displayTherapist.bio || '「デスクワークで固まった首や肩甲骨の深層筋へ。指圧とストレッチを組み合わせた『痛気持ちいい』絶妙な圧で、翌朝の圧倒的な軽さを実現します。」'}
                     </p>
                  </div>
               </div>
@@ -202,7 +262,7 @@ const TherapistDetail: React.FC = () => {
                                          return (
                                             <td key={di} className="py-4 px-2">
                                                <button 
-                                                 onClick={() => isAvailable && navigate(`/app/booking/new?therapistId=${therapist.id}`)}
+                                                 onClick={() => isAvailable && navigate(`/app/booking/new?therapistId=${displayTherapist.id}`)}
                                                  className={`w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
                                                  isAvailable ? 'text-teal-600 hover:bg-teal-500 hover:text-white hover:shadow-lg scale-110' : 'text-gray-100 cursor-not-allowed'
                                                }`}>
@@ -273,7 +333,7 @@ const TherapistDetail: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-8">
                                <p className="text-4xl font-black text-gray-900 tracking-tighter font-outfit">¥{c.price.toLocaleString()}</p>
-                               <button onClick={() => navigate(`/app/booking/new?therapistId=${therapist.id}&service=${c.id}`)} className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl hover:bg-teal-600 transition-all group-hover:rotate-[-5deg]">
+                               <button onClick={() => navigate(`/app/booking/new?therapistId=${displayTherapist.id}&service=${c.id}`)} className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl hover:bg-teal-600 transition-all group-hover:rotate-[-5deg]">
                                   <ArrowRight size={28} />
                                </button>
                             </div>
@@ -287,11 +347,11 @@ const TherapistDetail: React.FC = () => {
                  <div className="space-y-16 animate-fade-in relative z-10">
                     <div className="bg-gray-50 rounded-[56px] p-12 flex flex-col md:flex-row items-center gap-12 shadow-inner border border-gray-100">
                        <div className="text-center shrink-0">
-                          <h3 className="text-9xl font-black text-gray-900 tracking-tighter tabular-nums leading-none">{therapist.rating}</h3>
+                          <h3 className="text-9xl font-black text-gray-900 tracking-tighter tabular-nums leading-none">{displayTherapist.rating.toFixed(1)}</h3>
                           <div className="flex justify-center gap-1.5 text-yellow-400 mt-6">
-                             {[1, 2, 3, 4, 5].map(i => <Star key={i} fill="currentColor" size={28} />)}
+                             {[1, 2, 3, 4, 5].map(i => <Star key={i} fill={i <= Math.floor(displayTherapist.rating) ? "currentColor" : "none"} size={28} />)}
                           </div>
-                          <p className="text-[10px] font-bold text-gray-300 mt-6 uppercase tracking-widest">Trust verified by {therapist.reviewCount} Users</p>
+                          <p className="text-[10px] font-bold text-gray-300 mt-6 uppercase tracking-widest">Trust verified by {displayTherapist.reviewCount} Users</p>
                        </div>
                        <div className="flex-1 w-full space-y-5 md:px-12 border-l border-gray-200/50">
                           {[{ l: '技術力・効果', v: 98, c: 'bg-teal-500' }, { l: '接客・サービス', v: 96, c: 'bg-indigo-500' }, { l: '衛生・清潔感', v: 100, c: 'bg-cyan-500' }, { l: '安心・安全性', v: 100, c: 'bg-emerald-500' }].map(s => (
@@ -324,7 +384,7 @@ const TherapistDetail: React.FC = () => {
                                <div className="flex flex-wrap gap-3">{rev.tags.map(tag => <span key={tag} className="text-[10px] font-black text-teal-700 bg-teal-50 px-4 py-2 rounded-full flex items-center gap-2 border border-teal-100"><ThumbsUp size={12} /> {tag}</span>)}</div>
                             </div>
                             <div className="ml-10 p-8 bg-gray-50 rounded-[40px] border border-gray-100 relative">
-                               <div className="flex items-center gap-4 mb-4"><img src={therapist.imageUrl} className="w-10 h-10 rounded-xl object-cover" /><div><p className="text-[10px] font-black text-gray-900">セラピストからの返信</p></div></div>
+                               <div className="flex items-center gap-4 mb-4"><img src={displayTherapist.imageUrl} className="w-10 h-10 rounded-xl object-cover" /><div><p className="text-[10px] font-black text-gray-900">セラピストからの返信</p></div></div>
                                <p className="text-sm font-bold text-gray-600 italic">「{rev.reply}」</p>
                             </div>
                          </div>
@@ -367,7 +427,7 @@ const TherapistDetail: React.FC = () => {
                            <div><p className="text-xs font-black text-emerald-800 uppercase">本日 予約可能枠あり</p><p className="text-[11px] text-emerald-600 font-bold mt-1.5 leading-relaxed">18:30 / 20:00 / 21:30 〜</p></div>
                         </div>
                      </div>
-                     <button onClick={() => navigate(`/app/booking/new?therapistId=${therapist.id}`)} className="w-full bg-gray-900 text-white py-10 rounded-[48px] font-black text-2xl hover:bg-teal-600 transition-all shadow-[0_30px_90px_rgba(0,0,0,0.3)] flex items-center justify-center gap-4 active:scale-[0.97] group relative overflow-hidden">
+                     <button onClick={() => navigate(`/app/booking/new?therapistId=${displayTherapist.id}`)} className="w-full bg-gray-900 text-white py-10 rounded-[48px] font-black text-2xl hover:bg-teal-600 transition-all shadow-[0_30px_90px_rgba(0,0,0,0.3)] flex items-center justify-center gap-4 active:scale-[0.97] group relative overflow-hidden">
                         <span className="relative z-10">今すぐ予約へ</span><ArrowRight size={32} className="relative z-10 group-hover:translate-x-2 transition-transform" />
                      </button>
                      <div className="flex items-center justify-center gap-6">

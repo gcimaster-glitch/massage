@@ -1,22 +1,109 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_SITES } from '../../constants';
 import { 
   MapPin, Star, Wifi, Droplets, Lock, Wind, ArrowLeft, 
   CheckCircle, Navigation, Info, ShieldCheck, Zap, 
-  Clock, Thermometer, Music, Maximize2, Share2, Heart
+  Clock, Thermometer, Music, Maximize2, Share2, Heart, 
+  Loader, AlertCircle, User, ChevronRight
 } from 'lucide-react';
 
 const SiteDetail: React.FC = () => {
   const { siteId } = useParams();
   const navigate = useNavigate();
-  const site = MOCK_SITES.find(s => s.id === siteId);
+  
+  const [site, setSite] = useState<any>(null);
+  const [therapists, setTherapists] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingTherapists, setLoadingTherapists] = useState(false);
+  const [selectedTherapist, setSelectedTherapist] = useState<any>(null);
+  const [showTherapistModal, setShowTherapistModal] = useState(false);
 
-  if (!site) return <div className="p-20 text-center font-black text-gray-400">施設が見つかりません</div>;
+  // Fetch site data from API
+  useEffect(() => {
+    const fetchSite = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/sites/${siteId}`);
+        const data = await res.json();
+        setSite(data);
+      } catch (e) {
+        console.error('Failed to fetch site:', e);
+        // Fallback to mock data
+        setSite(MOCK_SITES.find(s => s.id === siteId) || null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSite();
+  }, [siteId]);
+
+  // Fetch therapists available at this site
+  const fetchTherapists = async () => {
+    try {
+      setLoadingTherapists(true);
+      const res = await fetch('/api/therapists');
+      const data = await res.json();
+      
+      // Sort: available therapists first
+      const sortedData = data.sort((a: any, b: any) => {
+        const aAvailable = parseInt(a.id.replace(/\D/g, '')) % 2 === 1;
+        const bAvailable = parseInt(b.id.replace(/\D/g, '')) % 2 === 1;
+        if (aAvailable && !bAvailable) return -1;
+        if (!aAvailable && bAvailable) return 1;
+        return b.rating - a.rating;
+      });
+      
+      setTherapists(sortedData);
+      setShowTherapistModal(true);
+    } catch (e) {
+      console.error('Failed to fetch therapists:', e);
+    } finally {
+      setLoadingTherapists(false);
+    }
+  };
+
+  const handleBookWithTherapist = (therapist?: any) => {
+    const params = new URLSearchParams({
+      type: 'ONSITE',
+      siteId: site.id
+    });
+    if (therapist) {
+      params.append('therapistId', therapist.id);
+    }
+    navigate(`/app/booking/new?${params.toString()}`);
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader size={48} className="animate-spin text-teal-600 mx-auto" />
+          <p className="text-gray-400 font-bold">施設情報を読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!site) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle size={48} className="text-red-400 mx-auto" />
+          <p className="text-gray-600 font-bold">施設が見つかりませんでした</p>
+          <button onClick={() => navigate(-1)} className="text-teal-600 hover:underline">
+            戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleBook = () => {
-    navigate(`/app/booking/new?type=ONSITE&siteId=${site.id}`);
+    setShowTherapistModal(true);
+    fetchTherapists();
   };
 
   return (
@@ -152,6 +239,138 @@ const SiteDetail: React.FC = () => {
            </div>
         </div>
       </div>
+
+      {/* Therapist Selection Modal */}
+      {showTherapistModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowTherapistModal(false);
+          }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-teal-600 to-blue-600 text-white p-6 md:p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl md:text-3xl font-black mb-2">セラピストを選択</h3>
+                  <p className="text-teal-100 text-sm">
+                    {site.name} で施術を担当するセラピストをお選びください
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowTherapistModal(false)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <ArrowLeft size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+              {loadingTherapists ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader size={48} className="animate-spin text-teal-600" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Auto-assign option */}
+                  <div 
+                    onClick={() => handleBookWithTherapist()}
+                    className="border-2 border-teal-500 bg-teal-50 rounded-2xl p-6 cursor-pointer hover:shadow-xl transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-blue-500 rounded-2xl flex items-center justify-center text-white">
+                        <Zap size={32} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-xl font-black text-gray-900 mb-1">おまかせ自動割当</h4>
+                        <p className="text-sm text-gray-600 font-medium">
+                          システムが最適なセラピストを自動で割り当てます(推奨)
+                        </p>
+                      </div>
+                      <ChevronRight size={28} className="text-teal-600 group-hover:translate-x-2 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* Therapist list */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {therapists.map((therapist) => {
+                      const isAvailable = parseInt(therapist.id.replace(/\D/g, '')) % 2 === 1;
+                      return (
+                        <div
+                          key={therapist.id}
+                          onClick={() => isAvailable && handleBookWithTherapist(therapist)}
+                          className={`border-2 rounded-2xl p-4 transition-all ${
+                            isAvailable
+                              ? 'border-teal-300 hover:shadow-xl cursor-pointer hover:-translate-y-1'
+                              : 'border-gray-200 opacity-60 cursor-not-allowed'
+                          }`}
+                        >
+                          <div className="flex gap-4 items-start relative">
+                            {isAvailable && (
+                              <div className="absolute top-0 right-0 bg-gradient-to-r from-green-500 to-teal-500 text-white px-3 py-1 rounded-full text-[10px] font-black animate-pulse">
+                                ⚡予約可
+                              </div>
+                            )}
+                            
+                            <div className="relative">
+                              <img
+                                src={therapist.avatar_url || `/therapists/${therapist.id}.jpg`}
+                                alt={therapist.name}
+                                className={`w-20 h-20 rounded-2xl object-cover ${
+                                  isAvailable ? '' : 'grayscale'
+                                }`}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(therapist.name)}&background=14b8a6&color=fff&size=200`;
+                                }}
+                              />
+                              {!isAvailable && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/40 rounded-2xl">
+                                  <Clock size={24} className="text-white" />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-1">
+                              <h4 className="text-lg font-black text-gray-900 mb-1">
+                                {therapist.name}
+                              </h4>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="flex text-yellow-400">
+                                  {[1, 2, 3, 4, 5].map((i) => (
+                                    <Star
+                                      key={i}
+                                      size={14}
+                                      fill={i <= Math.floor(therapist.rating) ? 'currentColor' : 'none'}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-sm font-bold text-gray-600">
+                                  {therapist.rating.toFixed(1)}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  ({therapist.review_count}件)
+                                </span>
+                              </div>
+                              {!isAvailable && (
+                                <p className="text-xs text-gray-500 font-medium">
+                                  現在予約受付不可
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
