@@ -26,8 +26,15 @@
     <title>HOGUSY - ほぐす、を、もっと身近に。</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@400;600;900&display=swap" rel="stylesheet">
-    <!-- Google Maps JavaScript API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcWxZJaMaHa6ux_lHQJz_-731SY00DMRM&libraries=places,geometry&language=ja&region=JP" async defer></script>
+    <!-- Google Maps JavaScript API (async for better performance) -->
+    <script>
+      // Preconnect to Google Maps API for faster loading
+      const preconnect = document.createElement('link');
+      preconnect.rel = 'preconnect';
+      preconnect.href = 'https://maps.googleapis.com';
+      document.head.appendChild(preconnect);
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcWxZJaMaHa6ux_lHQJz_-731SY00DMRM&libraries=places,geometry&language=ja&region=JP&loading=async" async defer></script>
     <style>
       :root {
         --brand-teal: #14b8a6;

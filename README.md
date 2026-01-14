@@ -4,12 +4,24 @@
 > 日本版HOGUSY × CARE CUBEの統合ウェルネス・プラットフォーム
 
 **🌐 本番環境**: https://hogusy.pages.dev  
-**🔧 最新デプロイ**: https://e22609a4.hogusy.pages.dev  
+**🔧 最新デプロイ**: https://5192b9a3.hogusy.pages.dev  
 **📦 GitHub**: https://github.com/gcimaster-glitch/massage
 
 ---
 
 ## 📊 現在の開発状況
+
+### ✅ Phase G: パフォーマンス最適化 （**完了🎉**）
+- [x] **コード分割（Code Splitting）実装**
+  - ✅ manualChunksでバンドルを分割
+  - ✅ メインバンドル: 1,213KB → 593KB（51%削減）
+  - ✅ gzip圧縮後: 280KB → 172KB（40%削減）
+  - ✅ Admin/Therapist/Host/Office別チャンク化
+
+- [x] **Google Maps非同期読み込み最適化**
+  - ✅ preconnect追加で高速化
+  - ✅ loading=async パラメータ追加
+  - ✅ 重複読み込み問題解決
 
 ### ✅ Phase F: 3ステップクイック予約フロー実装 （**完了🎉**）
 - [x] **QuickBookingPanel コンポーネント**
@@ -281,7 +293,7 @@ webapp/
 
 ### 🚀 本番環境（公開中！）
 - **🌐 本番サイト**: https://hogusy.pages.dev
-- **🆕 最新デプロイ**: https://e22609a4.hogusy.pages.dev
+- **🆕 最新デプロイ**: https://5192b9a3.hogusy.pages.dev
 - **📝 事業戦略ページ**: https://hogusy.pages.dev/#/strategy
 - **🔧 API Health Check**: https://hogusy.pages.dev/api/health
 - **👥 セラピストAPI**: https://hogusy.pages.dev/api/therapists
