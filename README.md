@@ -4,7 +4,7 @@
 > 日本版HOGUSY × CARE CUBEの統合ウェルネス・プラットフォーム
 
 **🌐 本番環境**: https://hogusy.pages.dev  
-**🔧 最新デプロイ**: https://5c4bf564.hogusy.pages.dev  
+**🔧 最新デプロイ**: https://e22609a4.hogusy.pages.dev  
 **📦 GitHub**: https://github.com/gcimaster-glitch/massage
 
 ---
@@ -281,7 +281,7 @@ webapp/
 
 ### 🚀 本番環境（公開中！）
 - **🌐 本番サイト**: https://hogusy.pages.dev
-- **🆕 最新デプロイ**: https://5c4bf564.hogusy.pages.dev
+- **🆕 最新デプロイ**: https://e22609a4.hogusy.pages.dev
 - **📝 事業戦略ページ**: https://hogusy.pages.dev/#/strategy
 - **🔧 API Health Check**: https://hogusy.pages.dev/api/health
 - **👥 セラピストAPI**: https://hogusy.pages.dev/api/therapists
