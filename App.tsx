@@ -9,6 +9,9 @@ import SignupTherapist from './pages/auth/SignupTherapist';
 import SignupHost from './pages/auth/SignupHost';
 import SignupOffice from './pages/auth/SignupOffice';
 
+// --- Index List (Development Only) ---
+import IndexList from './pages/IndexList';
+
 // --- Portal (Public) ---
 import PortalHome from './pages/portal/PortalHome';
 import AboutPage from './pages/portal/About';
@@ -131,6 +134,9 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Development Only - Index List */}
+        <Route path="/indexlist" element={<IndexList />} />
+        
         {/* Public Portal */}
         <Route path="/" element={<PortalHome />} />
         <Route path="/about" element={<AboutPage />} />
