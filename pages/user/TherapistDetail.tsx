@@ -76,7 +76,8 @@ const TherapistDetail: React.FC = () => {
   };
 
   const menuData = useMemo(() => {
-    const approved = (displayTherapist as any).approvedMenu;
+    if (!therapist) return { courses: [], options: [] };
+    const approved = (therapist as any).approvedMenu;
     if (!approved) return { courses: [], options: [] };
     return {
       courses: (approved.courses || []).map((ac: any) => ({
@@ -88,7 +89,7 @@ const TherapistDetail: React.FC = () => {
         price: ao.price
       }))
     };
-  }, [displayTherapist]);
+  }, [therapist]);
 
   // 日本標準の空き状況シミュレーション
   const scheduleData = useMemo(() => {
