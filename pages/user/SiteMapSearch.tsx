@@ -34,25 +34,19 @@ const SiteMapSearch: React.FC = () => {
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
 
-  // Google Maps APIをロード
+  // Google Maps APIが読み込まれるまで待機
   useEffect(() => {
-    // 既にロード済みの場合はスキップ
-    if (window.google && window.google.maps) {
-      setMapLoaded(true);
-      return;
-    }
-
-    const script = document.createElement('script');
-    // Google Maps APIキーは環境変数から取得（デモ用にキーなしでも動作）
-    script.src = `https://maps.googleapis.com/maps/api/js?key=&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setMapLoaded(true);
-    document.head.appendChild(script);
-
-    return () => {
-      // クリーンアップ
+    // index.htmlで既に読み込まれているGoogle Maps APIを使用
+    const checkGoogleMaps = () => {
+      if (window.google && window.google.maps) {
+        setMapLoaded(true);
+      } else {
+        // まだ読み込まれていない場合は100ms後に再チェック
+        setTimeout(checkGoogleMaps, 100);
+      }
     };
+    
+    checkGoogleMaps();
   }, []);
 
   // Fetch sites from API
