@@ -7,6 +7,7 @@ import sitesApp from './sites-routes'
 import officesApp from './offices-routes'
 import therapistEditApp from './therapist-edit-routes'
 import imageApp from './image-routes'
+import userManagementApp from './user-management-routes'
 
 // ============================================
 // Type Definitions
@@ -90,6 +91,11 @@ app.route('/api/therapist-edits', therapistEditApp)
 // Mount Image Routes (R2 Storage)
 // ============================================
 app.route('/api/images', imageApp)
+
+// ============================================
+// Mount User Management Routes (Admin only)
+// ============================================
+app.route('/api/admin/users', userManagementApp)
 
 // ============================================
 // Auth Routes
