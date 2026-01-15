@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, Home, Star, ArrowRight, ShieldCheck, Users, 
@@ -13,6 +13,33 @@ const PortalHome: React.FC = () => {
   const navigate = useNavigate();
   const [bookingType, setBookingType] = useState<BookingType>(BookingType.ONSITE);
   const [area, setArea] = useState('');
+  const [popularTherapists, setPopularTherapists] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch popular therapists from API
+  useEffect(() => {
+    const fetchPopularTherapists = async () => {
+      try {
+        const response = await fetch('/api/therapists');
+        if (response.ok) {
+          const data = await response.json();
+          // Sort by rating and take top 4
+          const sorted = data.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+          setPopularTherapists(sorted.slice(0, 4));
+        } else {
+          // Fallback to mock data
+          setPopularTherapists(MOCK_THERAPISTS.slice(0, 4));
+        }
+      } catch (error) {
+        console.error('Failed to fetch therapists:', error);
+        setPopularTherapists(MOCK_THERAPISTS.slice(0, 4));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPopularTherapists();
+  }, []);
 
   return (
     <PortalLayout>
@@ -271,7 +298,7 @@ const PortalHome: React.FC = () => {
       </section>
 
       {/* 3. Featured Therapists */}
-      <section className="pb-32 max-w-7xl mx-auto px-4 space-y-12">
+      <section className="pb-20 max-w-7xl mx-auto px-4 space-y-12">
          <div className="flex items-end justify-between px-6">
             <div>
                <span className="text-[10px] font-black text-teal-600 uppercase tracking-[0.4em] block mb-3">Professional Selection</span>
@@ -281,23 +308,129 @@ const PortalHome: React.FC = () => {
                すべて表示 <ChevronRight size={16}/>
             </button>
          </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {MOCK_THERAPISTS.slice(0, 4).map(t => (
-              <div key={t.id} onClick={() => navigate(`/app/site/${t.id}`)} className="bg-white rounded-[40px] border border-gray-100 overflow-hidden hover:shadow-2xl transition-all cursor-pointer group shadow-sm">
-                <div className="h-64 overflow-hidden relative">
-                  <img src={t.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  <div className="absolute top-4 left-4 bg-black/60 text-white text-[8px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-white/20">Certified</div>
+         {loading ? (
+           <div className="text-center py-20">
+             <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-teal-600 border-t-transparent"></div>
+             <p className="text-gray-400 font-bold mt-4">読み込み中...</p>
+           </div>
+         ) : (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {popularTherapists.map(t => (
+                <div 
+                  key={t.id} 
+                  onClick={() => navigate(`/app/therapist/${t.id}`)} 
+                  className="bg-white rounded-[40px] border border-gray-100 overflow-hidden hover:shadow-2xl transition-all cursor-pointer group shadow-sm"
+                >
+                  <div className="h-64 overflow-hidden relative">
+                    <img 
+                      src={t.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&size=400&background=14b8a6&color=fff&bold=true`}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&size=400&background=14b8a6&color=fff&bold=true`;
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      alt={t.name}
+                    />
+                    <div className="absolute top-4 left-4 bg-black/60 text-white text-[8px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-white/20">
+                      {t.kyc_status === 'VERIFIED' ? 'Verified' : 'Certified'}
+                    </div>
+                    <div className="absolute top-4 right-4 bg-teal-600 text-white text-[9px] font-black px-3 py-1.5 rounded-full flex items-center gap-1">
+                      <Star size={10} fill="currentColor" /> {t.rating || 5.0}
+                    </div>
+                  </div>
+                  <div className="p-8 space-y-4">
+                     <div>
+                       <h4 className="font-black text-xl text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h4>
+                       {t.bio && (
+                         <p className="text-xs text-gray-500 mt-2 line-clamp-2">{t.bio}</p>
+                       )}
+                     </div>
+                     <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                        <span className="flex items-center gap-1 text-yellow-500 font-black text-xs">
+                          <Star size={14} fill="currentColor"/> {t.rating || 5.0} ({t.review_count || 0}件)
+                        </span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/app/booking/new?therapistId=${t.id}`);
+                          }}
+                          className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-black px-4 py-2 rounded-full transition-all"
+                        >
+                          予約
+                        </button>
+                     </div>
+                  </div>
                 </div>
-                <div className="p-8 space-y-4">
-                   <h4 className="font-black text-xl text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h4>
-                   <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                      <span className="flex items-center gap-1 text-yellow-500 font-black text-xs"><Star size={14} fill="currentColor"/> {t.rating}</span>
-                      <span className="text-lg font-black text-gray-900 tracking-tighter">¥7,480〜</span>
-                   </div>
+              ))}
+           </div>
+         )}
+      </section>
+
+      {/* 3.5. Map Search Section */}
+      <section className="pb-32 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-gradient-to-br from-teal-600 to-indigo-600 rounded-[80px] p-12 md:p-20 overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/10 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/3"></div>
+            
+            <div className="relative z-10 text-center space-y-8">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest border border-white/30">
+                  <MapPin size={14} /> Location Based Search
+                </div>
+                <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-tight">
+                  地図から探す
+                </h2>
+                <p className="text-white/90 font-bold text-lg md:text-xl max-w-2xl mx-auto">
+                  あなたの近くの施設・セラピストをマップで確認。<br/>
+                  空き状況を見ながら、その場で予約できます。
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <MapPin size={24} className="text-white" />
+                  </div>
+                  <h3 className="text-white font-black text-lg mb-2">リアルタイム表示</h3>
+                  <p className="text-white/80 text-sm font-medium">
+                    現在地から近い施設を距離順で表示。営業中の施設が一目瞭然。
+                  </p>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Users size={24} className="text-white" />
+                  </div>
+                  <h3 className="text-white font-black text-lg mb-2">セラピスト選択</h3>
+                  <p className="text-white/80 text-sm font-medium">
+                    施設ごとに在籍セラピストを表示。プロフィールを見て指名予約も可能。
+                  </p>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Zap size={24} className="text-white" />
+                  </div>
+                  <h3 className="text-white font-black text-lg mb-2">その場で予約</h3>
+                  <p className="text-white/80 text-sm font-medium">
+                    空き状況を確認して、そのまま予約完了。移動時間も計算できます。
+                  </p>
                 </div>
               </div>
-            ))}
-         </div>
+
+              <div className="pt-4">
+                <button 
+                  onClick={() => navigate('/app/map')}
+                  className="bg-white hover:bg-gray-100 text-teal-600 font-black py-6 px-12 rounded-full text-xl shadow-2xl hover:scale-105 transition-all inline-flex items-center gap-4"
+                >
+                  <MapPin size={28} />
+                  マップで探す
+                  <ArrowRight size={28} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
       
       {/* 4. Infrastructure Showcase (Infrastructure Focus) */}
