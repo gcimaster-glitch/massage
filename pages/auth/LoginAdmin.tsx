@@ -39,6 +39,17 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
 
   const handleQuickLogin = () => {
     setIsSubmitting(true);
+    
+    // Create a mock JWT token for quick login (development only)
+    const mockToken = btoa(JSON.stringify({
+      userId: 'admin-demo',
+      email: 'admin@hogusy.com',
+      userName: '総管理者',
+      role: 'ADMIN',
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+    }));
+    
+    localStorage.setItem('auth_token', `mock.${mockToken}.demo`);
     onLogin(Role.ADMIN);
     
     setTimeout(() => {

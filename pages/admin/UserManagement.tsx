@@ -38,6 +38,8 @@ const UserManagement: React.FC = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
+      console.log('🔍 Auth Token:', token ? 'EXISTS' : 'MISSING');
+      
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '20',
@@ -46,19 +48,28 @@ const UserManagement: React.FC = () => {
         archived: showArchived.toString(),
       });
 
-      const response = await fetch(`/api/admin/users?${params}`, {
+      const url = `/api/admin/users?${params}`;
+      console.log('📡 Fetching:', url);
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('📊 Response Status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Users loaded:', data);
         setUsers(data.users);
         setTotalPages(data.pagination.totalPages);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ API Error:', errorData);
       }
     } catch (error) {
-      console.error('Failed to load users:', error);
+      console.error('❌ Failed to load users:', error);
     } finally {
       setLoading(false);
     }
