@@ -26,6 +26,7 @@ const SiteMapSearch: React.FC = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [sites, setSites] = useState<any[]>([]);
+  const [nearbySites, setNearbySites] = useState<any[]>([]); // 3km以内の施設
   const [therapists, setTherapists] = useState<any[]>([]);
   const [showTherapists, setShowTherapists] = useState(false);
   const [loadingTherapists, setLoadingTherapists] = useState(false);
@@ -33,6 +34,19 @@ const SiteMapSearch: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+
+  // 距離計算関数（Haversine formula）
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // 地球の半径（km）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // 距離（km）
+  };
 
   // Google Maps APIが読み込まれるまで待機
   useEffect(() => {
@@ -63,6 +77,28 @@ const SiteMapSearch: React.FC = () => {
       console.error('Failed to fetch sites:', e);
     }
   };
+
+  // ユーザーの現在地を取得して3km以内の施設を計算
+  useEffect(() => {
+    if (userLocation && sites.length > 0) {
+      const sitesWithDistance = sites.map(site => ({
+        ...site,
+        distance: calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          site.location.lat,
+          site.location.lng
+        )
+      }));
+
+      // 3km以内の施設のみをフィルタリングして距離順にソート
+      const nearby = sitesWithDistance
+        .filter(site => site.distance <= 3)
+        .sort((a, b) => a.distance - b.distance);
+
+      setNearbySites(nearby);
+    }
+  }, [userLocation, sites]);
 
   // セラピスト一覧を取得
   const fetchTherapists = async () => {
@@ -343,6 +379,114 @@ const SiteMapSearch: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* フローティング施設リスト（3km以内） */}
+      {userLocation && nearbySites.length > 0 && (
+        <div className="absolute top-40 right-4 z-30 w-96 max-h-[calc(100vh-180px)] animate-fade-in">
+          <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+            {/* ヘッダー */}
+            <div className="bg-gradient-to-r from-teal-600 to-indigo-600 p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-white font-black text-xl flex items-center gap-2">
+                  <MapPin size={24} />
+                  近くの施設
+                </h3>
+                <span className="bg-white/20 backdrop-blur-md text-white text-xs font-black px-3 py-1.5 rounded-full">
+                  {nearbySites.length}件
+                </span>
+              </div>
+              <p className="text-white/90 text-sm font-medium">
+                現在地から3km以内
+              </p>
+            </div>
+
+            {/* スクロール可能なリスト */}
+            <div className="overflow-y-auto max-h-[calc(100vh-340px)] p-4 space-y-3">
+              {nearbySites.map((site) => (
+                <div
+                  key={site.id}
+                  onClick={() => {
+                    setSelectedSite(site);
+                    // マップを施設の位置に移動
+                    if (googleMapRef.current) {
+                      googleMapRef.current.panTo(site.location);
+                      googleMapRef.current.setZoom(16);
+                    }
+                  }}
+                  className={`p-4 rounded-2xl cursor-pointer transition-all border-2 hover:shadow-lg ${
+                    selectedSite?.id === site.id
+                      ? 'bg-teal-50 border-teal-500'
+                      : 'bg-gray-50 border-gray-200 hover:border-teal-300'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    {/* 施設名と距離 */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-black text-gray-900 text-base leading-tight flex-1">
+                        {site.name}
+                      </h4>
+                      <div className="flex items-center gap-1 bg-teal-600 text-white text-xs font-black px-2 py-1 rounded-full shrink-0">
+                        <Navigation size={10} />
+                        {site.distance.toFixed(1)}km
+                      </div>
+                    </div>
+
+                    {/* 住所 */}
+                    <div className="flex items-start gap-2 text-xs text-gray-600">
+                      <Building2 size={14} className="mt-0.5 shrink-0" />
+                      <p className="leading-relaxed">{site.address}</p>
+                    </div>
+
+                    {/* 営業状態とアメニティ */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {site.amenities?.includes('WIFI') && (
+                          <div className="bg-white p-1.5 rounded-lg" title="Wi-Fi">
+                            <Wifi size={12} className="text-gray-600" />
+                          </div>
+                        )}
+                        {site.amenities?.includes('SHOWER') && (
+                          <div className="bg-white p-1.5 rounded-lg" title="シャワー">
+                            <Coffee size={12} className="text-gray-600" />
+                          </div>
+                        )}
+                      </div>
+                      <span className="bg-green-100 text-green-700 text-xs font-black px-3 py-1 rounded-full flex items-center gap-1">
+                        <Clock size={10} />
+                        営業中
+                      </span>
+                    </div>
+
+                    {/* 予約ボタン */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedSite(site);
+                        setShowQuickBooking(true);
+                      }}
+                      className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white py-2.5 rounded-xl text-sm font-black hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Zap size={16} />
+                      今すぐ予約
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* フッター */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200">
+              <button
+                onClick={() => navigate('/app/sites')}
+                className="w-full text-gray-600 hover:text-teal-600 text-sm font-bold flex items-center justify-center gap-2 transition-all"
+              >
+                すべての施設を見る
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 選択されたサイトの詳細 */}
       {selectedSite && !showTherapists && (
