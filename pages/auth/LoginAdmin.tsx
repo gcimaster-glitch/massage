@@ -41,13 +41,21 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
     setIsSubmitting(true);
     
     // Create a mock JWT token for quick login (development only)
-    const mockToken = btoa(JSON.stringify({
+    // Use UTF-8 safe base64 encoding
+    const payload = JSON.stringify({
       userId: 'admin-demo',
       email: 'admin@hogusy.com',
       userName: '総管理者',
       role: 'ADMIN',
       exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-    }));
+    });
+    
+    // UTF-8 safe base64 encoding
+    const mockToken = btoa(
+      encodeURIComponent(payload).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+        return String.fromCharCode(parseInt(p1, 16));
+      })
+    );
     
     localStorage.setItem('auth_token', `mock.${mockToken}.demo`);
     onLogin(Role.ADMIN);
