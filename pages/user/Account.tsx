@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, Edit2, Activity, Target, ShieldCheck, Heart, HelpCircle, History, Sparkles } from 'lucide-react';
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, Edit2, Activity, Target, ShieldCheck, Heart, HelpCircle, History, Sparkles, Link2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import BodyMap from '../../components/BodyMap';
 
@@ -58,6 +58,7 @@ const Account: React.FC = ({ onLogout }: any) => {
               <section className="bg-white rounded-[64px] shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
                  <MenuButton onClick={() => navigate('/app/account/wellness')} icon={<History className="text-indigo-500" />} label="ウェルネス・ジャーナル (履歴・カルテ)" highlighted />
                  <MenuButton onClick={() => navigate('/app/account/profile')} icon={<User size={20} />} label="プロフィール・通知設定" />
+                 <MenuButton onClick={() => navigate('/app/account/social')} icon={<Link2 size={20} className="text-blue-600" />} label="ソーシャルアカウント連携" />
                  <MenuButton onClick={() => navigate('/app/account/payment')} icon={<CreditCard size={20} />} label="お支払い方法の管理" />
                  <MenuButton onClick={() => navigate('/app/support')} icon={<HelpCircle size={20} className="text-teal-600" />} label="ヘルプ・サポートセンター" />
                  <MenuButton onClick={() => navigate('/app/account/safety')} icon={<Shield size={20} className="text-red-500" />} label="セキュリティ・緊急連絡先" />
