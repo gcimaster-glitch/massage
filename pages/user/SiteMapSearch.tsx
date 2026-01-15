@@ -4,7 +4,7 @@ import {
   MapPin, Navigation, Search, Filter, 
   Building2, Star, Clock, ArrowRight, X, 
   Map as MapIcon, Layers, Target, Zap, ShieldCheck, Locate,
-  Users, Phone, Wifi, Coffee, Award, Home
+  Users, Phone, Wifi, Coffee, Award, Home, Heart, SlidersHorizontal
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_SITES } from '../../constants';
@@ -26,14 +26,44 @@ const SiteMapSearch: React.FC = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [sites, setSites] = useState<any[]>([]);
-  const [nearbySites, setNearbySites] = useState<any[]>([]); // 3km以内の施設
+  const [nearbySites, setNearbySites] = useState<any[]>([]);
   const [therapists, setTherapists] = useState<any[]>([]);
   const [showTherapists, setShowTherapists] = useState(false);
   const [loadingTherapists, setLoadingTherapists] = useState(false);
   const [showQuickBooking, setShowQuickBooking] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // フィルター設定
+  const [distanceRange, setDistanceRange] = useState<number>(3); // 1km, 3km, 5km
+  const [onlyAvailableNow, setOnlyAvailableNow] = useState<boolean>(false);
+  const [selectedSiteType, setSelectedSiteType] = useState<string>('ALL'); // ALL, CARE_CUBE, HOTEL, OFFICE
+  const [favoriteSites, setFavoriteSites] = useState<Set<string>>(new Set());
+  
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+
+  // お気に入りをローカルストレージから読み込み
+  useEffect(() => {
+    const saved = localStorage.getItem('favoriteSites');
+    if (saved) {
+      setFavoriteSites(new Set(JSON.parse(saved)));
+    }
+  }, []);
+
+  // お気に入りをローカルストレージに保存
+  const toggleFavorite = (siteId: string) => {
+    setFavoriteSites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(siteId)) {
+        newFavorites.delete(siteId);
+      } else {
+        newFavorites.add(siteId);
+      }
+      localStorage.setItem('favoriteSites', JSON.stringify([...newFavorites]));
+      return newFavorites;
+    });
+  };
 
   // 距離計算関数（Haversine formula）
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -78,10 +108,10 @@ const SiteMapSearch: React.FC = () => {
     }
   };
 
-  // ユーザーの現在地を取得して3km以内の施設を計算
+  // ユーザーの現在地を取得してフィルタリング
   useEffect(() => {
     if (userLocation && sites.length > 0) {
-      const sitesWithDistance = sites
+      let filtered = sites
         .filter(site => site.lat && site.lng) // 座標データがある施設のみ
         .map(site => ({
           ...site,
@@ -93,14 +123,33 @@ const SiteMapSearch: React.FC = () => {
           )
         }));
 
-      // 3km以内の施設のみをフィルタリングして距離順にソート
-      const nearby = sitesWithDistance
-        .filter(site => site.distance <= 3)
-        .sort((a, b) => a.distance - b.distance);
+      // 距離フィルター
+      filtered = filtered.filter(site => site.distance <= distanceRange);
 
-      setNearbySites(nearby);
+      // 施設タイプフィルター
+      if (selectedSiteType !== 'ALL') {
+        filtered = filtered.filter(site => site.type === selectedSiteType);
+      }
+
+      // 営業時間フィルター（今すぐ予約可能のみ）
+      if (onlyAvailableNow) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        // 営業時間を9:00-22:00と仮定（実際にはAPIから取得すべき）
+        filtered = filtered.filter(site => currentHour >= 9 && currentHour < 22);
+      }
+
+      // お気に入りを優先的にソート
+      filtered.sort((a, b) => {
+        const aFav = favoriteSites.has(a.id) ? 1 : 0;
+        const bFav = favoriteSites.has(b.id) ? 1 : 0;
+        if (aFav !== bFav) return bFav - aFav; // お気に入り優先
+        return a.distance - b.distance; // 距離順
+      });
+
+      setNearbySites(filtered);
     }
-  }, [userLocation, sites]);
+  }, [userLocation, sites, distanceRange, selectedSiteType, onlyAvailableNow, favoriteSites]);
 
   // セラピスト一覧を取得
   const fetchTherapists = async () => {
@@ -357,11 +406,117 @@ const SiteMapSearch: React.FC = () => {
             >
               <Locate size={24}/>
             </button>
-            <button className="bg-white/95 backdrop-blur-xl p-4 rounded-xl shadow-xl text-gray-900 hover:bg-teal-600 hover:text-white transition-all border border-gray-200">
-              <Filter size={24}/>
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`bg-white/95 backdrop-blur-xl p-4 rounded-xl shadow-xl transition-all border-2 ${
+                showFilters ? 'bg-teal-600 text-white border-teal-600' : 'text-gray-900 border-gray-200 hover:bg-teal-600 hover:text-white'
+              }`}
+              title="フィルター"
+            >
+              <SlidersHorizontal size={24}/>
             </button>
          </div>
       </div>
+
+      {/* フィルターパネル */}
+      {showFilters && (
+        <div className="absolute top-44 left-4 right-4 md:left-8 md:right-auto md:w-96 z-30 animate-fade-in">
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-gray-200 space-y-6">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+              <h3 className="font-black text-lg text-gray-900 flex items-center gap-2">
+                <SlidersHorizontal size={20} />
+                フィルター設定
+              </h3>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* 距離範囲 */}
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-gray-700 block">
+                距離範囲
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 3, 5].map(dist => (
+                  <button
+                    key={dist}
+                    onClick={() => setDistanceRange(dist)}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all ${
+                      distanceRange === dist
+                        ? 'bg-teal-600 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {dist}km以内
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 施設タイプ */}
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-gray-700 block">
+                施設タイプ
+              </label>
+              <div className="space-y-2">
+                {[
+                  { value: 'ALL', label: 'すべて' },
+                  { value: 'CARE_CUBE', label: 'CARE CUBE' },
+                  { value: 'HOTEL', label: 'ホテル' },
+                  { value: 'OFFICE', label: 'オフィスビル' }
+                ].map(type => (
+                  <button
+                    key={type.value}
+                    onClick={() => setSelectedSiteType(type.value)}
+                    className={`w-full py-3 rounded-xl font-bold text-sm transition-all text-left px-4 ${
+                      selectedSiteType === type.value
+                        ? 'bg-teal-600 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 営業時間フィルター */}
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-gray-700 block">
+                営業状態
+              </label>
+              <button
+                onClick={() => setOnlyAvailableNow(!onlyAvailableNow)}
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  onlyAvailableNow
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Clock size={16} />
+                今すぐ予約可能のみ
+              </button>
+            </div>
+
+            {/* フィルターリセット */}
+            <button
+              onClick={() => {
+                setDistanceRange(3);
+                setSelectedSiteType('ALL');
+                setOnlyAvailableNow(false);
+              }}
+              className="w-full py-3 bg-gray-200 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-300 transition-all"
+            >
+              フィルターをリセット
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Google Map */}
       <div className="flex-1 relative">
