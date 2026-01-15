@@ -16,26 +16,53 @@ const PortalHome: React.FC = () => {
 
   return (
     <PortalLayout>
-      {/* 1. Hero Section */}
+      {/* 1. Hero Section with Video Background */}
       <section className="relative h-[85vh] flex items-center justify-center overflow-hidden bg-slate-900">
-        <img 
-          src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&q=80&w=2000" 
-          className="absolute inset-0 w-full h-full object-cover opacity-40 animate-[slow-zoom_20s_infinite]" 
-          alt="Wellness Hero" 
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/90"></div>
+        {/* Video Background */}
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-50"
+        >
+          <source src="/videos/hero-spa.mp4" type="video/mp4" />
+          {/* Fallback image for browsers that don't support video */}
+          <img 
+            src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&q=80&w=2000" 
+            className="absolute inset-0 w-full h-full object-cover opacity-40" 
+            alt="Wellness Hero" 
+          />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-slate-900/40 to-slate-900/90"></div>
         <div className="relative z-10 text-center px-6 max-w-5xl space-y-8">
-          <div className="inline-flex items-center gap-2 bg-teal-500/20 backdrop-blur-md text-teal-400 px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest border border-teal-500/30">
+          <div className="inline-flex items-center gap-2 bg-teal-500/20 backdrop-blur-md text-teal-400 px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest border border-teal-500/30 shadow-lg">
              <Sparkles size={14} /> Wellness Infrastructure by HOGUSY
           </div>
-          <h1 className="text-6xl md:text-[110px] font-black text-white leading-[0.85] tracking-tighter">
-             探して、<br/>
-             <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-indigo-300">整える。</span>
+          <h1 className="text-6xl md:text-[110px] font-black text-white leading-[0.85] tracking-tighter drop-shadow-2xl">
+             ほぐす、を、<br/>
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-200 to-indigo-300">もっと身近に。</span>
           </h1>
-          <p className="text-white/80 font-bold text-lg md:text-2xl tracking-tight max-w-3xl mx-auto leading-relaxed">
-             スマート施術ブース「CARE CUBE」と、厳選されたプロの技術。<br className="hidden md:block"/>
-             都会のあらゆる場所が、あなただけの最高の施術室に変わります。
+          <p className="text-white/90 font-bold text-lg md:text-2xl tracking-tight max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
+             街のあらゆる場所に、プロの施術空間。<br className="hidden md:block"/>
+             探して、選んで、すぐに整う。新しいウェルネス体験が、ここに。
           </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <button 
+              onClick={() => navigate('/app/map')}
+              className="bg-teal-600 hover:bg-teal-700 text-white font-black py-5 px-10 rounded-full text-lg shadow-2xl hover:scale-105 transition-all flex items-center gap-3 justify-center"
+            >
+              <MapPin size={24} />
+              近くの施術を探す
+            </button>
+            <button 
+              onClick={() => navigate('/therapists')}
+              className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white font-black py-5 px-10 rounded-full text-lg border-2 border-white/30 hover:border-white/50 transition-all flex items-center gap-3 justify-center shadow-xl"
+            >
+              <Users size={24} />
+              セラピストを見る
+            </button>
+          </div>
         </div>
       </section>
 
@@ -148,6 +175,97 @@ const PortalHome: React.FC = () => {
                    </button>
                 </div>
              </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2.5. How to Use - User Guide */}
+      <section className="py-20 px-4 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-4">
+            <span className="text-[10px] font-black text-teal-600 uppercase tracking-[0.4em] block">How to Use</span>
+            <h2 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter">
+              3ステップで、<br className="md:hidden"/>すぐに整う
+            </h2>
+            <p className="text-gray-600 font-bold text-lg max-w-2xl mx-auto">
+              面倒な手続きは不要。アプリひとつで、プロの施術があなたの近くに。
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Step 1 */}
+            <div className="relative group">
+              <div className="absolute -top-6 -left-6 w-20 h-20 bg-teal-600 rounded-full flex items-center justify-center text-white font-black text-3xl shadow-2xl group-hover:scale-110 transition-all z-10">
+                1
+              </div>
+              <div className="bg-white rounded-[40px] p-10 pt-16 shadow-lg hover:shadow-2xl transition-all border-2 border-gray-100 group-hover:border-teal-500">
+                <div className="space-y-6">
+                  <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center">
+                    <Search size={32} className="text-teal-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900 mb-3">探す</h3>
+                    <p className="text-gray-600 font-medium leading-relaxed">
+                      地図から近くの施設を探すか、セラピストのプロフィールを見て選択。
+                      空き状況もリアルタイムで確認できます。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="relative group">
+              <div className="absolute -top-6 -left-6 w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white font-black text-3xl shadow-2xl group-hover:scale-110 transition-all z-10">
+                2
+              </div>
+              <div className="bg-white rounded-[40px] p-10 pt-16 shadow-lg hover:shadow-2xl transition-all border-2 border-gray-100 group-hover:border-indigo-500">
+                <div className="space-y-6">
+                  <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center">
+                    <Calendar size={32} className="text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900 mb-3">予約する</h3>
+                    <p className="text-gray-600 font-medium leading-relaxed">
+                      希望の日時とメニューを選択。
+                      決済もアプリで完結。面倒な現金のやり取りはありません。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="relative group">
+              <div className="absolute -top-6 -left-6 w-20 h-20 bg-rose-600 rounded-full flex items-center justify-center text-white font-black text-3xl shadow-2xl group-hover:scale-110 transition-all z-10">
+                3
+              </div>
+              <div className="bg-white rounded-[40px] p-10 pt-16 shadow-lg hover:shadow-2xl transition-all border-2 border-gray-100 group-hover:border-rose-500">
+                <div className="space-y-6">
+                  <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center">
+                    <Heart size={32} className="text-rose-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900 mb-3">整う</h3>
+                    <p className="text-gray-600 font-medium leading-relaxed">
+                      予約時間に施設へ。
+                      プライベート空間で、プロの技術を心ゆくまでお楽しみください。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center pt-8">
+            <button 
+              onClick={() => navigate('/app/map')}
+              className="bg-gray-900 hover:bg-teal-600 text-white font-black py-6 px-12 rounded-full text-lg shadow-2xl hover:scale-105 transition-all inline-flex items-center gap-3"
+            >
+              <Zap size={24} />
+              今すぐ始める
+              <ArrowRight size={24} />
+            </button>
           </div>
         </div>
       </section>
