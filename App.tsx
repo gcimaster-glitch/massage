@@ -137,7 +137,8 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
-    window.location.href = '#/';
+    localStorage.removeItem('auth_token'); // Also remove auth token
+    window.location.href = '/'; // Navigate to root without hash
   };
 
   return (
