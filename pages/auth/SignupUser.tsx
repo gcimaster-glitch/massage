@@ -2,16 +2,59 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
-  ArrowLeft, User, Mail, Lock, ChevronRight, CheckCircle, Sparkles, Zap, Smartphone, Heart
+  ArrowLeft, User, Mail, Lock, ChevronRight, CheckCircle, Sparkles, Zap, Smartphone, Heart, AlertCircle, Loader2
 } from 'lucide-react';
 
 const SignupUser: React.FC = () => {
   const navigate = useNavigate();
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    password: '',
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    setError(''); // Clear error on input change
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSuccess(true);
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          role: 'USER',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '登録に失敗しました');
+      }
+
+      // Success - show success screen
+      setIsSuccess(true);
+    } catch (err: any) {
+      setError(err.message || '登録中にエラーが発生しました');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSuccess) {
@@ -89,33 +132,91 @@ const SignupUser: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* エラーメッセージ */}
+          {error && (
+            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-[24px] flex items-start gap-3 animate-fade-in">
+              <AlertCircle size={20} className="text-red-600 mt-0.5 shrink-0" />
+              <p className="text-sm font-bold text-red-700">{error}</p>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-8">
              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-600 uppercase tracking-widest ml-4 flex items-center gap-2"><User size={12}/> お名前</label>
-                <input required type="text" placeholder="例: 山田 花子" className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" />
+                <label className="text-[11px] font-black text-gray-600 uppercase tracking-widest ml-4 flex items-center gap-2"><User size={12}/> お名前 <span className="text-red-500">*</span></label>
+                <input 
+                  required 
+                  type="text" 
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="例: 山田 花子" 
+                  className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" 
+                  disabled={isLoading}
+                />
              </div>
              <div className="space-y-2">
                 <label className="text-[11px] font-black text-gray-600 uppercase tracking-widest ml-4 flex items-center gap-2"><Smartphone size={12}/> 電話番号</label>
-                <input required type="tel" placeholder="09012345678" className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" />
+                <input 
+                  type="tel" 
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="09012345678" 
+                  className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" 
+                  disabled={isLoading}
+                />
              </div>
           </div>
 
           <div className="space-y-2">
-             <label className="text-[11px] font-black text-gray-600 uppercase tracking-widest ml-4 flex items-center gap-2"><Mail size={12}/> メールアドレス</label>
-             <input required type="email" placeholder="example@soothe.jp" className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" />
+             <label className="text-[11px] font-black text-gray-600 uppercase tracking-widest ml-4 flex items-center gap-2"><Mail size={12}/> メールアドレス <span className="text-red-500">*</span></label>
+             <input 
+               required 
+               type="email" 
+               name="email"
+               value={formData.email}
+               onChange={handleChange}
+               placeholder="example@hogusy.jp" 
+               className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" 
+               disabled={isLoading}
+             />
           </div>
 
           <div className="space-y-2">
-             <label className="text-[11px] font-black text-gray-600 uppercase tracking-widest ml-4 flex items-center gap-2"><Lock size={12}/> パスワード</label>
-             <input required type="password" placeholder="8文字以上の英数字" className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" />
+             <label className="text-[11px] font-black text-gray-600 uppercase tracking-widest ml-4 flex items-center gap-2"><Lock size={12}/> パスワード <span className="text-red-500">*</span></label>
+             <input 
+               required 
+               type="password" 
+               name="password"
+               value={formData.password}
+               onChange={handleChange}
+               minLength={8}
+               placeholder="8文字以上の英数字" 
+               className="w-full px-8 py-5 bg-gray-50 border border-gray-200 rounded-[28px] font-bold text-gray-900 outline-none focus:bg-white focus:border-teal-500 transition-all shadow-inner" 
+               disabled={isLoading}
+             />
+             <p className="text-xs text-gray-400 ml-4 font-bold">※ 半角英数字を含む8文字以上で入力してください</p>
           </div>
 
           <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100 text-[11px] text-gray-400 font-bold leading-relaxed">
              <p>ご登録により、<Link to="/legal" className="text-teal-600 underline">利用規約</Link>および<Link to="/legal" className="text-teal-600 underline">プライバシーポリシー</Link>に同意したものとみなされます。安全なコミュニティ維持のため、本人確認にご協力をお願いいたします。</p>
           </div>
 
-          <button type="submit" className="w-full bg-gray-900 text-white py-8 rounded-[40px] font-black text-2xl hover:bg-teal-600 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.1)] active:scale-[0.98] flex items-center justify-center gap-4 mt-4 group">
-             規約に同意して登録 <ChevronRight size={32} className="group-hover:translate-x-1 transition-transform" />
+          <button 
+            type="submit" 
+            className="w-full bg-gray-900 text-white py-8 rounded-[40px] font-black text-2xl hover:bg-teal-600 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.1)] active:scale-[0.98] flex items-center justify-center gap-4 mt-4 group disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading}
+          >
+             {isLoading ? (
+               <>
+                 <Loader2 size={32} className="animate-spin" />
+                 登録中...
+               </>
+             ) : (
+               <>
+                 規約に同意して登録 <ChevronRight size={32} className="group-hover:translate-x-1 transition-transform" />
+               </>
+             )}
           </button>
         </form>
 

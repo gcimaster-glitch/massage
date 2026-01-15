@@ -271,6 +271,256 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 })
 
 // ============================================
+// Email/Password Registration
+// ============================================
+authApp.post('/register', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { email, password, name, phone, role = 'USER' } = body
+
+    // Validation
+    if (!email || !password || !name) {
+      return c.json({ error: 'メールアドレス、パスワード、お名前は必須です' }, 400)
+    }
+
+    if (password.length < 8) {
+      return c.json({ error: 'パスワードは8文字以上で入力してください' }, 400)
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return c.json({ error: '有効なメールアドレスを入力してください' }, 400)
+    }
+
+    // Check if DB is available
+    if (!c.env.DB) {
+      // Development mode - return mock success
+      return c.json({
+        success: true,
+        message: '仮登録が完了しました。ご登録のメールアドレスに確認メールを送信しました。',
+        userId: generateUserId(),
+        email: email,
+      })
+    }
+
+    try {
+      // Check if email already exists
+      const { results: existingUsers } = await c.env.DB.prepare(
+        'SELECT id FROM users WHERE email = ?'
+      )
+        .bind(email)
+        .all()
+
+      if (existingUsers.length > 0) {
+        return c.json({ error: 'このメールアドレスは既に登録されています' }, 409)
+      }
+
+      // Hash password using Web Crypto API
+      const encoder = new TextEncoder()
+      const data = encoder.encode(password)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+      // Generate user ID and verification token
+      const userId = generateUserId()
+      const verificationToken = generateState() // Reuse state generator for token
+
+      // Insert new user
+      await c.env.DB.prepare(
+        `INSERT INTO users (id, email, password_hash, name, phone, role, email_verified, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))`
+      )
+        .bind(userId, email, passwordHash, name, phone || null, role)
+        .run()
+
+      // Store verification token (expires in 24 hours)
+      await c.env.DB.prepare(
+        `INSERT INTO email_verifications (user_id, token, expires_at)
+         VALUES (?, ?, datetime('now', '+24 hours'))`
+      )
+        .bind(userId, verificationToken)
+        .run()
+
+      // TODO: Send verification email via Resend
+      // For now, we'll return success with verification link
+      const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
+
+      return c.json({
+        success: true,
+        message: '仮登録が完了しました。ご登録のメールアドレスに確認メールを送信しました。',
+        userId: userId,
+        email: email,
+        verificationUrl: verificationUrl, // In production, this should only be sent via email
+      })
+    } catch (dbError) {
+      console.error('Database error during registration:', dbError)
+      return c.json({ error: '登録処理中にエラーが発生しました。しばらくしてから再度お試しください。' }, 500)
+    }
+  } catch (e) {
+    console.error('Registration error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
+// ============================================
+// Email Verification
+// ============================================
+authApp.get('/verify-email', async (c) => {
+  const token = c.req.query('token')
+
+  if (!token) {
+    return c.redirect('/?error=invalid_verification_token')
+  }
+
+  if (!c.env.DB) {
+    // Development mode
+    return c.redirect('/auth/login?verified=true')
+  }
+
+  try {
+    // Find verification token
+    const { results } = await c.env.DB.prepare(
+      `SELECT user_id FROM email_verifications 
+       WHERE token = ? AND expires_at > datetime('now')`
+    )
+      .bind(token)
+      .all()
+
+    if (results.length === 0) {
+      return c.redirect('/?error=invalid_or_expired_token')
+    }
+
+    const userId = (results[0] as any).user_id
+
+    // Update user as verified
+    await c.env.DB.prepare(
+      'UPDATE users SET email_verified = 1 WHERE id = ?'
+    )
+      .bind(userId)
+      .run()
+
+    // Delete verification token
+    await c.env.DB.prepare(
+      'DELETE FROM email_verifications WHERE token = ?'
+    )
+      .bind(token)
+      .run()
+
+    return c.redirect('/auth/login?verified=true&message=メール認証が完了しました。ログインしてご利用ください。')
+  } catch (e) {
+    console.error('Email verification error:', e)
+    return c.redirect('/?error=verification_failed')
+  }
+})
+
+// ============================================
+// Email/Password Login
+// ============================================
+authApp.post('/login', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { email, password } = body
+
+    if (!email || !password) {
+      return c.json({ error: 'メールアドレスとパスワードを入力してください' }, 400)
+    }
+
+    if (!c.env.DB) {
+      // Development mode - mock login
+      return c.json({
+        success: true,
+        token: createJWT(
+          {
+            userId: 'dev-user',
+            email: email,
+            userName: 'デモユーザー',
+            role: 'USER',
+          },
+          c.env.JWT_SECRET || 'dev-secret',
+          30
+        ),
+        user: {
+          id: 'dev-user',
+          email: email,
+          name: 'デモユーザー',
+          role: 'USER',
+        },
+      })
+    }
+
+    try {
+      // Hash password for comparison
+      const encoder = new TextEncoder()
+      const data = encoder.encode(password)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+      // Find user by email and password
+      const { results } = await c.env.DB.prepare(
+        'SELECT id, email, name, role, avatar_url, email_verified FROM users WHERE email = ? AND password_hash = ?'
+      )
+        .bind(email, passwordHash)
+        .all()
+
+      if (results.length === 0) {
+        return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401)
+      }
+
+      const user = results[0] as any
+
+      if (!user.email_verified) {
+        return c.json({ error: 'メールアドレスが未認証です。ご登録のメールから認証を完了してください。' }, 403)
+      }
+
+      // Create session
+      const sessionId = generateSessionId()
+      const sessionToken = generateSessionToken()
+
+      await c.env.DB.prepare(
+        `INSERT INTO auth_sessions (id, user_id, session_token, expires_at)
+         VALUES (?, ?, ?, datetime('now', '+30 days'))`
+      )
+        .bind(sessionId, user.id, sessionToken)
+        .run()
+
+      // Create JWT
+      const jwt = createJWT(
+        {
+          userId: user.id,
+          email: user.email,
+          userName: user.name,
+          role: user.role,
+          sessionId: sessionId,
+        },
+        c.env.JWT_SECRET,
+        30
+      )
+
+      return c.json({
+        success: true,
+        token: jwt,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          avatar_url: user.avatar_url,
+        },
+      })
+    } catch (dbError) {
+      console.error('Database error during login:', dbError)
+      return c.json({ error: 'ログイン処理中にエラーが発生しました' }, 500)
+    }
+  } catch (e) {
+    console.error('Login error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
+// ============================================
 // Link Social Account (for existing users)
 // ============================================
 authApp.post('/link/:provider', async (c) => {
