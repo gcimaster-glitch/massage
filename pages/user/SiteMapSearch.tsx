@@ -81,15 +81,17 @@ const SiteMapSearch: React.FC = () => {
   // ユーザーの現在地を取得して3km以内の施設を計算
   useEffect(() => {
     if (userLocation && sites.length > 0) {
-      const sitesWithDistance = sites.map(site => ({
-        ...site,
-        distance: calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          site.location.lat,
-          site.location.lng
-        )
-      }));
+      const sitesWithDistance = sites
+        .filter(site => site.lat && site.lng) // 座標データがある施設のみ
+        .map(site => ({
+          ...site,
+          distance: calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            site.lat,
+            site.lng
+          )
+        }));
 
       // 3km以内の施設のみをフィルタリングして距離順にソート
       const nearby = sitesWithDistance
@@ -408,8 +410,8 @@ const SiteMapSearch: React.FC = () => {
                   onClick={() => {
                     setSelectedSite(site);
                     // マップを施設の位置に移動
-                    if (googleMapRef.current) {
-                      googleMapRef.current.panTo(site.location);
+                    if (googleMapRef.current && site.lat && site.lng) {
+                      googleMapRef.current.panTo({ lat: site.lat, lng: site.lng });
                       googleMapRef.current.setZoom(16);
                     }
                   }}
