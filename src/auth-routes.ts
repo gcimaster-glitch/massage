@@ -521,19 +521,165 @@ authApp.post('/login', async (c) => {
 })
 
 // ============================================
+// Get Current User Info (requires JWT)
+// ============================================
+authApp.get('/me', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: '認証が必要です' }, 401)
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyJWT(token, c.env.JWT_SECRET)
+    
+    if (!decoded) {
+      return c.json({ error: '無効なトークンです' }, 401)
+    }
+
+    if (!c.env.DB) {
+      // Development mode
+      return c.json({
+        user: {
+          id: decoded.userId,
+          email: decoded.email,
+          name: decoded.userName,
+          role: decoded.role,
+        },
+      })
+    }
+
+    // Fetch user from database
+    const { results } = await c.env.DB.prepare(
+      'SELECT id, email, name, role, avatar_url, phone FROM users WHERE id = ?'
+    )
+      .bind(decoded.userId)
+      .all()
+
+    if (results.length === 0) {
+      return c.json({ error: 'ユーザーが見つかりません' }, 404)
+    }
+
+    const user = results[0] as any
+
+    // Check if user has linked social accounts
+    const { results: socialAccounts } = await c.env.DB.prepare(
+      'SELECT provider FROM social_accounts WHERE user_id = ?'
+    )
+      .bind(user.id)
+      .all()
+
+    const linkedProviders = socialAccounts.map((acc: any) => acc.provider)
+
+    return c.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        avatar_url: user.avatar_url,
+        phone: user.phone,
+        linkedProviders: linkedProviders,
+      },
+    })
+  } catch (e) {
+    console.error('Get user info error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
+// ============================================
 // Link Social Account (for existing users)
 // ============================================
-authApp.post('/link/:provider', async (c) => {
-  // TODO: Implement account linking for existing users
-  return c.json({ message: 'Not implemented yet' }, 501)
+authApp.get('/link/:provider', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    const provider = c.req.param('provider')?.toUpperCase()
+    const redirectPath = c.req.query('redirectPath') || '/app'
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.redirect(`/?error=auth_required`)
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyJWT(token, c.env.JWT_SECRET)
+    
+    if (!decoded) {
+      return c.redirect(`/?error=invalid_token`)
+    }
+
+    // Store user ID in state for later
+    const state = generateState()
+    const stateData = {
+      userId: decoded.userId,
+      action: 'link',
+      redirectPath: redirectPath,
+    }
+
+    if (!c.env.DB) {
+      // Development mode - just redirect back
+      return c.redirect(`${redirectPath}?linked=${provider}`)
+    }
+
+    // Store state
+    await c.env.DB.prepare(
+      `INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at, user_id, action)
+       VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'), ?, ?)`
+    )
+      .bind(state, provider, redirectPath, 'USER', decoded.userId, 'link')
+      .run()
+
+    // Get OAuth provider config
+    const providerConfig = getOAuthProvider(c.env, provider)
+    if (!providerConfig) {
+      return c.redirect(`/?error=unsupported_provider`)
+    }
+
+    const callbackUrl = `${new URL(c.req.url).origin}/api/auth/oauth/${provider.toLowerCase()}/callback`
+    const oauthUrl = generateOAuthUrl(providerConfig, callbackUrl, state)
+
+    return c.redirect(oauthUrl)
+  } catch (e) {
+    console.error('Link account error:', e)
+    return c.redirect(`/?error=link_failed`)
+  }
 })
 
 // ============================================
 // Unlink Social Account
 // ============================================
 authApp.delete('/link/:provider', async (c) => {
-  // TODO: Implement account unlinking
-  return c.json({ message: 'Not implemented yet' }, 501)
+  try {
+    const authHeader = c.req.header('Authorization')
+    const provider = c.req.param('provider')?.toUpperCase()
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: '認証が必要です' }, 401)
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyJWT(token, c.env.JWT_SECRET)
+    
+    if (!decoded) {
+      return c.json({ error: '無効なトークンです' }, 401)
+    }
+
+    if (!c.env.DB) {
+      return c.json({ success: true, message: '開発モード: 連携を解除しました' })
+    }
+
+    // Remove social account link
+    await c.env.DB.prepare(
+      'DELETE FROM social_accounts WHERE user_id = ? AND provider = ?'
+    )
+      .bind(decoded.userId, provider)
+      .run()
+
+    return c.json({ success: true, message: '連携を解除しました' })
+  } catch (e) {
+    console.error('Unlink account error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
 })
 
 export default authApp
