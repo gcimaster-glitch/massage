@@ -4,12 +4,50 @@
 > 日本版HOGUSY × CARE CUBEの統合ウェルネス・プラットフォーム
 
 **🌐 本番環境**: https://hogusy.pages.dev  
-**🔧 最新デプロイ**: https://0883db8f.hogusy.pages.dev  
+**🔧 最新デプロイ**: https://8b1fd45c.hogusy.pages.dev  
 **📦 GitHub**: https://github.com/gcimaster-glitch/massage
 
 ---
 
 ## 📊 現在の開発状況
+
+### ✅ Phase M: ログイン状態UI + ソーシャルアカウント連携 （**完了🎉**）
+- [x] **ログイン状態確認API**
+  - ✅ GET /api/auth/me エンドポイント
+  - ✅ JWT トークン検証
+  - ✅ ユーザー情報取得（ID、名前、メール、役割、アバター）
+  - ✅ 連携済みソーシャルアカウント一覧取得
+
+- [x] **認証コンテキスト（AuthContext）**
+  - ✅ React Context API でグローバル認証状態管理
+  - ✅ useAuth フックで全コンポーネントから利用可能
+  - ✅ 自動ログイン（localStorage の auth_token）
+  - ✅ ログイン状態の同期
+  - ✅ ログアウト機能
+
+- [x] **ソーシャルアカウント連携機能**
+  - ✅ GET /api/auth/link/:provider（連携開始）
+  - ✅ DELETE /api/auth/link/:provider（連携解除）
+  - ✅ OAuth 状態管理テーブル拡張（user_id、action カラム追加）
+  - ✅ 既存ユーザーによる後付けGoogle連携に対応
+  - ✅ 連携済みプロバイダー一覧表示
+
+- [x] **ソーシャルアカウント設定ページ**
+  - ✅ /app/account/social ルート追加
+  - ✅ Google / Yahoo / LINE / X / Facebook / Apple 連携UI
+  - ✅ 連携状態の視覚的表示（チェックマーク/×）
+  - ✅ 連携ボタン / 連携解除ボタン
+  - ✅ ローディング状態とエラーハンドリング
+  - ✅ セキュリティ説明
+
+- [x] **マイアカウント画面統合**
+  - ✅ ソーシャルアカウント連携メニュー追加
+  - ✅ アイコン付きメニューボタン（Link2アイコン）
+  - ✅ 既存メニューとの統合
+
+**デプロイURL**: https://8b1fd45c.hogusy.pages.dev  
+**ソーシャルアカウント設定**: https://8b1fd45c.hogusy.pages.dev/#/app/account/social  
+**検証済み**: ログイン状態取得、Google連携フロー、連携解除、UI表示
 
 ### ✅ Phase L: 完全なユーザー登録システム （**完了🎉**）
 - [x] **メール/パスワード登録API**
