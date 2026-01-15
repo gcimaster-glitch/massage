@@ -4,7 +4,7 @@
 > 日本版HOGUSY × CARE CUBEの統合ウェルネス・プラットフォーム
 
 **🌐 本番環境**: https://hogusy.pages.dev  
-**🔧 最新デプロイ**: https://8b1fd45c.hogusy.pages.dev  
+**🔧 最新デプロイ**: https://3391c4dc.hogusy.pages.dev  
 **📦 GitHub**: https://github.com/gcimaster-glitch/massage
 
 ---
@@ -24,6 +24,15 @@
   - ✅ 自動ログイン（localStorage の auth_token）
   - ✅ ログイン状態の同期
   - ✅ ログアウト機能
+
+- [x] **Google OAuth 完全統合**
+  - ✅ Google Cloud Console 設定完了
+  - ✅ リダイレクトURI 正常動作
+  - ✅ トークン交換成功
+  - ✅ ユーザー情報取得成功
+  - ✅ データベース連携（users, social_accounts）
+  - ✅ JWT発行とセッション管理
+  - ✅ URLからトークン削除（セキュリティ向上）
 
 - [x] **ソーシャルアカウント連携機能**
   - ✅ GET /api/auth/link/:provider（連携開始）
@@ -45,9 +54,14 @@
   - ✅ アイコン付きメニューボタン（Link2アイコン）
   - ✅ 既存メニューとの統合
 
-**デプロイURL**: https://8b1fd45c.hogusy.pages.dev  
-**ソーシャルアカウント設定**: https://8b1fd45c.hogusy.pages.dev/#/app/account/social  
-**検証済み**: ログイン状態取得、Google連携フロー、連携解除、UI表示
+- [x] **UTF-8対応とバグ修正**
+  - ✅ UTF-8セーフなBase64エンコーディング（日本語ユーザー名対応）
+  - ✅ データベースカラム名修正（session_token → token）
+  - ✅ verifyJWT インポート追加
+
+**デプロイURL**: https://3391c4dc.hogusy.pages.dev  
+**ソーシャルアカウント設定**: https://3391c4dc.hogusy.pages.dev/#/app/account/social  
+**検証済み**: ✅ Google登録完全動作、トークン発行、ユーザー作成、ログイン成功
 
 ### ✅ Phase L: 完全なユーザー登録システム （**完了🎉**）
 - [x] **メール/パスワード登録API**
