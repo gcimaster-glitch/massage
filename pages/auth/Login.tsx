@@ -42,6 +42,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           [Role.AFFILIATE]: '/affiliate'
         };
 
+        // Clean URL (remove token from URL for security)
+        window.history.replaceState({}, '', paths[role] || '/app');
+
         setTimeout(() => {
           navigate(paths[role] || '/app');
           setIsSubmitting(false);

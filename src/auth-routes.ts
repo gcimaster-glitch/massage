@@ -121,21 +121,12 @@ authApp.get('/oauth/:provider/callback', async (c) => {
   }
 
   try {
-    console.log('[OAuth Callback] Starting callback process')
-    console.log('[OAuth Callback] Provider:', providerName)
-    console.log('[OAuth Callback] Has DB:', !!c.env.DB)
-    console.log('[OAuth Callback] Has JWT_SECRET:', !!c.env.JWT_SECRET)
-    
     // Exchange code for token
     const redirectUri = `${new URL(c.req.url).origin}/api/auth/oauth/${providerName.toLowerCase()}/callback`
-    console.log('[OAuth Callback] Redirect URI:', redirectUri)
-    
     const tokenData = await exchangeCodeForToken(provider, code, redirectUri)
-    console.log('[OAuth Callback] Token exchange successful')
 
     // Get user info from provider
     const providerUser = await getUserInfo(provider, tokenData.access_token)
-    console.log('[OAuth Callback] User info retrieved:', providerUser.email)
 
     // Check if user exists or create new user
     let user: any
@@ -276,12 +267,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
     return c.redirect(redirectUrl.toString())
   } catch (e) {
     console.error('OAuth callback error:', e)
-    // Log more details for debugging
-    if (e instanceof Error) {
-      console.error('Error message:', e.message)
-      console.error('Error stack:', e.stack)
-    }
-    return c.redirect(`/?error=auth_failed&details=${encodeURIComponent(e instanceof Error ? e.message : 'Unknown error')}`)
+    return c.redirect(`/?error=auth_failed`)
   }
 })
 
