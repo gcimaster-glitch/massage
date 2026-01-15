@@ -32,6 +32,8 @@ const SiteMapSearch: React.FC = () => {
   const [loadingTherapists, setLoadingTherapists] = useState(false);
   const [showQuickBooking, setShowQuickBooking] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isListMinimized, setIsListMinimized] = useState(false); // リスト最小化状態
+  const [isListClosed, setIsListClosed] = useState(false); // リスト完全非表示
   
   // フィルター設定
   const [distanceRange, setDistanceRange] = useState<number>(3); // 1km, 3km, 5km
@@ -538,26 +540,63 @@ const SiteMapSearch: React.FC = () => {
       </div>
 
       {/* フローティング施設リスト（3km以内） */}
-      {userLocation && nearbySites.length > 0 && (
-        <div className="absolute top-40 right-4 z-30 w-96 max-h-[calc(100vh-180px)] animate-fade-in">
+      {userLocation && nearbySites.length > 0 && !isListClosed && (
+        <div className={`absolute top-40 right-4 z-30 transition-all duration-300 ${
+          isListMinimized ? 'w-16' : 'w-96'
+        } max-h-[calc(100vh-180px)] animate-fade-in`}>
           <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
             {/* ヘッダー */}
             <div className="bg-gradient-to-r from-teal-600 to-indigo-600 p-6">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-white font-black text-xl flex items-center gap-2">
-                  <MapPin size={24} />
-                  近くの施設
-                </h3>
-                <span className="bg-white/20 backdrop-blur-md text-white text-xs font-black px-3 py-1.5 rounded-full">
-                  {nearbySites.length}件
-                </span>
+                {!isListMinimized && (
+                  <>
+                    <h3 className="text-white font-black text-xl flex items-center gap-2">
+                      <MapPin size={24} />
+                      近くの施設
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-white/20 backdrop-blur-md text-white text-xs font-black px-3 py-1.5 rounded-full">
+                        {nearbySites.length}件
+                      </span>
+                      {/* 最小化ボタン */}
+                      <button
+                        onClick={() => setIsListMinimized(true)}
+                        className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-all"
+                        title="最小化"
+                      >
+                        <SlidersHorizontal size={16} />
+                      </button>
+                      {/* 閉じるボタン */}
+                      <button
+                        onClick={() => setIsListClosed(true)}
+                        className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-all"
+                        title="閉じる"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
+                {isListMinimized && (
+                  <button
+                    onClick={() => setIsListMinimized(false)}
+                    className="w-full flex flex-col items-center gap-2 text-white hover:bg-white/10 p-2 rounded-xl transition-all"
+                    title="展開"
+                  >
+                    <MapPin size={20} />
+                    <span className="text-xs font-bold">{nearbySites.length}</span>
+                  </button>
+                )}
               </div>
-              <p className="text-white/90 text-sm font-medium">
-                現在地から3km以内
-              </p>
+              {!isListMinimized && (
+                <p className="text-white/90 text-sm font-medium">
+                  現在地から{distanceRange}km以内
+                </p>
+              )}
             </div>
 
             {/* スクロール可能なリスト */}
+            {!isListMinimized && (
             <div className="overflow-y-auto max-h-[calc(100vh-340px)] p-4 space-y-3">
               {nearbySites.map((site) => (
                 <div
@@ -630,8 +669,10 @@ const SiteMapSearch: React.FC = () => {
                 </div>
               ))}
             </div>
+            )}
 
             {/* フッター */}
+            {!isListMinimized && (
             <div className="p-4 bg-gray-50 border-t border-gray-200">
               <button
                 onClick={() => navigate('/app/sites')}
@@ -641,8 +682,23 @@ const SiteMapSearch: React.FC = () => {
                 <ArrowRight size={16} />
               </button>
             </div>
+            )}
           </div>
         </div>
+      )}
+
+      {/* リストを再表示するボタン（閉じた後に表示） */}
+      {isListClosed && userLocation && nearbySites.length > 0 && (
+        <button
+          onClick={() => setIsListClosed(false)}
+          className="absolute top-40 right-4 z-30 bg-gradient-to-r from-teal-600 to-indigo-600 text-white p-4 rounded-2xl shadow-2xl hover:shadow-3xl transition-all animate-fade-in"
+          title="近くの施設を表示"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <MapPin size={24} />
+            <span className="text-xs font-bold">{nearbySites.length}件</span>
+          </div>
+        </button>
       )}
 
       {/* 選択されたサイトの詳細 */}
