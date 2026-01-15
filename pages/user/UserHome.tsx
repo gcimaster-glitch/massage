@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   MapPin, Home, Star, Clock, Search, Filter, 
-  Calendar as CalendarIcon, Heart, ChevronRight, Sliders, ArrowRight, Building2, Users, Loader2, Zap, Sparkles, Sunrise, Sun, Moon, Box, Leaf, LayoutGrid, Award, Move
+  Calendar as CalendarIcon, Heart, ChevronRight, Sliders, ArrowRight, Building2, Users, Loader2, Zap, Sparkles, Sunrise, Sun, Moon, Box, Leaf, LayoutGrid, Award, Move, User
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,32 @@ const UserHome: React.FC = () => {
   const [bookingType, setBookingType] = useState<BookingType>(BookingType.ONSITE);
   const [area, setArea] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check login status
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      setIsLoggedIn(true);
+      
+      // Fetch user info
+      fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) {
+            setUserName(data.user.name);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load user:', err);
+        });
+    }
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -24,6 +50,25 @@ const UserHome: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] pb-40 font-sans text-gray-900 overflow-x-hidden">
+      
+      {/* Welcome Banner for Logged-in Users */}
+      {isLoggedIn && userName && (
+        <div className="fixed top-4 right-4 z-50 bg-white rounded-2xl shadow-lg px-6 py-4 flex items-center gap-3 animate-fade-in border border-teal-100">
+          <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+            <User size={20} className="text-teal-600" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 font-bold">ログイン中</p>
+            <p className="font-black text-gray-900">{userName}</p>
+          </div>
+          <button
+            onClick={() => navigate('/app/account')}
+            className="ml-4 text-teal-600 hover:text-teal-700 font-bold text-sm"
+          >
+            マイページ →
+          </button>
+        </div>
+      )}
       
       {/* 1. Immersive Hero & Global Search */}
       <section className="relative h-[80vh] min-h-[600px] flex items-center justify-center overflow-hidden">
