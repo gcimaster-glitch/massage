@@ -159,6 +159,32 @@ export function generateSessionId(): string {
   return `sess-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 }
 
+// Base64 encoding helper (UTF-8 safe)
+function base64Encode(str: string): string {
+  // Convert string to UTF-8 bytes
+  const bytes = new TextEncoder().encode(str)
+  // Convert bytes to binary string
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  // Encode binary string to base64
+  return btoa(binary)
+}
+
+// Base64 decoding helper (UTF-8 safe)
+function base64Decode(base64: string): string {
+  // Decode base64 to binary string
+  const binary = atob(base64)
+  // Convert binary string to bytes
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  // Convert bytes to UTF-8 string
+  return new TextDecoder().decode(bytes)
+}
+
 // Create JWT token (simple version)
 export function createJWT(payload: any, secret: string, expiresInDays: number = 7): string {
   const header = { alg: 'HS256', typ: 'JWT' }
@@ -166,9 +192,9 @@ export function createJWT(payload: any, secret: string, expiresInDays: number = 
   const data = { ...payload, exp }
 
   // Simple JWT encoding (for production, use a proper JWT library)
-  const encodedHeader = btoa(JSON.stringify(header))
-  const encodedPayload = btoa(JSON.stringify(data))
-  const signature = btoa(`${encodedHeader}.${encodedPayload}.${secret}`)
+  const encodedHeader = base64Encode(JSON.stringify(header))
+  const encodedPayload = base64Encode(JSON.stringify(data))
+  const signature = base64Encode(`${encodedHeader}.${encodedPayload}.${secret}`)
 
   return `${encodedHeader}.${encodedPayload}.${signature}`
 }
@@ -177,13 +203,13 @@ export function createJWT(payload: any, secret: string, expiresInDays: number = 
 export function verifyJWT(token: string, secret: string): any {
   try {
     const [encodedHeader, encodedPayload, signature] = token.split('.')
-    const expectedSignature = btoa(`${encodedHeader}.${encodedPayload}.${secret}`)
+    const expectedSignature = base64Encode(`${encodedHeader}.${encodedPayload}.${secret}`)
 
     if (signature !== expectedSignature) {
       throw new Error('Invalid signature')
     }
 
-    const payload = JSON.parse(atob(encodedPayload))
+    const payload = JSON.parse(base64Decode(encodedPayload))
 
     if (payload.exp < Date.now()) {
       throw new Error('Token expired')

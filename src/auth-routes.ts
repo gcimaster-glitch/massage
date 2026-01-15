@@ -15,6 +15,7 @@ import {
   exchangeCodeForToken,
   getUserInfo,
   createJWT,
+  verifyJWT,
 } from './auth-helpers'
 
 type Bindings = {
@@ -480,7 +481,7 @@ authApp.post('/login', async (c) => {
       const sessionToken = generateSessionToken()
 
       await c.env.DB.prepare(
-        `INSERT INTO auth_sessions (id, user_id, session_token, expires_at)
+        `INSERT INTO auth_sessions (id, user_id, token, expires_at)
          VALUES (?, ?, ?, datetime('now', '+30 days'))`
       )
         .bind(sessionId, user.id, sessionToken)
