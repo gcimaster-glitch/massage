@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, User, Mail, Lock, ChevronRight, CheckCircle, Sparkles, Zap, Smartphone, Heart, AlertCircle, Loader2
@@ -16,6 +16,15 @@ const SignupUser: React.FC = () => {
     email: '',
     password: '',
   });
+
+  // Check if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // Already logged in, redirect to dashboard
+      navigate('/app');
+    }
+  }, [navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({

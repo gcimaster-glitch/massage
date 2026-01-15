@@ -13,6 +13,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Check if already logged in (but not during OAuth callback)
+  useEffect(() => {
+    const token = searchParams.get('token');
+    // Only check if not in OAuth callback
+    if (!token) {
+      const storedToken = localStorage.getItem('auth_token');
+      if (storedToken) {
+        // Already logged in, redirect to dashboard
+        navigate('/app');
+      }
+    }
+  }, [navigate, searchParams]);
+
   // Check for OAuth callback token
   useEffect(() => {
     const token = searchParams.get('token');
