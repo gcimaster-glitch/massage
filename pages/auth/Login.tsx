@@ -74,8 +74,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   const handleGoogleLogin = (role: Role = Role.USER) => {
-    // Redirect to Google OAuth
-    window.location.href = `/api/auth/oauth/google?role=${role}&redirectPath=/app`;
+    // Redirect to Google OAuth with full URL
+    const baseUrl = window.location.origin;
+    window.location.href = `${baseUrl}/api/auth/oauth/google?role=${role}&redirectPath=/app`;
   };
 
   return (
