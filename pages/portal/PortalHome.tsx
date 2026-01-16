@@ -20,11 +20,13 @@ const PortalHome: React.FC = () => {
   useEffect(() => {
     const fetchPopularTherapists = async () => {
       try {
-        const response = await fetch('/api/therapists');
+        const response = await fetch('/api/therapists?limit=4');
         if (response.ok) {
           const data = await response.json();
+          // APIレスポンスは {therapists: [...], total: ...} の構造
+          const therapistsList = data.therapists || [];
           // Sort by rating and take top 4
-          const sorted = data.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+          const sorted = therapistsList.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
           setPopularTherapists(sorted.slice(0, 4));
         } else {
           // Fallback to mock data

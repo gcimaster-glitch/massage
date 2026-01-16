@@ -34,8 +34,9 @@ export default function SiteManagement() {
     try {
       const res = await fetch('/api/sites')
       const data = await res.json()
-      setSites(data)
-      setFilteredSites(data)
+      const sitesList = data.sites || []
+      setSites(sitesList)
+      setFilteredSites(sitesList)
     } catch (e) {
       console.error('Failed to fetch sites:', e)
     } finally {

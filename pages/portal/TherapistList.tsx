@@ -33,12 +33,14 @@ const TherapistListPage: React.FC = () => {
     try {
       const res = await fetch('/api/therapists');
       const data = await res.json();
-      setTherapists(data.map((t: any) => ({
+      // APIレスポンスは {therapists: [...], total: ...} の構造
+      const therapistsList = data.therapists || [];
+      setTherapists(therapistsList.map((t: any) => ({
         ...t,
-        areas: JSON.parse(t.approved_areas || '[]'),
-        categories: JSON.parse(t.specialties || '[]'),
+        areas: typeof t.approved_areas === 'string' ? JSON.parse(t.approved_areas || '[]') : (t.approved_areas || []),
+        categories: typeof t.specialties === 'string' ? JSON.parse(t.specialties || '[]') : (t.specialties || []),
         reviewCount: t.review_count,
-        imageUrl: t.avatar_url || `https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop`
+        imageUrl: t.avatar_url || t.photo || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`
       })));
     } catch (e) {
       console.error('Failed to fetch therapists:', e);

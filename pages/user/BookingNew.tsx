@@ -60,9 +60,9 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
 
   const fetchSites = async () => {
     try {
-      const res = await fetch('/api/sites');
+      const res = await fetch('/api/sites?status=APPROVED');
       const data = await res.json();
-      setSites(data);
+      setSites(data.sites || []);
     } catch (e) {
       console.error('Failed to fetch sites:', e);
     }
@@ -72,7 +72,7 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
     try {
       const res = await fetch('/api/therapists');
       const data = await res.json();
-      setTherapists(data);
+      setTherapists(data.therapists || []);
     } catch (e) {
       console.error('Failed to fetch therapists:', e);
     }

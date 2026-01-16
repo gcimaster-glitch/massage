@@ -24,10 +24,10 @@ const UserHomeNew: React.FC<UserHomeNewProps> = ({ currentUser }) => {
 
   const fetchTopTherapists = async () => {
     try {
-      const response = await fetch('/api/therapists');
+      const response = await fetch('/api/therapists?limit=6');
       const data = await response.json();
-      // 上位6名を表示
-      setTherapists(data.slice(0, 6));
+      // APIレスポンスは {therapists: [...], total: ...} の構造
+      setTherapists(data.therapists || []);
     } catch (error) {
       console.error('Failed to fetch therapists:', error);
     } finally {
