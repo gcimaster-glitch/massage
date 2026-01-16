@@ -36,7 +36,7 @@ const SiteMapSearch: React.FC = () => {
   const [isListClosed, setIsListClosed] = useState(false); // リスト完全非表示
   
   // フィルター設定
-  const [distanceRange, setDistanceRange] = useState<number>(3); // 1km, 3km, 5km
+  const [distanceRange, setDistanceRange] = useState<number>(2); // 1km, 2km, 3km, 5km
   const [onlyAvailableNow, setOnlyAvailableNow] = useState<boolean>(false);
   const [selectedSiteType, setSelectedSiteType] = useState<string>('ALL'); // ALL, CARE_CUBE, HOTEL, OFFICE
   const [favoriteSites, setFavoriteSites] = useState<Set<string>>(new Set());
@@ -463,8 +463,8 @@ const SiteMapSearch: React.FC = () => {
               <label className="text-sm font-bold text-gray-700 block">
                 距離範囲
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 3, 5].map(dist => (
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 2, 3, 5].map(dist => (
                   <button
                     key={dist}
                     onClick={() => setDistanceRange(dist)}
