@@ -8,8 +8,7 @@ import { api } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { BookingType } from '../../types';
 import SmartAssistant from '../../components/SmartAssistant';
-// Fix: Removed MOCK_SERVICES which was not exported from constants.ts
-import { MOCK_AREAS, MOCK_THERAPISTS, MOCK_SITES } from '../../constants';
+import { MOCK_THERAPISTS, MOCK_SITES } from '../../constants';
 
 const UserHome: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +17,20 @@ const UserHome: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [sites, setSites] = useState<any[]>([]);
+  const [therapists, setTherapists] = useState<any[]>([]);
+
+  // Tokyo areas
+  const areas = [
+    { id: 'shibuya', name: '渋谷区' },
+    { id: 'shinjuku', name: '新宿区' },
+    { id: 'minato', name: '港区' },
+    { id: 'chiyoda', name: '千代田区' },
+    { id: 'chuo', name: '中央区' },
+    { id: 'shinagawa', name: '品川区' },
+    { id: 'setagaya', name: '世田谷区' },
+    { id: 'toshima', name: '豊島区' }
+  ];
 
   // Check login status
   useEffect(() => {
@@ -41,6 +54,30 @@ const UserHome: React.FC = () => {
           console.error('Failed to load user:', err);
         });
     }
+  }, []);
+
+  // Fetch sites and therapists from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch sites
+        const sitesRes = await fetch('/api/sites?status=APPROVED&limit=8');
+        const sitesData = await sitesRes.json();
+        setSites(sitesData.sites || []);
+
+        // Fetch therapists
+        const therapistsRes = await fetch('/api/therapists?limit=6');
+        const therapistsData = await therapistsRes.json();
+        setTherapists(therapistsData.therapists || []);
+      } catch (e) {
+        console.error('Failed to fetch data:', e);
+        // Fallback to mock data
+        setSites(MOCK_SITES);
+        setTherapists(MOCK_THERAPISTS);
+      }
+    };
+
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -125,7 +162,7 @@ const UserHome: React.FC = () => {
                           className="w-full pl-14 pr-10 py-5 bg-gray-50 rounded-[28px] font-black text-sm border-0 outline-none appearance-none group-focus-within:bg-white group-focus-within:ring-4 ring-teal-500/10 transition-all"
                         >
                            <option value="">全てのエリア</option>
-                           {MOCK_AREAS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                           {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                         <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 rotate-90" size={16} />
                      </div>
@@ -154,12 +191,12 @@ const UserHome: React.FC = () => {
                  </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                 {MOCK_SITES.map(site => (
+                 {sites.slice(0, 8).map(site => (
                     <div key={site.id} onClick={() => navigate(`/app/site/${site.id}`)} className="bg-white rounded-[48px] overflow-hidden shadow-sm border border-gray-100 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700 cursor-pointer group">
                        <div className="h-64 relative overflow-hidden">
                           <img src={`https://picsum.photos/600/400?random=${site.id}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={site.name} />
                           <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md text-white text-[9px] font-black px-4 py-2 rounded-xl border border-white/20 uppercase tracking-widest">
-                             {MOCK_AREAS.find(a => a.id === site.area)?.name}
+                             {site.area}
                           </div>
                        </div>
                        <div className="p-8 space-y-4">
@@ -190,14 +227,14 @@ const UserHome: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-               {MOCK_THERAPISTS.map(t => (
+               {therapists.slice(0, 6).map(t => (
                  <div 
                    key={t.id} 
                    onClick={() => navigate(`/app/therapist/${t.id}`)}
                    className="bg-white rounded-[64px] border border-gray-100 overflow-hidden shadow-sm hover:shadow-[0_60px_100px_-20px_rgba(0,0,0,0.12)] transition-all duration-1000 cursor-pointer group flex flex-col md:flex-row relative"
                  >
                     <div className="w-full md:w-72 h-80 md:h-auto overflow-hidden relative flex-shrink-0">
-                       <img src={t.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" />
+                       <img src={t.avatar_url || t.photo || `https://i.pravatar.cc/150?img=${t.id}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" alt={t.name} />
                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                        <div className="absolute bottom-6 left-6 right-6 opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0 flex gap-2">
                           <button className="bg-white text-gray-900 p-3 rounded-full shadow-2xl active:scale-90"><Heart size={18}/></button>
@@ -207,25 +244,22 @@ const UserHome: React.FC = () => {
                     <div className="flex-1 p-10 md:p-12 flex flex-col justify-between">
                        <div className="space-y-6">
                           <div className="flex flex-wrap items-center gap-2">
-                             {t.categories.includes('LICENSED') && (
-                                <span className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-widest flex items-center gap-1.5"><Award size={12}/> 国家資格</span>
-                             )}
                              <span className="bg-teal-50 text-teal-600 text-[9px] font-black px-3 py-1 rounded-full border border-teal-100">本人確認済</span>
                           </div>
                           <div>
                              <h3 className="text-3xl font-black text-gray-900 group-hover:text-teal-600 transition-colors leading-none tracking-tight">{t.name}</h3>
                              <p className="text-xs font-bold text-gray-400 mt-3 flex items-center gap-3">
-                                歴12年 / <span className="text-gray-900 font-black">深層筋リリース</span>
+                                歴{t.experience_years || t.experience || 0}年 / <span className="text-gray-900 font-black">{(t.specialties && typeof t.specialties === 'string' ? JSON.parse(t.specialties) : t.specialties || [])[0] || '深層筋リリース'}</span>
                              </p>
                           </div>
                           <p className="text-gray-500 font-medium leading-relaxed line-clamp-2 italic text-sm border-l-4 border-teal-500/10 pl-4">
-                             「都会の喧騒を離れ、一瞬で心整う体験を。筋肉の芯まで届く、確かな技術を提供します。」
+                             {t.bio || '確かな技術と丁寧な施術で、お客様一人ひとりに合わせたケアを提供します。'}
                           </p>
                        </div>
                        
                        <div className="flex items-center justify-between mt-10 pt-8 border-t border-gray-50">
                           <div className="flex items-center gap-1 text-yellow-500 font-black">
-                             <Star size={18} fill="currentColor" /> {t.rating}
+                             <Star size={18} fill="currentColor" /> {t.rating || 4.8}
                           </div>
                           <div className="flex items-center gap-6">
                              <p className="text-3xl font-black text-gray-900 tracking-tighter">¥7,480<span className="text-xs text-gray-300 ml-1 font-bold">〜</span></p>
