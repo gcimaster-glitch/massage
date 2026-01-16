@@ -6,6 +6,8 @@
 :root {
   --header-height: 64px;
   --header-height-mobile: 56px;
+  --focus-ring-color: #14b8a6; /* teal-600 */
+  --focus-ring-offset: 2px;
 }
 
 /* レスポンシブヘッダー高さ */
@@ -56,4 +58,71 @@ body {
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+/* ===== アクセシビリティ強化 ===== */
+
+/* フォーカスリング統一スタイル */
+*:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: 4px;
+}
+
+/* ボタンのフォーカススタイル */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* インプットのフォーカススタイル */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 0px;
+  border-color: var(--focus-ring-color);
+}
+
+/* Skip to main content リンク（スクリーンリーダー用） */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1rem;
+  background-color: var(--focus-ring-color);
+  color: white;
+  text-decoration: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.skip-to-main:focus {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* 高コントラストモード対応 */
+@media (prefers-contrast: high) {
+  *:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* リデュースモーション対応 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ダークモード対応（将来用） */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --focus-ring-color: #5eead4; /* teal-300 */
+  }
 }

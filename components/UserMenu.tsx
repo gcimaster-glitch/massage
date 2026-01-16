@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, LogOut, Settings, UserCircle } from 'lucide-react'
+import { userStorage, User as StorageUser } from '../services/storage'
 
 interface User {
   id: string
@@ -33,15 +34,10 @@ const UserMenu: React.FC<UserMenuProps> = ({
       return
     }
 
-    // localStorageから取得（フォールバック）
-    const storedUser = localStorage.getItem('currentUser')
+    // storageサービスから取得（フォールバック）
+    const storedUser = userStorage.getCurrentUser()
     if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser)
-        setUser(parsed)
-      } catch (error) {
-        console.error('Failed to parse user from localStorage:', error)
-      }
+      setUser(storedUser as User)
     }
   }, [currentUser])
 
@@ -72,8 +68,8 @@ const UserMenu: React.FC<UserMenuProps> = ({
   }, [isOpen])
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser')
-    localStorage.removeItem('token')
+    // storageサービスを使用してログアウト
+    userStorage.logout()
     setIsOpen(false)
     
     if (onLogout) {
