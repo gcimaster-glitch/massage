@@ -77,6 +77,8 @@ app.get('/', async (c) => {
         s.area,
         s.lat,
         s.lng,
+        s.lat as latitude,
+        s.lng as longitude,
         s.cube_serial_number,
         s.is_active,
         s.room_count,
@@ -119,6 +121,8 @@ app.get('/:id', async (c) => {
     const siteQuery = `
       SELECT 
         s.*,
+        s.lat as latitude,
+        s.lng as longitude,
         u.name as host_name,
         u.email as host_email,
         u.phone as host_phone
