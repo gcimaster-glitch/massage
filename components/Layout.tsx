@@ -24,33 +24,146 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout }) => {
     switch (role) {
       case Role.USER:
         return [
-          { title: 'サービス', items: [{ label: '予約・検索', path: '/app', icon: Search }, { label: 'マップ', path: '/app/map', icon: MapIcon }, { label: 'サブスク', path: '/app/subscriptions', icon: Zap }, { label: '予約一覧', path: '/app/bookings', icon: Calendar }] },
-          { title: 'ウェルネス', items: [{ label: '身体の記録', path: '/app/account/wellness', icon: Activity }, { label: 'ギフト', path: '/app/gifting', icon: Gift }] },
-          { title: '設定', items: [{ label: 'アカウント', path: '/app/account', icon: User }, { label: 'サポート', path: '/app/support', icon: HelpCircle }] }
+          { 
+            title: 'サービス', 
+            items: [
+              { label: 'ホーム', path: '/app', icon: Home },
+              { label: 'マップ検索', path: '/app/map', icon: MapIcon },
+              { label: '予約一覧', path: '/app/bookings', icon: Calendar },
+              { label: 'サブスク', path: '/app/subscriptions', icon: Zap },
+            ] 
+          },
+          { 
+            title: '健康管理', 
+            items: [
+              { label: '身体の記録', path: '/app/account/wellness', icon: Activity },
+              { label: 'ギフト', path: '/app/gifting', icon: Gift },
+            ] 
+          },
+          { 
+            title: '設定・サポート', 
+            items: [
+              { label: 'アカウント設定', path: '/app/account', icon: User },
+              { label: 'サポート', path: '/app/support', icon: HelpCircle },
+            ] 
+          }
         ];
       case Role.THERAPIST:
         return [
-          { title: '運行管理', items: [{ label: '稼働ボード', path: '/t', icon: Activity }, { label: 'スケジュール', path: '/t/calendar', icon: Calendar }] },
-          { title: '実績・設定', items: [{ label: '報酬明細', path: '/t/earnings', icon: JapaneseYen }, { label: 'プロフィール', path: '/t/profile', icon: Settings }, { label: '宣材・ブランド', path: '/t/bio', icon: Palette }] },
-          { title: '安全', items: [{ label: '安全センター', path: '/t/safety', icon: ShieldAlert }] }
+          { 
+            title: '業務管理', 
+            items: [
+              { label: 'ダッシュボード', path: '/t', icon: LayoutDashboard },
+              { label: 'スケジュール', path: '/t/calendar', icon: Calendar },
+            ] 
+          },
+          { 
+            title: '報酬・設定', 
+            items: [
+              { label: '報酬明細', path: '/t/earnings', icon: JapaneseYen },
+              { label: 'プロフィール設定', path: '/t/profile', icon: Settings },
+              { label: '自己PR編集', path: '/t/bio', icon: Palette },
+            ] 
+          },
+          { 
+            title: '安全', 
+            items: [
+              { label: '安全センター', path: '/t/safety', icon: ShieldAlert },
+            ] 
+          }
         ];
       case Role.THERAPIST_OFFICE:
         return [
-          { title: '事務所運営', items: [{ label: '運営概況', path: '/o', icon: LayoutDashboard }, { label: '所属プロ管理', path: '/o/therapists', icon: Users }, { label: '採用管理', path: '/o/recruitment', icon: UserPlus }] },
-          { title: 'ビジネス', items: [{ label: '収益・分配', path: '/o/earnings', icon: JapaneseYen }, { label: '価格・メニュー', path: '/o/menu', icon: ClipboardCheck }] },
-          { title: '安全・品質', items: [{ label: '安全監視', path: '/o/safety', icon: Siren }, { label: 'サポート受信', path: '/o/support', icon: MessageSquare }] },
-          { title: '組織', items: [{ label: '事務所設定', path: '/o/settings', icon: Settings }] }
+          { 
+            title: '事務所運営', 
+            items: [
+              { label: 'ダッシュボード', path: '/o', icon: LayoutDashboard },
+              { label: 'セラピスト管理', path: '/o/therapists', icon: Users },
+              { label: '採用管理', path: '/o/recruitment', icon: UserPlus },
+            ] 
+          },
+          { 
+            title: '財務・メニュー', 
+            items: [
+              { label: '収益管理', path: '/o/earnings', icon: JapaneseYen },
+              { label: '料金・メニュー', path: '/o/menu', icon: ClipboardCheck },
+            ] 
+          },
+          { 
+            title: '安全・サポート', 
+            items: [
+              { label: '安全監視', path: '/o/safety', icon: Siren },
+              { label: 'サポート受信箱', path: '/o/support', icon: MessageSquare },
+            ] 
+          },
+          { 
+            title: '設定', 
+            items: [
+              { label: '事務所設定', path: '/o/settings', icon: Settings },
+            ] 
+          }
         ];
       case Role.HOST:
         return [
-          { title: '施設運営', items: [{ label: '拠点ボード', path: '/h', icon: Building2 }, { label: '拠点管理', path: '/h/sites', icon: MapPin }] },
-          { title: '財務・安全', items: [{ label: '収益明細', path: '/h/earnings', icon: JapaneseYen }, { label: '異常報告', path: '/h/incidents', icon: ShieldAlert }] }
+          { 
+            title: '施設運営', 
+            items: [
+              { label: 'ダッシュボード', path: '/h', icon: LayoutDashboard },
+              { label: '施設管理', path: '/h/sites', icon: MapPin },
+            ] 
+          },
+          { 
+            title: '財務・安全', 
+            items: [
+              { label: '収益明細', path: '/h/earnings', icon: JapaneseYen },
+              { label: 'インシデント報告', path: '/h/incidents', icon: ShieldAlert },
+            ] 
+          }
         ];
       case Role.ADMIN:
         return [
-          { title: '司令部', items: [{ label: '動態モニタ', path: '/admin', icon: Radio }, { label: '解析指標', path: '/admin/analytics', icon: BarChart3 }] },
-          { title: 'ガバナンス', items: [{ label: 'インシデント', path: '/admin/incidents', icon: ShieldAlert }, { label: 'ユーザー審査', path: '/admin/users', icon: UserCheck }] },
-          { title: '財務', items: [{ label: '精算・送金', path: '/admin/payouts', icon: JapaneseYen }] }
+          { 
+            title: 'メイン', 
+            items: [
+              { label: 'ダッシュボード', path: '/admin', icon: LayoutDashboard },
+              { label: 'ユーザー管理', path: '/admin/users', icon: Users },
+              { label: '施設管理', path: '/admin/site-management', icon: Building2 },
+              { label: '予約管理', path: '/admin/logs', icon: ClipboardCheck },
+            ] 
+          },
+          { 
+            title: '財務・売上', 
+            items: [
+              { label: '売上・支払い', path: '/admin/payouts', icon: JapaneseYen },
+              { label: '売上設定', path: '/admin/revenue-config', icon: Settings },
+              { label: 'Stripe管理', path: '/admin/stripe', icon: CreditCard },
+            ] 
+          },
+          { 
+            title: 'システム', 
+            items: [
+              { label: 'アナリティクス', path: '/admin/analytics', icon: BarChart3 },
+              { label: 'インシデント管理', path: '/admin/incidents', icon: ShieldAlert },
+              { label: 'メール設定', path: '/admin/emails', icon: MessageSquare },
+              { label: 'アフィリエイト', path: '/admin/affiliates', icon: Megaphone },
+            ] 
+          },
+          { 
+            title: 'サポート', 
+            items: [
+              { label: 'お問い合わせ', path: '/admin/support', icon: HelpCircle },
+            ] 
+          }
+        ];
+      case Role.AFFILIATE:
+        return [
+          { 
+            title: 'アフィリエイト', 
+            items: [
+              { label: 'ダッシュボード', path: '/affiliate', icon: LayoutDashboard },
+              { label: '報酬明細', path: '/affiliate/earnings', icon: JapaneseYen },
+            ] 
+          }
         ];
       default:
         return [];
