@@ -47,10 +47,6 @@ const UserDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
   const loadDashboardData = async () => {
     const token = localStorage.getItem('auth_token');
-    if (!token) {
-      navigate('/auth/login/user');
-      return;
-    }
 
     try {
       // Load notifications
