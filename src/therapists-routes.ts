@@ -33,7 +33,7 @@ app.get('/', async (c) => {
   
   try {
     // WHERE句の構築
-    const conditions: string[] = ["tp.status = 'APPROVED'"];
+    const conditions: string[] = ["tp.is_active = 1"];
     const params: any[] = [];
     
     if (search) {
@@ -71,7 +71,7 @@ app.get('/', async (c) => {
     // データ取得
     const query = `
       SELECT 
-        tp.id,
+        tp.user_id as id,
         u.name,
         u.avatar_url,
         tp.bio,
@@ -116,6 +116,7 @@ app.get('/:id', async (c) => {
     const therapistQuery = `
       SELECT 
         tp.*,
+        tp.user_id as id,
         u.name,
         u.avatar_url,
         u.email,
@@ -123,7 +124,7 @@ app.get('/:id', async (c) => {
       FROM therapist_profiles tp
       JOIN users u ON tp.user_id = u.id
       LEFT JOIN offices o ON tp.office_id = o.id
-      WHERE tp.id = ? AND tp.status = 'APPROVED'
+      WHERE tp.user_id = ? AND tp.is_active = 1
     `;
     
     const therapist = await DB.prepare(therapistQuery).bind(therapistId).first();
