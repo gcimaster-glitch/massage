@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Menu, X, LogIn, LayoutDashboard, UserPlus, Building2, Award, Briefcase, Sparkles, Map } from 'lucide-react';
 import { Role } from '../../types';
+import UserMenu from '../../components/UserMenu';
 
 const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
@@ -10,6 +11,18 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+  // モバイルメニュー開閉時に背景スクロール制御
+  React.useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const getHomePath = (role: Role) => {
     switch (role) {
@@ -33,6 +46,15 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col selection:bg-teal-100">
+      {/* モバイルメニューオーバーレイ */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[90] lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="メニューを閉じる"
+        />
+      )}
+      
       <header className="fixed top-0 w-full z-[100] transition-all duration-500 px-3 md:px-6 py-3 md:py-4">
         <div className="max-w-7xl mx-auto h-16 md:h-20 bg-white/90 backdrop-blur-2xl rounded-2xl md:rounded-[32px] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] flex items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-1.5 md:gap-2 cursor-pointer group" onClick={() => navigate('/')}>
@@ -54,39 +76,26 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
               </button>
             ))}
             <div className="h-4 w-px bg-gray-100"></div>
-            {currentUser ? (
-              <button 
-                onClick={() => navigate(getHomePath(currentUser.role))}
-                className="bg-gray-900 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black hover:bg-teal-600 transition-all flex items-center gap-3 shadow-xl active:scale-95 uppercase tracking-widest"
-              >
-                <LayoutDashboard size={14} /> My Portal
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => navigate('/auth/login')}
-                  className="text-gray-900 px-6 py-3 text-[10px] font-black hover:bg-gray-50 rounded-xl transition-all uppercase tracking-widest"
-                >
-                   Login
-                </button>
-                <button 
-                  onClick={() => navigate('/auth/register-select')}
-                  className="bg-teal-600 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black hover:bg-teal-700 transition-all flex items-center gap-2 shadow-xl active:scale-95 uppercase tracking-widest"
-                >
-                   Sign Up
-                </button>
-              </div>
-            )}
+            {/* デスクトップ用ユーザーメニュー */}
+            <UserMenu 
+              currentUser={currentUser}
+              onLogout={() => {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('token');
+                navigate('/auth/login');
+              }}
+              variant="light"
+            />
           </nav>
 
-          <button className="lg:hidden p-2 md:p-3 bg-gray-50 rounded-lg md:rounded-xl text-gray-900" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className="lg:hidden p-2 md:p-3 bg-gray-50 rounded-lg md:rounded-xl text-gray-900" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="メニューを開く">
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden fixed inset-0 top-20 md:top-24 bg-white/98 backdrop-blur-3xl z-50 p-6 md:p-8 animate-fade-in overflow-y-auto">
+          <div className="lg:hidden fixed inset-0 top-20 md:top-24 bg-white/98 backdrop-blur-3xl z-[95] p-6 md:p-8 animate-fade-in overflow-y-auto">
             <div className="flex flex-col space-y-4 md:space-y-6">
               {navItems.map(item => (
                 <button 
@@ -97,11 +106,24 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                   {item.icon && <item.icon size={24} className="text-teal-600" />}
                   {item.label}
                 </button>
-              ))}
-              <hr className="border-gray-100" />
+              ))}              <hr className="border-gray-100" />
               <div className="flex flex-col gap-3 md:gap-4">
-                 <button onClick={() => { navigate('/auth/login'); setMobileMenuOpen(false); }} className="bg-gray-100 py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl">ログイン</button>
-                 <button onClick={() => { navigate('/auth/register-select'); setMobileMenuOpen(false); }} className="bg-teal-600 text-white py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl shadow-xl">パートナー加盟</button>
+                {currentUser ? (
+                  <button 
+                    onClick={() => { 
+                      navigate(getHomePath(currentUser.role)); 
+                      setMobileMenuOpen(false); 
+                    }} 
+                    className="bg-gray-900 text-white py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl flex items-center justify-center gap-3"
+                  >
+                    <LayoutDashboard size={24} /> My Portal
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => { navigate('/auth/login'); setMobileMenuOpen(false); }} className="bg-gray-100 py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl">ログイン</button>
+                    <button onClick={() => { navigate('/auth/register-select'); setMobileMenuOpen(false); }} className="bg-teal-600 text-white py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl shadow-xl">パートナー加盟</button>
+                  </>
+                )}
               </div>
             </div>
           </div>
