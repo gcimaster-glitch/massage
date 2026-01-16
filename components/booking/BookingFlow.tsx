@@ -147,8 +147,8 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
       
       console.log('💾 予約情報を保存してログインページへ:', bookingData);
       
-      // ログインページへリダイレクト
-      navigate(`/auth/login?returnUrl=${encodeURIComponent(currentPath)}`);
+      // ログインページへリダイレクト（新URL構造）
+      navigate(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
       return;
     }
     

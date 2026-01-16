@@ -216,6 +216,12 @@ const App: React.FC = () => {
         
         {/* User App - Auth required pages */}
         {/* New Booking Flow - 4 Patterns */}
+        <Route path="/app/booking/from-map/:siteId" element={<BookingFlow pattern="from-map" />} />
+        <Route path="/app/booking/from-therapist/:therapistId" element={<BookingFlow pattern="from-therapist" />} />
+        <Route path="/app/booking/direct/:therapistId" element={<BookingFlow pattern="direct" />} />
+        <Route path="/app/booking/ai" element={<BookingFlow pattern="ai-recommend" />} />
+        
+        {/* Legacy Booking Routes - Redirect to new routes */}
         <Route path="/booking/from-map/:siteId" element={<BookingFlow pattern="from-map" />} />
         <Route path="/booking/from-therapist/:therapistId" element={<BookingFlow pattern="from-therapist" />} />
         <Route path="/booking/direct/:therapistId" element={<BookingFlow pattern="direct" />} />

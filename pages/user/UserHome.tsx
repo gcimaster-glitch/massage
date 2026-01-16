@@ -237,7 +237,7 @@ const UserHome: React.FC = () => {
                              <button
                                onClick={(e) => {
                                  e.stopPropagation();
-                                 navigate(`/booking/from-map/${site.id}`);
+                                 navigate(`/app/booking/from-map/${site.id}`);
                                }}
                                className="bg-teal-600 text-white px-6 py-2 rounded-full font-black text-xs uppercase tracking-wider hover:bg-teal-700 transition-all active:scale-90"
                              >
@@ -322,7 +322,7 @@ const UserHome: React.FC = () => {
                              <button 
                                onClick={(e) => {
                                  e.stopPropagation();
-                                 navigate(`/booking/direct/${t.id}`);
+                                 navigate(`/app/booking/direct/${t.id}`);
                                }}
                                className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl hover:bg-teal-600 transition-all active:scale-90 group-hover:rotate-[-5deg]"
                              >
