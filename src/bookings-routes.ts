@@ -285,4 +285,92 @@ app.delete('/:id', async (c) => {
   }
 });
 
+// ============================================
+// 予約承認（セラピスト専用）
+// ============================================
+app.patch('/:id/approve', async (c) => {
+  const { DB } = c.env;
+  const userId = c.get('userId');
+  const userRole = c.get('userRole');
+  const bookingId = c.req.param('id');
+  
+  try {
+    // セラピストまたは管理者のみ
+    if (userRole !== 'THERAPIST' && userRole !== 'ADMIN') {
+      return c.json({ error: '権限がありません' }, 403);
+    }
+
+    // 予約が存在し、担当セラピストであることを確認
+    const booking = await DB.prepare(
+      'SELECT * FROM bookings WHERE id = ?'
+    ).bind(bookingId).first();
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404);
+    }
+
+    // ステータスを CONFIRMED に更新
+    await DB.prepare(
+      "UPDATE bookings SET status = 'CONFIRMED', updated_at = datetime('now') WHERE id = ?"
+    ).bind(bookingId).run();
+    
+    return c.json({ 
+      success: true,
+      message: '予約を承認しました'
+    });
+  } catch (error: any) {
+    console.error('Error approving booking:', error);
+    return c.json({ error: '予約の承認に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 予約拒否（セラピスト専用）
+// ============================================
+app.patch('/:id/reject', async (c) => {
+  const { DB } = c.env;
+  const userId = c.get('userId');
+  const userRole = c.get('userRole');
+  const bookingId = c.req.param('id');
+  
+  try {
+    const body = await c.req.json();
+    const { reason } = body;
+
+    // セラピストまたは管理者のみ
+    if (userRole !== 'THERAPIST' && userRole !== 'ADMIN') {
+      return c.json({ error: '権限がありません' }, 403);
+    }
+
+    // 予約が存在し、担当セラピストであることを確認
+    const booking = await DB.prepare(
+      'SELECT * FROM bookings WHERE id = ?'
+    ).bind(bookingId).first();
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404);
+    }
+
+    // ステータスを REJECTED に更新
+    await DB.prepare(
+      "UPDATE bookings SET status = 'REJECTED', updated_at = datetime('now') WHERE id = ?"
+    ).bind(bookingId).run();
+    
+    // 拒否理由をログに記録（オプション）
+    if (reason) {
+      await DB.prepare(
+        "INSERT INTO booking_logs (booking_id, action, notes, created_at) VALUES (?, 'REJECTED', ?, datetime('now'))"
+      ).bind(bookingId, reason).run();
+    }
+    
+    return c.json({ 
+      success: true,
+      message: '予約を拒否しました'
+    });
+  } catch (error: any) {
+    console.error('Error rejecting booking:', error);
+    return c.json({ error: '予約の拒否に失敗しました' }, 500);
+  }
+});
+
 export default app;

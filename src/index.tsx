@@ -11,6 +11,7 @@ import userManagementApp from './user-management-routes'
 import sitesRoutesApp from './sites-routes'
 import therapistsRoutesApp from './therapists-routes'
 import bookingsRoutesApp from './bookings-routes'
+import schedulesRoutesApp from './schedules-routes'
 
 // ============================================
 // Type Definitions
@@ -114,6 +115,11 @@ app.route('/api/therapists', therapistsRoutesApp)
 // Mount Bookings Routes (Auth required)
 // ============================================
 app.route('/api/bookings', bookingsRoutesApp)
+
+// ============================================
+// Schedules Routes
+// ============================================
+app.route('/api/schedules', schedulesRoutesApp)
 
 // ============================================
 // Auth Routes

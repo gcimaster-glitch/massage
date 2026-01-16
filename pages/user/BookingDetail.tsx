@@ -28,6 +28,9 @@ const BookingDetail: React.FC = () => {
   
   const [isExtensionChecking, setIsExtensionChecking] = useState(false);
   const [extensionResult, setExtensionResult] = useState<'OK' | 'BUSY' | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   // Fetch booking data from API
   useEffect(() => {
@@ -82,6 +85,40 @@ const BookingDetail: React.FC = () => {
       setIsExtensionChecking(false);
       setExtensionResult(Math.random() > 0.5 ? 'OK' : 'BUSY');
     }, 1500);
+  };
+
+  const handleCancelBooking = async () => {
+    if (!cancelReason.trim()) {
+      alert('キャンセル理由を入力してください');
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: cancelReason })
+      });
+
+      if (res.ok) {
+        setStatus(BookingStatus.CANCELLED);
+        setShowCancelDialog(false);
+        alert('予約をキャンセルしました');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'キャンセルに失敗しました');
+      }
+    } catch (error) {
+      console.error('Cancel error:', error);
+      alert('キャンセルに失敗しました');
+    } finally {
+      setCancelling(false);
+    }
   };
 
   if (loading) {
@@ -196,7 +233,14 @@ const BookingDetail: React.FC = () => {
                   </div>
                   <div className="flex gap-3">
                      <button className="px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-all shadow-sm">領収書</button>
-                     <button className="px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 transition-all shadow-sm">予約変更</button>
+                     {status !== BookingStatus.COMPLETED && status !== BookingStatus.CANCELLED && status !== BookingStatus.IN_SERVICE && (
+                       <button 
+                         onClick={() => setShowCancelDialog(true)}
+                         className="px-6 py-3 bg-white border border-red-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 hover:text-red-600 transition-all shadow-sm flex items-center gap-2"
+                       >
+                         <XCircle size={14} /> 予約キャンセル
+                       </button>
+                     )}
                   </div>
                </div>
             </div>
@@ -321,6 +365,43 @@ const BookingDetail: React.FC = () => {
             </div>
          </div>
       </main>
+
+      {/* キャンセル確認ダイアログ */}
+      {showCancelDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[48px] max-w-lg w-full p-10 shadow-2xl animate-scale-in">
+            <h3 className="text-3xl font-black text-gray-900 mb-6">予約をキャンセルしますか？</h3>
+            <p className="text-gray-600 font-bold mb-8 leading-relaxed">
+              キャンセルした予約は元に戻せません。キャンセル理由をご記入ください。
+            </p>
+            
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="キャンセル理由を入力してください（例：体調不良、予定変更など）"
+              className="w-full h-32 p-6 border-2 border-gray-200 rounded-3xl font-bold text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:outline-none resize-none mb-6"
+            />
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowCancelDialog(false)}
+                className="flex-1 py-5 bg-gray-100 text-gray-900 rounded-3xl font-black hover:bg-gray-200 transition-all"
+                disabled={cancelling}
+              >
+                戻る
+              </button>
+              <button
+                onClick={handleCancelBooking}
+                className="flex-1 py-5 bg-red-500 text-white rounded-3xl font-black hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                disabled={cancelling}
+              >
+                {cancelling ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
+                {cancelling ? 'キャンセル中...' : 'キャンセル確定'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

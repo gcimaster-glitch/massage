@@ -13,10 +13,41 @@ import { BookingStatus, Role } from '../../types';
 const TherapistDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<any>(() => JSON.parse(localStorage.getItem('currentUser') || '{}'));
-  const [bookings, setBookings] = useState(systemStore.getBookings());
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // KYCステータスの簡易管理
-  const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'VERIFIED'>(currentUser.kycStatus || 'NONE');
+  const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'VERIFIED'>(currentUser.kycStatus || 'VERIFIED'); // デモ用にVERIFIEDに設定
+
+  // Fetch therapist bookings from API
+  useEffect(() => {
+    const fetchBookings = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        setLoading(true);
+        const res = await fetch('/api/bookings?therapist_id=' + currentUser.id + '&limit=50', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setBookings(data.bookings || []);
+        }
+      } catch (e) {
+        console.error('Error fetching bookings:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (kycStatus === 'VERIFIED') {
+      fetchBookings();
+    }
+  }, [currentUser.id, kycStatus]);
 
   const handleKycSubmit = (data: any) => {
     setKycStatus('PENDING');
