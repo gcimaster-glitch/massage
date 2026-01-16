@@ -22,10 +22,13 @@ const DateTimeSelect: React.FC<DateTimeSelectProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [availableTimes] = useState<string[]>([
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  
+  // 営業時間: 10:00〜21:00（最終受付20:00）
+  const businessHours = [
     '10:00', '11:00', '12:00', '13:00', '14:00', 
     '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
-  ]);
+  ];
 
   useEffect(() => {
     // 今日から7日分の日付を生成
@@ -37,6 +40,48 @@ const DateTimeSelect: React.FC<DateTimeSelectProps> = ({
     }
     setAvailableDates(dates);
   }, []);
+
+  // 日付が選択されたら、選択可能な時間を計算
+  useEffect(() => {
+    if (!selectedDate) {
+      setAvailableTimes([]);
+      return;
+    }
+
+    const now = new Date();
+    const selectedDateTime = new Date(selectedDate);
+    const isToday = selectedDateTime.toDateString() === now.toDateString();
+
+    if (!isToday) {
+      // 今日以外は全時間帯が選択可能
+      setAvailableTimes(businessHours);
+      return;
+    }
+
+    // 当日予約の場合、現在時刻の2時間後以降のみ選択可能
+    const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    const minHour = twoHoursLater.getHours();
+    const minMinute = twoHoursLater.getMinutes();
+
+    const filteredTimes = businessHours.filter(time => {
+      const [hour] = time.split(':').map(Number);
+      
+      // 時間が過ぎている場合は除外
+      if (hour < minHour) return false;
+      
+      // 同じ時間の場合、分も考慮（念のため次の時間帯に）
+      if (hour === minHour && minMinute > 0) return false;
+      
+      return true;
+    });
+
+    setAvailableTimes(filteredTimes);
+    
+    // 選択中の時間が無効になった場合はリセット
+    if (selectedTime && !filteredTimes.includes(selectedTime)) {
+      setSelectedTime('');
+    }
+  }, [selectedDate]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -99,21 +144,38 @@ const DateTimeSelect: React.FC<DateTimeSelectProps> = ({
               <Clock className="w-5 h-5 mr-2" />
               時間を選択
             </h3>
-            <div className="grid grid-cols-4 gap-2">
-              {availableTimes.map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedTime(time)}
-                  className={`p-2 rounded-lg text-center transition-all ${
-                    selectedTime === time
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
+            
+            {availableTimes.length === 0 ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                <p className="text-red-700 font-medium">
+                  本日はご予約可能な時間がありません
+                </p>
+                <p className="text-sm text-red-600 mt-1">
+                  予約は2時間前までとなります。別の日付をお選びください。
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-sm text-blue-700">
+                  ⏰ ご予約は2時間前までとなります。営業時間: 10:00〜21:00
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {availableTimes.map((time) => (
+                    <button
+                      key={time}
+                      onClick={() => setSelectedTime(time)}
+                      className={`p-2 rounded-lg text-center transition-all ${
+                        selectedTime === time
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
