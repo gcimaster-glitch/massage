@@ -40,7 +40,7 @@ const TherapistListPage: React.FC = () => {
         areas: typeof t.approved_areas === 'string' ? JSON.parse(t.approved_areas || '[]') : (t.approved_areas || []),
         categories: typeof t.specialties === 'string' ? JSON.parse(t.specialties || '[]') : (t.specialties || []),
         reviewCount: t.review_count,
-        imageUrl: t.avatar_url || t.photo || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`
+        imageUrl: t.avatar_url || '/placeholder-therapist.jpg'
       })));
     } catch (e) {
       console.error('Failed to fetch therapists:', e);

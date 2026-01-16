@@ -62,7 +62,10 @@ const BookingDetail: React.FC = () => {
           const therapistRes = await fetch(`/api/therapists/${data.booking.therapist_id}`);
           if (therapistRes.ok) {
             const therapistData = await therapistRes.json();
-            setTherapist(therapistData.therapist);
+            setTherapist({
+              ...therapistData.therapist,
+              imageUrl: therapistData.therapist.avatar_url || `/therapists/${therapistData.therapist.id}.jpg`
+            });
           }
         }
       } catch (error) {
