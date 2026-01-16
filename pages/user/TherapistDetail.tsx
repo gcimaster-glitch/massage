@@ -133,25 +133,25 @@ const TherapistDetail: React.FC = () => {
       <section className="bg-white border-b border-gray-100 overflow-hidden relative">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-50 rounded-full blur-[120px] opacity-30 translate-x-1/3 -translate-y-1/3"></div>
         
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-8 relative z-10">
-           <div className="flex items-center justify-between mb-8">
-              <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 font-black text-[10px] uppercase tracking-widest hover:text-teal-600 transition-colors group">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 relative z-10">
+           <div className="flex items-center justify-between mb-6 md:mb-8">
+              <button onClick={() => navigate(-1)} className="flex items-center gap-1 md:gap-2 text-gray-400 font-black text-[9px] md:text-[10px] uppercase tracking-wider md:tracking-widest hover:text-teal-600 transition-colors group">
                  <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> 戻る
               </button>
-              <div className="flex items-center gap-3">
-                 <button className="p-3 bg-gray-50 text-gray-400 hover:text-gray-900 rounded-2xl transition-all"><ExternalLink size={18}/></button>
+              <div className="flex items-center gap-2 md:gap-3">
+                 <button className="p-2 md:p-3 bg-gray-50 text-gray-400 hover:text-gray-900 rounded-xl md:rounded-2xl transition-all"><ExternalLink size={16} className="md:w-[18px] md:h-[18px]"/></button>
                  <button 
                    onClick={() => setIsFavorite(!isFavorite)}
-                   className={`p-3 rounded-2xl transition-all shadow-sm ${isFavorite ? 'bg-rose-50 text-rose-500' : 'bg-gray-50 text-gray-300 hover:text-rose-500'}`}
+                   className={`p-2 md:p-3 rounded-xl md:rounded-2xl transition-all shadow-sm ${isFavorite ? 'bg-rose-50 text-rose-500' : 'bg-gray-50 text-gray-300 hover:text-rose-500'}`}
                  >
-                    <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
+                    <Heart size={18} className="md:w-5 md:h-5" fill={isFavorite ? 'currentColor' : 'none'} />
                  </button>
               </div>
            </div>
 
-           <div className="flex flex-col lg:flex-row gap-12 items-start">
-              <div className="w-full lg:w-[400px] space-y-4">
-                 <div className="aspect-[4/5] rounded-[56px] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] border-8 border-white relative group">
+           <div className="flex flex-col lg:flex-row gap-8 md:gap-12 items-start">
+              <div className="w-full lg:w-[400px] space-y-3 md:space-y-4">
+                 <div className="aspect-[4/5] rounded-3xl md:rounded-[56px] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] border-4 md:border-8 border-white relative group">
                     <img 
                       src={displayTherapist.imageUrl} 
                       onError={(e) => {
@@ -162,70 +162,70 @@ const TherapistDetail: React.FC = () => {
                       alt={displayTherapist.name} 
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
-                    <div className="absolute bottom-8 left-8 right-8 flex flex-wrap gap-2">
+                    <div className="absolute bottom-4 md:bottom-8 left-4 md:left-8 right-4 md:right-8 flex flex-wrap gap-2">
                        {displayTherapist.categories.includes('LICENSED') && (
-                         <span className="bg-white/20 backdrop-blur-md text-white text-[9px] font-black px-4 py-2 rounded-full border border-white/30 shadow-xl uppercase tracking-widest">国家資格保有</span>
+                         <span className="bg-white/20 backdrop-blur-md text-white text-[8px] md:text-[9px] font-black px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-white/30 shadow-xl uppercase tracking-wider md:tracking-widest">国家資格</span>
                        )}
-                       <span className="bg-teal-500 text-white text-[9px] font-black px-4 py-2 rounded-full shadow-xl flex items-center gap-1.5 border border-teal-400">
-                          <Sparkles size={12} /> HOGUSY 人気スタッフ
+                       <span className="bg-teal-500 text-white text-[8px] md:text-[9px] font-black px-3 md:px-4 py-1.5 md:py-2 rounded-full shadow-xl flex items-center gap-1.5 border border-teal-400">
+                          <Sparkles size={10} className="md:w-3 md:h-3" /> 人気
                        </span>
                     </div>
                  </div>
-                 <div className="grid grid-cols-4 gap-3">
+                 <div className="grid grid-cols-4 gap-2 md:gap-3">
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="aspect-square rounded-2xl overflow-hidden border-2 border-white shadow-sm cursor-pointer hover:border-teal-500 transition-all hover:-translate-y-1">
+                      <div key={i} className="aspect-square rounded-xl md:rounded-2xl overflow-hidden border-2 border-white shadow-sm cursor-pointer hover:border-teal-500 transition-all hover:-translate-y-1">
                         <img src={`https://picsum.photos/400/400?random=therapist${i+50}`} className="w-full h-full object-cover" />
                       </div>
                     ))}
-                    <div className="aspect-square rounded-2xl bg-gray-900 flex items-center justify-center text-white cursor-pointer hover:bg-teal-600 transition-all">
+                    <div className="aspect-square rounded-xl md:rounded-2xl bg-gray-900 flex items-center justify-center text-white cursor-pointer hover:bg-teal-600 transition-all">
                        <div className="text-center">
-                          <Camera size={16} className="mx-auto mb-1 opacity-50" />
-                          <span className="text-[8px] font-black uppercase">More</span>
+                          <Camera size={14} className="md:w-4 md:h-4 mx-auto mb-1 opacity-50" />
+                          <span className="text-[7px] md:text-[8px] font-black uppercase">More</span>
                        </div>
                     </div>
                  </div>
               </div>
 
-              <div className="flex-1 space-y-10">
-                 <div className="space-y-6">
-                    <div className="flex flex-wrap items-center gap-3">
-                       <span className="bg-teal-50 text-teal-600 text-[10px] font-black px-4 py-1.5 rounded-full border border-teal-100 flex items-center gap-2 uppercase tracking-widest shadow-sm">
-                          <CheckCircle size={14}/> ID VERIFIED
+              <div className="flex-1 space-y-6 md:space-y-10">
+                 <div className="space-y-4 md:space-y-6">
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                       <span className="bg-teal-50 text-teal-600 text-[9px] md:text-[10px] font-black px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-teal-100 flex items-center gap-1 md:gap-2 uppercase tracking-wider md:tracking-widest shadow-sm">
+                          <CheckCircle size={12} className="md:w-[14px] md:h-[14px]"/> 本人確認
                        </span>
                        {/* Check if therapist is available now (demo: odd IDs are available) */}
                        {displayTherapist.id && parseInt(displayTherapist.id.replace(/\D/g, '') || '0') % 2 === 1 && (
-                         <span className="bg-gray-900 text-white text-[10px] font-black px-4 py-1.5 rounded-full flex items-center gap-2 uppercase tracking-[0.2em] shadow-lg">
-                            <Zap size={14} className="text-teal-400 animate-pulse" /> 本日即時予約OK
+                         <span className="bg-gray-900 text-white text-[9px] md:text-[10px] font-black px-3 md:px-4 py-1 md:py-1.5 rounded-full flex items-center gap-1 md:gap-2 uppercase tracking-wider md:tracking-[0.2em] shadow-lg">
+                            <Zap size={12} className="md:w-[14px] md:h-[14px] text-teal-400 animate-pulse" /> 即時OK
                          </span>
                        )}
                     </div>
                     <div>
-                       <div className="flex flex-col md:flex-row md:items-end gap-4">
-                          <h1 className="text-6xl font-black tracking-tighter text-gray-900 leading-none">{displayTherapist.name}</h1>
-                          <span className="text-lg font-bold text-gray-300 tracking-[0.3em] uppercase mb-1">THERAPIST</span>
+                       <div className="flex flex-col md:flex-row md:items-end gap-2 md:gap-4">
+                          <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-gray-900 leading-none">{displayTherapist.name}</h1>
+                          <span className="text-sm md:text-lg font-bold text-gray-300 tracking-[0.2em] md:tracking-[0.3em] uppercase md:mb-1">THERAPIST</span>
                        </div>
-                       <p className="text-lg font-bold text-gray-400 mt-6 flex flex-wrap items-center gap-4">
+                       <p className="text-sm md:text-lg font-bold text-gray-400 mt-4 md:mt-6 flex flex-wrap items-center gap-2 md:gap-4">
                           <span>業界歴 <span className="text-gray-900">12年</span></span>
                           <span className="w-1.5 h-1.5 rounded-full bg-gray-200"></span>
-                          <span className="text-gray-900 border-b-2 border-teal-500/20 pb-0.5">深層筋リリース / 骨盤調整 / 快眠ドライヘッド</span>
+                          <span className="text-gray-900 border-b-2 border-teal-500/20 pb-0.5 text-xs md:text-base">深層筋 / 骨盤調整</span>
                        </p>
                     </div>
                  </div>
 
-                 <div className="flex flex-wrap items-center gap-x-12 gap-y-6">
-                    <div className="flex items-center gap-4">
+                 <div className="flex flex-wrap items-center gap-x-8 md:gap-x-12 gap-y-4 md:gap-y-6">
+                    <div className="flex items-center gap-3 md:gap-4">
                        <div className="flex text-yellow-400">
-                          {[1, 2, 3, 4, 5].map(i => <Star key={i} size={24} fill={i <= Math.floor(displayTherapist.rating) ? "currentColor" : "none"} />)}
+                          {[1, 2, 3, 4, 5].map(i => <Star key={i} size={18} className="md:w-6 md:h-6" fill={i <= Math.floor(displayTherapist.rating) ? "currentColor" : "none"} />)}
                        </div>
                        <div className="flex items-baseline gap-1">
-                          <span className="text-4xl font-black text-gray-900 tabular-nums">{displayTherapist.rating.toFixed(1)}</span>
-                          <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">/ 5.0</span>
+                          <span className="text-3xl md:text-4xl font-black text-gray-900 tabular-nums">{displayTherapist.rating.toFixed(1)}</span>
+                          <span className="text-[10px] md:text-xs font-bold text-gray-300 uppercase tracking-widest">/ 5.0</span>
                        </div>
                     </div>
                     <div className="h-10 w-px bg-gray-100 hidden md:block"></div>
                     <div>
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Reviews</p>
-                       <p className="text-2xl font-black text-gray-900 leading-none tabular-nums">{displayTherapist.reviewCount}<span className="text-sm ml-1 text-gray-300 font-bold">件</span></p>
+                       <p className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-wider md:tracking-widest mb-1">Reviews</p>
+                       <p className="text-xl md:text-2xl font-black text-gray-900 leading-none tabular-nums">{displayTherapist.reviewCount}<span className="text-xs md:text-sm ml-1 text-gray-300 font-bold">件</span></p>
                     </div>
                  </div>
 

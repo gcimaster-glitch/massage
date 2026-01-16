@@ -141,19 +141,19 @@ const BookingDetail: React.FC = () => {
     <div className="min-h-screen bg-[#FDFCFB] pb-40 font-sans text-gray-900 animate-fade-in">
       
       {/* ライブ・セッション時のダイナミック・ヘッダー */}
-      <header className={`sticky top-0 z-50 transition-all duration-700 px-4 md:px-12 py-6 border-b ${isLive ? 'bg-gray-900 text-white border-white/5 shadow-2xl' : 'bg-white text-gray-900 border-gray-100'}`}>
+      <header className={`sticky top-0 z-50 transition-all duration-700 px-3 md:px-12 py-4 md:py-6 border-b ${isLive ? 'bg-gray-900 text-white border-white/5 shadow-2xl' : 'bg-white text-gray-900 border-gray-100'}`}>
          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-6">
-               <button onClick={() => navigate(-1)} className={`p-4 rounded-3xl transition-all ${isLive ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                  <ArrowLeft size={24} />
+            <div className="flex items-center gap-3 md:gap-6">
+               <button onClick={() => navigate(-1)} className={`p-2 md:p-4 rounded-2xl md:rounded-3xl transition-all ${isLive ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                  <ArrowLeft size={20} className="md:w-6 md:h-6" />
                </button>
                <div>
-                  <div className="flex items-center gap-3">
-                     <h1 className="text-2xl font-black tracking-tighter leading-none">セッション詳細</h1>
+                  <div className="flex items-center gap-2 md:gap-3">
+                     <h1 className="text-lg md:text-2xl font-black tracking-tighter leading-none">セッション</h1>
                      <StatusBadge status={status || booking.status} />
                   </div>
-                  <p className={`text-[9px] font-black uppercase tracking-[0.4em] mt-2 ${isLive ? 'text-teal-400' : 'text-gray-400'}`}>
-                     {isLive ? 'Live Surveillance & IoT Control Active' : 'Pre-Session Overview'}
+                  <p className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] mt-1 md:mt-2 ${isLive ? 'text-teal-400' : 'text-gray-400'} hidden md:block`}>
+                     {isLive ? 'Live Active' : 'Overview'}
                   </p>
                </div>
             </div>
@@ -173,50 +173,50 @@ const BookingDetail: React.FC = () => {
          </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 md:px-12 pt-12 grid lg:grid-cols-12 gap-12">
+      <main className="max-w-6xl mx-auto px-3 md:px-12 pt-8 md:pt-12 grid lg:grid-cols-12 gap-6 md:gap-12">
          
          {/* 左カラム: チケット・情報 (7) */}
-         <div className="lg:col-span-7 space-y-10">
+         <div className="lg:col-span-7 space-y-6 md:space-y-10">
             
             {/* デジタルチケット・コア */}
-            <div className="bg-white rounded-[64px] shadow-sm border border-gray-100 overflow-hidden relative group">
+            <div className="bg-white rounded-3xl md:rounded-[64px] shadow-sm border border-gray-100 overflow-hidden relative group">
                <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-teal-500 to-indigo-500"></div>
                
-               <div className="p-10 md:p-14 flex flex-col md:flex-row items-center gap-12">
-                  <div className="text-center md:text-left flex-1 space-y-8">
+               <div className="p-6 md:p-10 lg:p-14 flex flex-col md:flex-row items-center gap-6 md:gap-12">
+                  <div className="text-center md:text-left flex-1 space-y-4 md:space-y-8">
                      <div className="space-y-2">
-                        <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest flex items-center gap-2">
-                           <CalendarIcon size={14}/> Session Schedule
+                        <p className="text-[9px] md:text-[10px] font-black text-teal-600 uppercase tracking-wider md:tracking-widest flex items-center justify-center md:justify-start gap-2">
+                           <CalendarIcon size={12} className="md:w-[14px] md:h-[14px]"/> Schedule
                         </p>
-                        <h2 className="text-5xl font-black tracking-tighter text-gray-900 leading-none">
+                        <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-gray-900 leading-none">
                            {new Date(booking.scheduled_at).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}
                         </h2>
-                        <p className="text-3xl font-black text-gray-300 tracking-tight leading-none tabular-nums">
+                        <p className="text-2xl md:text-3xl font-black text-gray-300 tracking-tight leading-none tabular-nums">
                            {new Date(booking.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 〜
                         </p>
                      </div>
                      
-                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-8">
-                        <div className="flex items-center gap-4">
-                           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 shadow-inner group-hover:scale-110 transition-transform"><MapPin size={28}/></div>
-                           <div>
-                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Location</p>
-                              <p className="text-lg font-black text-gray-900">{booking.location}</p>
+                     <div className="flex flex-col md:flex-row md:flex-wrap items-center justify-center md:justify-start gap-4 md:gap-8">
+                        <div className="flex items-center gap-3 md:gap-4">
+                           <div className="w-12 h-12 md:w-14 md:h-14 bg-gray-50 rounded-xl md:rounded-2xl flex items-center justify-center text-gray-400 shadow-inner group-hover:scale-110 transition-transform"><MapPin size={20} className="md:w-7 md:h-7"/></div>
+                           <div className="text-left">
+                              <p className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-wider md:tracking-widest">Location</p>
+                              <p className="text-base md:text-lg font-black text-gray-900 truncate max-w-[150px] md:max-w-none">{booking.location}</p>
                            </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 shadow-inner group-hover:scale-110 transition-transform"><LayoutGrid size={28}/></div>
-                           <div>
-                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Booth Code</p>
-                              <p className="text-2xl font-black text-teal-600 font-mono tracking-widest">8294</p>
+                        <div className="flex items-center gap-3 md:gap-4">
+                           <div className="w-12 h-12 md:w-14 md:h-14 bg-gray-50 rounded-xl md:rounded-2xl flex items-center justify-center text-gray-400 shadow-inner group-hover:scale-110 transition-transform"><LayoutGrid size={20} className="md:w-7 md:h-7"/></div>
+                           <div className="text-left">
+                              <p className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-wider md:tracking-widest">Booth</p>
+                              <p className="text-xl md:text-2xl font-black text-teal-600 font-mono tracking-widest">8294</p>
                            </div>
                         </div>
                      </div>
                   </div>
 
-                  <div className="w-full md:w-56 shrink-0 text-center space-y-6 md:pl-12 md:border-l border-dashed border-gray-100">
+                  <div className="w-full md:w-56 shrink-0 text-center space-y-4 md:space-y-6 md:pl-12 md:border-l border-dashed border-gray-100">
                      <div className="relative inline-block group/avatar">
-                        <img src={therapist?.imageUrl} className="w-32 h-32 rounded-[48px] object-cover shadow-2xl border-4 border-white transition-all group-hover/avatar:scale-105" />
+                        <img src={therapist?.imageUrl} className="w-24 h-24 md:w-32 md:h-32 rounded-3xl md:rounded-[48px] object-cover shadow-2xl border-4 border-white transition-all group-hover/avatar:scale-105" />
                         <div className="absolute -bottom-2 -right-2 bg-teal-500 text-white p-2.5 rounded-2xl shadow-xl border-2 border-white"><Star size={20} fill="currentColor"/></div>
                      </div>
                      <div>
