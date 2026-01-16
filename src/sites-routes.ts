@@ -1,140 +1,198 @@
-import { Hono } from 'hono'
+/**
+ * 施設（Sites）管理API
+ * - 施設一覧取得（検索、フィルタリング対応）
+ * - 施設詳細取得
+ * - 施設の部屋一覧取得
+ */
+
+import { Hono } from 'hono';
+import { verifyJWT } from './auth-middleware';
 
 type Bindings = {
-  DB: D1Database
-}
+  DB: D1Database;
+  JWT_SECRET: string;
+};
 
-const sitesApp = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<{ Bindings: Bindings }>();
 
 // ============================================
-// Sites Routes (施設一覧・検索)
+// 施設一覧取得（パブリック）
 // ============================================
-
-/**
- * GET /api/sites
- * 施設一覧を取得（CARE CUBE + 施設ホスト）
- * クエリパラメータ:
- *   - area: エリアでフィルタ (例: TOKYO_STATION, SHINJUKU)
- *   - type: 施設タイプでフィルタ (HOTEL, CARE_CUBE, PRIVATE_SPACE)
- *   - search: 名前・住所で検索
- */
-sitesApp.get('/', async (c) => {
-  const area = c.req.query('area')
-  const type = c.req.query('type')
-  const search = c.req.query('search')
+app.get('/', async (c) => {
+  const { DB } = c.env;
+  
+  // クエリパラメータ
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '20');
+  const search = c.req.query('search') || '';
+  const area = c.req.query('area') || '';
+  const type = c.req.query('type') || '';
+  const status = c.req.query('status') || 'ACTIVE';
+  
+  const offset = (page - 1) * limit;
   
   try {
-    if (!c.env.DB) {
-      return c.json([])
-    }
+    // WHERE句の構築
+    const conditions: string[] = ['1=1'];
+    const params: any[] = [];
     
-    // Detect which schema we're using by checking if area_code column exists
-    const schemaCheck = await c.env.DB.prepare(`
-      SELECT COUNT(*) as has_area_code 
-      FROM pragma_table_info('sites') 
-      WHERE name='area_code'
-    `).first()
-    
-    const hasAreaCode = schemaCheck && (schemaCheck.has_area_code as number) > 0
-    
-    // Build query based on detected schema
-    const areaCol = hasAreaCode ? 's.area_code' : 's.area'
-    const latCol = hasAreaCode ? 's.latitude' : 's.lat'
-    const lngCol = hasAreaCode ? 's.longitude' : 's.lng'
-    
-    let query = `
-      SELECT s.id, s.name, s.type, s.address, 
-             ${areaCol} as area, 
-             ${latCol} as lat, 
-             ${lngCol} as lng, 
-             s.host_id,
-             u.name as host_name
-      FROM sites s
-      LEFT JOIN users u ON s.host_id = u.id
-      WHERE 1=1
-    `
-    const params: any[] = []
-    
-    if (area) {
-      query += ` AND ${areaCol} = ?`
-      params.push(area)
-    }
-    
-    if (type) {
-      query += ' AND s.type = ?'
-      params.push(type)
+    if (status) {
+      conditions.push('s.status = ?');
+      params.push(status);
     }
     
     if (search) {
-      query += ' AND (s.name LIKE ? OR s.address LIKE ?)'
-      params.push(`%${search}%`, `%${search}%`)
+      conditions.push('(s.name LIKE ? OR s.address LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
     }
     
-    query += ' ORDER BY s.type, s.name LIMIT 100'
+    if (area) {
+      conditions.push('s.area_code = ?');
+      params.push(area);
+    }
     
-    const { results } = await c.env.DB.prepare(query).bind(...params).all()
-    return c.json(results)
-  } catch (e) {
-    console.error('Sites API error:', e)
-    return c.json({ error: 'Internal server error' }, 500)
+    if (type) {
+      conditions.push('s.type = ?');
+      params.push(type);
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    // 総数取得
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM sites s
+      WHERE ${whereClause}
+    `;
+    const countResult = await DB.prepare(countQuery).bind(...params).first<{ total: number }>();
+    const total = countResult?.total || 0;
+    
+    // データ取得
+    const query = `
+      SELECT 
+        s.id,
+        s.name,
+        s.type,
+        s.address,
+        s.area_code,
+        s.latitude,
+        s.longitude,
+        s.phone,
+        s.description,
+        s.amenities,
+        s.status,
+        s.created_at,
+        u.name as host_name,
+        (SELECT COUNT(*) FROM site_rooms WHERE site_id = s.id AND is_available = 1) as available_rooms
+      FROM sites s
+      LEFT JOIN users u ON s.host_id = u.id
+      WHERE ${whereClause}
+      ORDER BY s.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    const result = await DB.prepare(query).bind(...params, limit, offset).all();
+    
+    return c.json({
+      sites: result.results || [],
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error: any) {
+    console.error('Error fetching sites:', error);
+    return c.json({ error: '施設の取得に失敗しました' }, 500);
   }
-})
+});
 
-/**
- * GET /api/sites/:id
- * 施設詳細を取得
- */
-sitesApp.get('/:id', async (c) => {
-  const id = c.req.param('id')
+// ============================================
+// 施設詳細取得（パブリック）
+// ============================================
+app.get('/:id', async (c) => {
+  const { DB } = c.env;
+  const siteId = c.req.param('id');
   
   try {
-    if (!c.env.DB) {
-      return c.json({ error: 'Database not available' }, 503)
-    }
-    
-    const { results } = await c.env.DB.prepare(`
-      SELECT s.*, u.name as host_name, u.email as host_email, u.phone as host_phone
+    // 施設情報取得
+    const siteQuery = `
+      SELECT 
+        s.*,
+        u.name as host_name,
+        u.email as host_email,
+        u.phone as host_phone
       FROM sites s
       LEFT JOIN users u ON s.host_id = u.id
       WHERE s.id = ?
-    `).bind(id).all()
+    `;
     
-    if (results.length === 0) {
-      return c.json({ error: 'Site not found' }, 404)
+    const site = await DB.prepare(siteQuery).bind(siteId).first();
+    
+    if (!site) {
+      return c.json({ error: '施設が見つかりません' }, 404);
     }
     
-    return c.json(results[0])
-  } catch (e) {
-    console.error('Site detail error:', e)
-    return c.json({ error: 'Internal server error' }, 500)
+    // 部屋一覧取得
+    const roomsQuery = `
+      SELECT *
+      FROM site_rooms
+      WHERE site_id = ? AND is_available = 1
+      ORDER BY room_number
+    `;
+    
+    const roomsResult = await DB.prepare(roomsQuery).bind(siteId).all();
+    
+    return c.json({
+      site,
+      rooms: roomsResult.results || []
+    });
+  } catch (error: any) {
+    console.error('Error fetching site detail:', error);
+    return c.json({ error: '施設の取得に失敗しました' }, 500);
   }
-})
+});
 
-/**
- * GET /api/sites/stats
- * 施設統計情報を取得
- */
-sitesApp.get('/stats', async (c) => {
+// ============================================
+// 施設の利用可能セラピスト一覧（パブリック）
+// ============================================
+app.get('/:id/therapists', async (c) => {
+  const { DB } = c.env;
+  const siteId = c.req.param('id');
+  
   try {
-    if (!c.env.DB) {
-      return c.json({ error: 'Database not available' }, 503)
+    // この施設で施術可能なセラピストを取得
+    const query = `
+      SELECT DISTINCT
+        tp.id,
+        u.name,
+        u.avatar_url,
+        tp.bio,
+        tp.rating,
+        tp.review_count,
+        tp.specialties
+      FROM therapist_profiles tp
+      JOIN users u ON tp.user_id = u.id
+      WHERE tp.status = 'APPROVED'
+        AND tp.approved_areas LIKE ?
+      ORDER BY tp.rating DESC, tp.review_count DESC
+    `;
+    
+    // 施設のエリアコードを取得
+    const site = await DB.prepare('SELECT area_code FROM sites WHERE id = ?').bind(siteId).first<{ area_code: string }>();
+    
+    if (!site) {
+      return c.json({ error: '施設が見つかりません' }, 404);
     }
     
-    const { results } = await c.env.DB.prepare(`
-      SELECT 
-        type,
-        COUNT(*) as count,
-        COUNT(DISTINCT area) as areas_covered
-      FROM sites
-      WHERE is_active = TRUE
-      GROUP BY type
-    `).all()
+    const result = await DB.prepare(query).bind(`%${site.area_code}%`).all();
     
-    return c.json(results)
-  } catch (e) {
-    console.error('Sites stats error:', e)
-    return c.json({ error: 'Internal server error' }, 500)
+    return c.json({
+      therapists: result.results || []
+    });
+  } catch (error: any) {
+    console.error('Error fetching site therapists:', error);
+    return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
   }
-})
+});
 
-export default sitesApp
+export default app;

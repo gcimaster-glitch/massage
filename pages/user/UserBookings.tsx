@@ -1,15 +1,13 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_BOOKINGS, MOCK_THERAPISTS } from '../../constants';
 import StatusBadge from '../../components/StatusBadge';
-import { MapPin, Clock, ChevronRight, Calendar, ArrowRight, Zap, Building2, Home, UserPlus, ShieldAlert, Sparkles, Filter, ArrowUpDown, Search, X } from 'lucide-react';
+import { MapPin, Clock, ChevronRight, Calendar, ArrowRight, Zap, Building2, Home, UserPlus, ShieldAlert, Sparkles, Filter, ArrowUpDown, Search, X, Loader } from 'lucide-react';
 import { Booking, BookingType, BookingStatus } from '../../types';
 
-const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
+const BookingCard: React.FC<{ booking: any }> = ({ booking }) => {
   const navigate = useNavigate();
-  const therapist = MOCK_THERAPISTS.find(t => t.id === booking.therapistId);
-  const isPast = new Date(booking.scheduledStart) < new Date();
+  const isPast = new Date(booking.scheduled_at) < new Date();
 
   return (
     <div 
@@ -17,14 +15,14 @@ const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
       className={`group bg-white rounded-[48px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden relative ${isPast ? 'opacity-70' : ''}`}
     >
       <div className="flex flex-col md:flex-row items-stretch">
-        <div className={`w-full md:w-56 p-10 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-dashed border-gray-100 relative ${booking.type === BookingType.MOBILE ? 'bg-orange-50/50' : 'bg-teal-50/50'}`}>
+        <div className={`w-full md:w-56 p-10 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-dashed border-gray-100 relative ${booking.type === 'MOBILE' ? 'bg-orange-50/50' : 'bg-teal-50/50'}`}>
            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-slate-50 rounded-full"></div>
            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-slate-50 rounded-full"></div>
            
-           <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center shadow-inner mb-4 ${booking.type === BookingType.MOBILE ? 'text-orange-600 bg-white' : 'text-teal-600 bg-white'}`}>
-              {booking.type === BookingType.ONSITE ? <Building2 size={32} /> : <Home size={32} />}
+           <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center shadow-inner mb-4 ${booking.type === 'MOBILE' ? 'text-orange-600 bg-white' : 'text-teal-600 bg-white'}`}>
+              {booking.type === 'ONSITE' ? <Building2 size={32} /> : <Home size={32} />}
            </div>
-           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{booking.type === BookingType.ONSITE ? '店舗利用' : '出張訪問'}</p>
+           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{booking.type === 'ONSITE' ? '店舗利用' : '出張訪問'}</p>
            <h4 className="text-2xl font-black text-gray-900 mt-2 tracking-tighter">#{booking.id.slice(-4)}</h4>
         </div>
 
@@ -32,17 +30,17 @@ const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
            <div className="space-y-4 flex-1">
               <div className="flex items-center gap-4">
                  <StatusBadge status={booking.status} />
-                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">{new Date(booking.scheduledStart).toLocaleDateString('ja-JP')}</span>
+                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">{new Date(booking.scheduled_at).toLocaleDateString('ja-JP')}</span>
               </div>
-              <h3 className="text-3xl font-black text-gray-900 group-hover:text-teal-600 transition-colors leading-none tracking-tight">{booking.serviceName}</h3>
+              <h3 className="text-3xl font-black text-gray-900 group-hover:text-teal-600 transition-colors leading-none tracking-tight">{booking.service_name}</h3>
               <div className="flex flex-wrap gap-6 pt-2">
                  <div className="flex items-center gap-2 text-gray-500 font-bold text-sm">
                     <Clock size={16} className="text-teal-500" /> 
-                    {new Date(booking.scheduledStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 〜
+                    {new Date(booking.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 〜
                  </div>
                  <div className="flex items-center gap-2 text-gray-500 font-bold text-sm">
                     <MapPin size={16} className="text-teal-500" /> 
-                    <span className="truncate max-w-[200px]">{booking.location}</span>
+                    <span className="truncate max-w-[200px]">{booking.site_name || booking.location || '指定なし'}</span>
                  </div>
               </div>
            </div>
@@ -50,9 +48,9 @@ const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
            <div className="flex items-center gap-6">
               <div className="text-right hidden sm:block">
                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">担当者</p>
-                 <p className="font-black text-gray-900">{booking.therapistName}</p>
+                 <p className="font-black text-gray-900">{booking.therapist_name || 'セラピスト'}</p>
               </div>
-              <img src={therapist?.imageUrl} className="w-16 h-16 rounded-[24px] object-cover shadow-xl border-4 border-white transition-transform group-hover:scale-110" />
+              <img src={booking.therapist_avatar || '/default-avatar.jpg'} className="w-16 h-16 rounded-[24px] object-cover shadow-xl border-4 border-white transition-transform group-hover:scale-110" />
               <button className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:bg-teal-600 transition-all active:scale-90">
                  <ArrowRight size={24} />
               </button>
@@ -66,21 +64,56 @@ const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
 const UserBookings: React.FC = () => {
   const navigate = useNavigate();
   
-  // States for Filter & Sort
+  // States
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'NAME' | 'STATUS'>('DATE_DESC');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Fetch bookings from API
+  useEffect(() => {
+    const fetchBookings = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        navigate('/auth/login/user');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const res = await fetch('/api/bookings?limit=100', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setBookings(data.bookings || []);
+        } else {
+          console.error('Failed to fetch bookings');
+        }
+      } catch (e) {
+        console.error('Error fetching bookings:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchBookings();
+  }, [navigate]);
+
   // Derived list from search and filters
   const filteredBookings = useMemo(() => {
-    let result = [...MOCK_BOOKINGS].filter(b => b.userId === 'u1');
+    let result = [...bookings];
 
     // Filter by therapist name
     if (searchTerm) {
       result = result.filter(b => 
-        b.therapistName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.serviceName.toLowerCase().includes(searchTerm.toLowerCase())
+        b.therapist_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.service_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -93,27 +126,39 @@ const UserBookings: React.FC = () => {
     result.sort((a, b) => {
       switch (sortBy) {
         case 'DATE_DESC':
-          return new Date(b.scheduledStart).getTime() - new Date(a.scheduledStart).getTime();
+          return new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime();
         case 'DATE_ASC':
-          return new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime();
+          return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
         case 'NAME':
-          return a.therapistName.localeCompare(b.therapistName);
+          return (a.therapist_name || '').localeCompare(b.therapist_name || '');
         case 'STATUS':
-          return a.status.localeCompare(b.status);
+          return (a.status || '').localeCompare(b.status || '');
         default:
           return 0;
       }
     });
 
     return result;
-  }, [searchTerm, filterStatus, sortBy]);
+  }, [bookings, searchTerm, filterStatus, sortBy]);
 
-  const upcomingBookings = filteredBookings.filter(b => new Date(b.scheduledStart) >= new Date());
-  const pastBookings = filteredBookings.filter(b => new Date(b.scheduledStart) < new Date());
+  const upcomingBookings = filteredBookings.filter(b => new Date(b.scheduled_at) >= new Date());
+  const pastBookings = filteredBookings.filter(b => new Date(b.scheduled_at) < new Date());
 
-  const profileIncomplete = true; 
+  const profileIncomplete = false; 
 
-  const statusOptions = Object.values(BookingStatus);
+  const statusOptions = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'];
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader size={48} className="animate-spin text-teal-600 mx-auto" />
+          <p className="text-gray-400 font-bold">予約履歴を読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-12 pb-40 animate-fade-in max-w-5xl mx-auto px-4 md:px-0 pt-10 font-sans">

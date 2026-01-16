@@ -27,11 +27,12 @@ const SiteDetail: React.FC = () => {
         setLoading(true);
         const res = await fetch(`/api/sites/${siteId}`);
         const data = await res.json();
-        setSite(data);
+        
+        // APIレスポンスから site オブジェクトを取得
+        setSite(data.site || null);
       } catch (e) {
         console.error('Failed to fetch site:', e);
-        // Fallback to mock data
-        setSite(MOCK_SITES.find(s => s.id === siteId) || null);
+        setSite(null);
       } finally {
         setLoading(false);
       }
@@ -43,19 +44,11 @@ const SiteDetail: React.FC = () => {
   const fetchTherapists = async () => {
     try {
       setLoadingTherapists(true);
-      const res = await fetch('/api/therapists');
+      const res = await fetch(`/api/sites/${siteId}/therapists`);
       const data = await res.json();
       
-      // Sort: available therapists first
-      const sortedData = data.sort((a: any, b: any) => {
-        const aAvailable = parseInt(a.id.replace(/\D/g, '')) % 2 === 1;
-        const bAvailable = parseInt(b.id.replace(/\D/g, '')) % 2 === 1;
-        if (aAvailable && !bAvailable) return -1;
-        if (!aAvailable && bAvailable) return 1;
-        return b.rating - a.rating;
-      });
-      
-      setTherapists(sortedData);
+      // APIレスポンスから therapists 配列を取得
+      setTherapists(data.therapists || []);
       setShowTherapistModal(true);
     } catch (e) {
       console.error('Failed to fetch therapists:', e);

@@ -26,11 +26,17 @@ const TherapistDetail: React.FC = () => {
         setLoading(true);
         const res = await fetch(`/api/therapists/${therapistId}`);
         const data = await res.json();
-        setTherapist(data);
+        
+        // APIレスポンスから therapist, menu, options, reviews を取得
+        setTherapist({
+          ...data.therapist,
+          menu: data.menu || [],
+          options: data.options || [],
+          reviews: data.reviews || []
+        });
       } catch (e) {
         console.error('Failed to fetch therapist:', e);
-        // Fallback to mock data
-        setTherapist(MOCK_THERAPISTS.find(t => t.id === therapistId) || MOCK_THERAPISTS[0]);
+        setTherapist(null);
       } finally {
         setLoading(false);
       }

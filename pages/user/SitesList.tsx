@@ -53,9 +53,12 @@ export default function SitesList() {
 
   const fetchSites = async () => {
     try {
-      const res = await fetch('/api/sites')
+      // 新しいAPIエンドポイントを使用
+      const res = await fetch('/api/sites?status=PENDING&limit=100')
       const data = await res.json()
-      setSites(data)
+      
+      // APIレスポンスから sites 配列を取得
+      setSites(data.sites || [])
     } catch (e) {
       console.error('Failed to fetch sites:', e)
     } finally {

@@ -8,6 +8,9 @@ import officesApp from './offices-routes'
 import therapistEditApp from './therapist-edit-routes'
 import imageApp from './image-routes'
 import userManagementApp from './user-management-routes'
+import sitesRoutesApp from './sites-routes'
+import therapistsRoutesApp from './therapists-routes'
+import bookingsRoutesApp from './bookings-routes'
 
 // ============================================
 // Type Definitions
@@ -96,6 +99,21 @@ app.route('/api/images', imageApp)
 // Mount User Management Routes (Admin only)
 // ============================================
 app.route('/api/admin/users', userManagementApp)
+
+// ============================================
+// Mount Public Sites Routes
+// ============================================
+app.route('/api/sites', sitesRoutesApp)
+
+// ============================================
+// Mount Public Therapists Routes
+// ============================================
+app.route('/api/therapists', therapistsRoutesApp)
+
+// ============================================
+// Mount Bookings Routes (Auth required)
+// ============================================
+app.route('/api/bookings', bookingsRoutesApp)
 
 // ============================================
 // Auth Routes
