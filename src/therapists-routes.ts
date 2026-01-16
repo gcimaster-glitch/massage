@@ -33,7 +33,7 @@ app.get('/', async (c) => {
   
   try {
     // WHERE句の構築
-    const conditions: string[] = ["tp.is_active = 1"];
+    const conditions: string[] = ["tp.status = 'APPROVED'"];
     const params: any[] = [];
     
     if (search) {

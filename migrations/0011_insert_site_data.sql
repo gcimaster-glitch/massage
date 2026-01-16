@@ -1,327 +1,55 @@
 -- CARE CUBE 施設データ投入（サンプル：20施設）
 -- 既存の sites テーブルにデータを挿入
+-- スキーマ: id, host_id, name, type, address, area_code, latitude, longitude, room_count, amenities, status
 
+-- まず、ホストユーザーを作成
+INSERT OR IGNORE INTO users (
+  id, email, name, role, email_verified, created_at
+) VALUES
+('host-shibuya-001', 'host.shibuya001@hogusy.com', 'CARE CUBE 渋谷管理', 'HOST', 1, datetime('now')),
+('host-shinjuku-001', 'host.shinjuku001@hogusy.com', 'CARE CUBE 新宿管理', 'HOST', 1, datetime('now')),
+('host-minato-001', 'host.minato001@hogusy.com', 'CARE CUBE 港管理', 'HOST', 1, datetime('now')),
+('host-shinagawa-001', 'host.shinagawa001@hogusy.com', 'CARE CUBE 品川管理', 'HOST', 1, datetime('now')),
+('host-setagaya-001', 'host.setagaya001@hogusy.com', 'CARE CUBE 世田谷管理', 'HOST', 1, datetime('now')),
+('host-chiyoda-001', 'host.chiyoda001@hogusy.com', 'CARE CUBE 千代田管理', 'HOST', 1, datetime('now')),
+('host-chuo-001', 'host.chuo001@hogusy.com', 'CARE CUBE 中央管理', 'HOST', 1, datetime('now')),
+('host-toshima-001', 'host.toshima001@hogusy.com', 'CARE CUBE 豊島管理', 'HOST', 1, datetime('now'));
+
+-- 施設データを挿入
 INSERT OR IGNORE INTO sites (
-  id, name, area, address, description, facilities,
-  operating_hours, access_info, capacity, status, 
-  latitude, longitude, created_at
+  id, host_id, name, type, address, area_code, latitude, longitude, room_count, amenities, status, created_at
 ) VALUES
 -- 渋谷エリア
-(
-  'site-shibuya-001',
-  'CARE CUBE 渋谷駅前',
-  '渋谷区',
-  '東京都渋谷区道玄坂1-2-3 渋谷ビル3F',
-  '渋谷駅から徒歩2分の好立地。最新設備完備の快適空間です。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー"]',
-  '{"weekday": "10:00-23:00", "weekend": "10:00-22:00"}',
-  '渋谷駅ハチ公口より徒歩2分',
-  8,
-  'APPROVED',
-  35.6595,
-  139.7004,
-  datetime('now')
-),
-
-(
-  'site-shibuya-002',
-  'CARE CUBE 渋谷センター街',
-  '渋谷区',
-  '東京都渋谷区宇田川町15-1 センタービル2F',
-  'センター街すぐ。賑やかなエリアで気軽に立ち寄れます。',
-  '["個室", "Wi-Fi", "ドリンクバー"]',
-  '{"weekday": "11:00-22:00", "weekend": "11:00-21:00"}',
-  '渋谷駅より徒歩5分、センター街内',
-  6,
-  'APPROVED',
-  35.6617,
-  139.6980,
-  datetime('now')
-),
+('site-shibuya-001', 'host-shibuya-001', 'CARE CUBE 渋谷駅前', 'OFFICE', '東京都渋谷区道玄坂1-2-3 渋谷ビル3F', 'shibuya', 35.6595, 139.7004, 8, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー"]', 'APPROVED', datetime('now')),
+('site-shibuya-002', 'host-shibuya-001', 'CARE CUBE 渋谷センター街', 'OFFICE', '東京都渋谷区宇田川町15-1 センタービル2F', 'shibuya', 35.6617, 139.6980, 6, '["個室", "Wi-Fi", "ドリンクバー"]', 'APPROVED', datetime('now')),
 
 -- 新宿エリア
-(
-  'site-shinjuku-001',
-  'CARE CUBE 新宿西口',
-  '新宿区',
-  '東京都新宿区西新宿1-1-1 新宿タワー5F',
-  '新宿西口から直結。ビジネスマンに人気の施設です。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "24時間"]',
-  '{"weekday": "24時間営業", "weekend": "24時間営業"}',
-  '新宿駅西口より徒歩1分',
-  12,
-  'APPROVED',
-  35.6896,
-  139.6917,
-  datetime('now')
-),
-
-(
-  'site-shinjuku-002',
-  'CARE CUBE 新宿三丁目',
-  '新宿区',
-  '東京都新宿区新宿3-17-23 マルイ本館8F',
-  'マルイ本館内。ショッピングついでに気軽に利用可能。',
-  '["個室", "Wi-Fi", "ドリンクバー"]',
-  '{"weekday": "10:00-21:00", "weekend": "10:00-20:00"}',
-  '新宿三丁目駅直結、マルイ本館8F',
-  8,
-  'APPROVED',
-  35.6906,
-  139.7063,
-  datetime('now')
-),
-
-(
-  'site-shinjuku-003',
-  'CARE CUBE 新宿東口',
-  '新宿区',
-  '東京都新宿区新宿3-38-1 新宿アルタ前ビル4F',
-  'アルタ前の好立地。待ち合わせ前後に最適です。',
-  '["個室", "シャワー", "Wi-Fi", "ロッカー"]',
-  '{"weekday": "10:00-23:00", "weekend": "10:00-22:00"}',
-  '新宿駅東口より徒歩3分',
-  10,
-  'APPROVED',
-  35.6910,
-  139.7048,
-  datetime('now')
-),
+('site-shinjuku-001', 'host-shinjuku-001', 'CARE CUBE 新宿西口', 'OFFICE', '東京都新宿区西新宿1-1-1 新宿タワー5F', 'shinjuku', 35.6896, 139.6917, 12, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "24時間"]', 'APPROVED', datetime('now')),
+('site-shinjuku-002', 'host-shinjuku-001', 'CARE CUBE 新宿三丁目', 'OFFICE', '東京都新宿区新宿3-17-23 マルイ本館8F', 'shinjuku', 35.6906, 139.7063, 8, '["個室", "Wi-Fi", "ドリンクバー"]', 'APPROVED', datetime('now')),
+('site-shinjuku-003', 'host-shinjuku-001', 'CARE CUBE 新宿東口', 'OFFICE', '東京都新宿区新宿3-38-1 新宿アルタ前ビル4F', 'shinjuku', 35.6910, 139.7048, 10, '["個室", "シャワー", "Wi-Fi", "ロッカー"]', 'APPROVED', datetime('now')),
 
 -- 港エリア
-(
-  'site-minato-001',
-  'CARE CUBE 六本木ヒルズ',
-  '港区',
-  '東京都港区六本木6-10-1 六本木ヒルズ ウエストウォーク4F',
-  '六本木ヒルズ内。高級感あふれる空間でリラックス。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "アメニティ充実"]',
-  '{"weekday": "10:00-23:00", "weekend": "10:00-22:00"}',
-  '六本木駅より徒歩5分、六本木ヒルズ内',
-  15,
-  'APPROVED',
-  35.6604,
-  139.7292,
-  datetime('now')
-),
-
-(
-  'site-minato-002',
-  'CARE CUBE 赤坂見附',
-  '港区',
-  '東京都港区赤坂3-2-1 赤坂プラザビル3F',
-  '赤坂見附駅直結。ビジネス街の癒しスポット。',
-  '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]',
-  '{"weekday": "9:00-22:00", "weekend": "10:00-20:00"}',
-  '赤坂見附駅直結',
-  8,
-  'APPROVED',
-  35.6777,
-  139.7368,
-  datetime('now')
-),
-
-(
-  'site-minato-003',
-  'CARE CUBE 表参道',
-  '港区',
-  '東京都港区北青山3-5-10 表参道ビル2F',
-  '表参道のおしゃれな雰囲気。女性に人気の施設です。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "アメニティ充実"]',
-  '{"weekday": "10:00-21:00", "weekend": "10:00-20:00"}',
-  '表参道駅A1出口より徒歩2分',
-  6,
-  'APPROVED',
-  35.6652,
-  139.7123,
-  datetime('now')
-),
+('site-minato-001', 'host-minato-001', 'CARE CUBE 六本木ヒルズ', 'OFFICE', '東京都港区六本木6-10-1 六本木ヒルズ ウエストウォーク4F', 'minato', 35.6604, 139.7292, 15, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "アメニティ充実"]', 'APPROVED', datetime('now')),
+('site-minato-002', 'host-minato-001', 'CARE CUBE 赤坂見附', 'OFFICE', '東京都港区赤坂3-2-1 赤坂プラザビル3F', 'minato', 35.6777, 139.7368, 8, '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]', 'APPROVED', datetime('now')),
+('site-minato-003', 'host-minato-001', 'CARE CUBE 表参道', 'OFFICE', '東京都港区北青山3-5-10 表参道ビル2F', 'minato', 35.6652, 139.7123, 6, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "アメニティ充実"]', 'APPROVED', datetime('now')),
 
 -- 品川エリア
-(
-  'site-shinagawa-001',
-  'CARE CUBE 品川駅前',
-  '品川区',
-  '東京都港区港南2-16-3 品川グランドセントラルタワー3F',
-  '品川駅直結。新幹線利用前後に最適です。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "荷物預かり"]',
-  '{"weekday": "7:00-23:00", "weekend": "8:00-22:00"}',
-  '品川駅港南口より徒歩1分',
-  12,
-  'APPROVED',
-  35.6284,
-  139.7387,
-  datetime('now')
-),
-
-(
-  'site-shinagawa-002',
-  'CARE CUBE 大井町',
-  '品川区',
-  '東京都品川区大井1-6-3 大井町ビル5F',
-  '大井町駅徒歩3分。地域密着型の落ち着いた施設。',
-  '["個室", "Wi-Fi", "ドリンクバー"]',
-  '{"weekday": "10:00-22:00", "weekend": "10:00-21:00"}',
-  '大井町駅東口より徒歩3分',
-  6,
-  'APPROVED',
-  35.6058,
-  139.7340,
-  datetime('now')
-),
+('site-shinagawa-001', 'host-shinagawa-001', 'CARE CUBE 品川駅前', 'OFFICE', '東京都港区港南2-16-3 品川グランドセントラルタワー3F', 'shinagawa', 35.6284, 139.7387, 12, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "荷物預かり"]', 'APPROVED', datetime('now')),
+('site-shinagawa-002', 'host-shinagawa-001', 'CARE CUBE 大井町', 'OFFICE', '東京都品川区大井1-6-3 大井町ビル5F', 'shinagawa', 35.6058, 139.7340, 6, '["個室", "Wi-Fi", "ドリンクバー"]', 'APPROVED', datetime('now')),
 
 -- 世田谷エリア
-(
-  'site-setagaya-001',
-  'CARE CUBE 三軒茶屋',
-  '世田谷区',
-  '東京都世田谷区三軒茶屋2-11-20 三茶ビル4F',
-  '三軒茶屋駅すぐ。地元に愛される温かい雰囲気。',
-  '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]',
-  '{"weekday": "10:00-22:00", "weekend": "10:00-21:00"}',
-  '三軒茶屋駅北口より徒歩2分',
-  8,
-  'APPROVED',
-  35.6431,
-  139.6689,
-  datetime('now')
-),
-
-(
-  'site-setagaya-002',
-  'CARE CUBE 下北沢',
-  '世田谷区',
-  '東京都世田谷区北沢2-14-15 下北沢プラザ3F',
-  '下北沢の個性的な街に溶け込む隠れ家的施設。',
-  '["個室", "Wi-Fi", "ドリンクバー"]',
-  '{"weekday": "11:00-22:00", "weekend": "11:00-21:00"}',
-  '下北沢駅南口より徒歩4分',
-  5,
-  'APPROVED',
-  35.6616,
-  139.6681,
-  datetime('now')
-),
+('site-setagaya-001', 'host-setagaya-001', 'CARE CUBE 三軒茶屋', 'OFFICE', '東京都世田谷区三軒茶屋2-11-20 三茶ビル4F', 'setagaya', 35.6431, 139.6689, 8, '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]', 'APPROVED', datetime('now')),
+('site-setagaya-002', 'host-setagaya-001', 'CARE CUBE 下北沢', 'OFFICE', '東京都世田谷区北沢2-14-15 下北沢プラザ3F', 'setagaya', 35.6616, 139.6681, 5, '["個室", "Wi-Fi", "ドリンクバー"]', 'APPROVED', datetime('now')),
 
 -- 千代田エリア
-(
-  'site-chiyoda-001',
-  'CARE CUBE 東京駅前',
-  '千代田区',
-  '東京都千代田区丸の内1-9-2 グラントウキョウサウスタワー5F',
-  '東京駅直結。出張・観光の疲れを癒やせます。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "荷物預かり"]',
-  '{"weekday": "7:00-23:00", "weekend": "8:00-22:00"}',
-  '東京駅八重洲南口より徒歩1分',
-  15,
-  'APPROVED',
-  35.6809,
-  139.7673,
-  datetime('now')
-),
-
-(
-  'site-chiyoda-002',
-  'CARE CUBE 秋葉原',
-  '千代田区',
-  '東京都千代田区外神田1-15-16 秋葉原ビル6F',
-  '秋葉原電気街すぐ。観光・ショッピングの休憩に。',
-  '["個室", "Wi-Fi", "ドリンクバー"]',
-  '{"weekday": "10:00-22:00", "weekend": "10:00-21:00"}',
-  '秋葉原駅電気街口より徒歩3分',
-  8,
-  'APPROVED',
-  35.6983,
-  139.7731,
-  datetime('now')
-),
+('site-chiyoda-001', 'host-chiyoda-001', 'CARE CUBE 東京駅前', 'OFFICE', '東京都千代田区丸の内1-9-2 グラントウキョウサウスタワー5F', 'chiyoda', 35.6809, 139.7673, 15, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "荷物預かり"]', 'APPROVED', datetime('now')),
+('site-chiyoda-002', 'host-chiyoda-001', 'CARE CUBE 秋葉原', 'OFFICE', '東京都千代田区外神田1-15-16 秋葉原ビル6F', 'chiyoda', 35.6983, 139.7731, 8, '["個室", "Wi-Fi", "ドリンクバー"]', 'APPROVED', datetime('now')),
 
 -- 中央エリア
-(
-  'site-chuo-001',
-  'CARE CUBE 銀座',
-  '中央区',
-  '東京都中央区銀座4-6-1 銀座三越11F',
-  '銀座三越内。高級感と利便性を兼ね備えた施設。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "アメニティ充実"]',
-  '{"weekday": "10:00-20:00", "weekend": "10:00-20:00"}',
-  '銀座駅直結、銀座三越11F',
-  10,
-  'APPROVED',
-  35.6714,
-  139.7640,
-  datetime('now')
-),
-
-(
-  'site-chuo-002',
-  'CARE CUBE 日本橋',
-  '中央区',
-  '東京都中央区日本橋2-1-3 日本橋ビル5F',
-  '日本橋の歴史ある街並みに佇む癒しの空間。',
-  '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]',
-  '{"weekday": "9:00-22:00", "weekend": "10:00-20:00"}',
-  '日本橋駅B7出口より徒歩2分',
-  8,
-  'APPROVED',
-  35.6823,
-  139.7739,
-  datetime('now')
-),
+('site-chuo-001', 'host-chuo-001', 'CARE CUBE 銀座', 'OFFICE', '東京都中央区銀座4-6-1 銀座三越11F', 'chuo', 35.6714, 139.7640, 10, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー", "アメニティ充実"]', 'APPROVED', datetime('now')),
+('site-chuo-002', 'host-chuo-001', 'CARE CUBE 日本橋', 'OFFICE', '東京都中央区日本橋2-1-3 日本橋ビル5F', 'chuo', 35.6823, 139.7739, 8, '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]', 'APPROVED', datetime('now')),
 
 -- 豊島エリア
-(
-  'site-toshima-001',
-  'CARE CUBE 池袋東口',
-  '豊島区',
-  '東京都豊島区南池袋1-28-1 西武池袋本店9F',
-  '西武池袋本店内。ショッピング疲れを癒やせます。',
-  '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]',
-  '{"weekday": "10:00-21:00", "weekend": "10:00-20:00"}',
-  '池袋駅東口直結、西武池袋本店9F',
-  10,
-  'APPROVED',
-  35.7295,
-  139.7109,
-  datetime('now')
-),
-
-(
-  'site-toshima-002',
-  'CARE CUBE 池袋西口',
-  '豊島区',
-  '東京都豊島区西池袋1-11-1 メトロポリタンプラザ8F',
-  '池袋西口すぐ。仕事帰りに気軽に立ち寄れます。',
-  '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー"]',
-  '{"weekday": "10:00-23:00", "weekend": "10:00-22:00"}',
-  '池袋駅西口より徒歩2分',
-  12,
-  'APPROVED',
-  35.7305,
-  139.7089,
-  datetime('now')
-),
-
-(
-  'site-toshima-003',
-  'CARE CUBE 巣鴨',
-  '豊島区',
-  '東京都豊島区巣鴨3-34-1 巣鴨プラザ3F',
-  '巣鴨地蔵通り商店街近く。地域に根ざした施設。',
-  '["個室", "Wi-Fi", "ドリンクバー"]',
-  '{"weekday": "10:00-21:00", "weekend": "10:00-20:00"}',
-  '巣鴨駅より徒歩5分',
-  6,
-  'APPROVED',
-  35.7339,
-  139.7393,
-  datetime('now')
-);
-
--- 各施設のホスト情報も追加（例）
-INSERT OR IGNORE INTO hosts (
-  id, email, password_hash, site_id, status, created_at
-) VALUES
-('host-shibuya-001', 'host.shibuya001@hogusy.com', '$2a$10$dummy.hash', 'site-shibuya-001', 'ACTIVE', datetime('now')),
-('host-shinjuku-001', 'host.shinjuku001@hogusy.com', '$2a$10$dummy.hash', 'site-shinjuku-001', 'ACTIVE', datetime('now')),
-('host-minato-001', 'host.minato001@hogusy.com', '$2a$10$dummy.hash', 'site-minato-001', 'ACTIVE', datetime('now'));
+('site-toshima-001', 'host-toshima-001', 'CARE CUBE 池袋東口', 'OFFICE', '東京都豊島区南池袋1-28-1 西武池袋本店9F', 'toshima', 35.7295, 139.7109, 10, '["個室", "Wi-Fi", "ドリンクバー", "ロッカー"]', 'APPROVED', datetime('now')),
+('site-toshima-002', 'host-toshima-001', 'CARE CUBE 池袋西口', 'OFFICE', '東京都豊島区西池袋1-11-1 メトロポリタンプラザ8F', 'toshima', 35.7305, 139.7089, 12, '["個室", "シャワー", "Wi-Fi", "ドリンクバー", "ロッカー"]', 'APPROVED', datetime('now')),
+('site-toshima-003', 'host-toshima-001', 'CARE CUBE 巣鴨', 'OFFICE', '東京都豊島区巣鴨3-34-1 巣鴨プラザ3F', 'toshima', 35.7339, 139.7393, 6, '["個室", "Wi-Fi", "ドリンクバー"]', 'APPROVED', datetime('now'));
