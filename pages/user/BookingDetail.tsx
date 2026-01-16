@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_BOOKINGS, MOCK_THERAPISTS } from '../../constants';
 import StatusBadge from '../../components/StatusBadge';
 import { BookingStatus, BookingType, Role } from '../../types';
 // Added Calendar as CalendarIcon and Info to fix "Cannot find name" errors on line 92 and 137
@@ -22,12 +21,57 @@ const BookingDetail: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const booking = MOCK_BOOKINGS.find(b => b.id === bookingId);
-  const therapist = MOCK_THERAPISTS.find(t => t.id === booking?.therapistId);
-  const [status, setStatus] = useState(booking?.status);
+  const [booking, setBooking] = useState<any>(null);
+  const [therapist, setTherapist] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<BookingStatus | undefined>(undefined);
   
   const [isExtensionChecking, setIsExtensionChecking] = useState(false);
   const [extensionResult, setExtensionResult] = useState<'OK' | 'BUSY' | null>(null);
+
+  // Fetch booking data from API
+  useEffect(() => {
+    const fetchBooking = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        const res = await fetch(`/api/bookings/${bookingId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch booking');
+        }
+
+        const data = await res.json();
+        setBooking(data.booking);
+        setStatus(data.booking.status as BookingStatus);
+
+        // Fetch therapist data
+        if (data.booking.therapist_id) {
+          const therapistRes = await fetch(`/api/therapists/${data.booking.therapist_id}`);
+          if (therapistRes.ok) {
+            const therapistData = await therapistRes.json();
+            setTherapist(therapistData.therapist);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching booking:', error);
+        setBooking(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBooking();
+  }, [bookingId, navigate]);
 
   const isLive = status === BookingStatus.IN_SERVICE || status === BookingStatus.CHECKED_IN || status === BookingStatus.WAITING_FOR_USER;
 
@@ -39,6 +83,17 @@ const BookingDetail: React.FC = () => {
       setExtensionResult(Math.random() > 0.5 ? 'OK' : 'BUSY');
     }, 1500);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 size={48} className="animate-spin text-teal-600 mx-auto" />
+          <p className="text-gray-400 font-bold">予約情報を読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!booking) return <div className="p-20 text-center font-black text-gray-400">予約が見つかりません</div>;
 
@@ -94,10 +149,10 @@ const BookingDetail: React.FC = () => {
                            <CalendarIcon size={14}/> Session Schedule
                         </p>
                         <h2 className="text-5xl font-black tracking-tighter text-gray-900 leading-none">
-                           {new Date(booking.scheduledStart).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}
+                           {new Date(booking.scheduled_at).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}
                         </h2>
                         <p className="text-3xl font-black text-gray-300 tracking-tight leading-none tabular-nums">
-                           {new Date(booking.scheduledStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 〜
+                           {new Date(booking.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 〜
                         </p>
                      </div>
                      
