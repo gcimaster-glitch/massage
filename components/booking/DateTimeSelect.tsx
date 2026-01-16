@@ -1,0 +1,152 @@
+/**
+ * DateTimeSelect: 日時選択コンポーネント
+ * - カレンダーで日付選択
+ * - 時間帯選択（空き状況確認）
+ */
+
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Calendar, Clock } from 'lucide-react';
+import { BookingData } from '../../types/booking';
+
+interface DateTimeSelectProps {
+  bookingData: BookingData;
+  onNext: (data: Partial<BookingData>) => void;
+  onBack: () => void;
+}
+
+const DateTimeSelect: React.FC<DateTimeSelectProps> = ({
+  bookingData,
+  onNext,
+  onBack
+}) => {
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availableTimes] = useState<string[]>([
+    '10:00', '11:00', '12:00', '13:00', '14:00', 
+    '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+  ]);
+
+  useEffect(() => {
+    // 今日から7日分の日付を生成
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+    setAvailableDates(dates);
+  }, []);
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+    return `${month}/${day}(${dayOfWeek})`;
+  };
+
+  const handleNext = () => {
+    if (!selectedDate || !selectedTime) {
+      alert('日時を選択してください');
+      return;
+    }
+
+    const scheduled_at = `${selectedDate}T${selectedTime}:00`;
+
+    onNext({
+      scheduled_date: selectedDate,
+      scheduled_time: selectedTime,
+      scheduled_at
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <button onClick={onBack} className="flex items-center text-gray-600 hover:text-gray-900 mb-4">
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          戻る
+        </button>
+
+        {/* 日付選択 */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+            <Calendar className="w-5 h-5 mr-2" />
+            日付を選択
+          </h3>
+          <div className="grid grid-cols-7 gap-2">
+            {availableDates.map((date) => (
+              <button
+                key={date}
+                onClick={() => setSelectedDate(date)}
+                className={`p-2 rounded-lg text-center transition-all ${
+                  selectedDate === date
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="text-xs">{formatDate(date)}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 時間帯選択 */}
+        {selectedDate && (
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+              <Clock className="w-5 h-5 mr-2" />
+              時間を選択
+            </h3>
+            <div className="grid grid-cols-4 gap-2">
+              {availableTimes.map((time) => (
+                <button
+                  key={time}
+                  onClick={() => setSelectedTime(time)}
+                  className={`p-2 rounded-lg text-center transition-all ${
+                    selectedTime === time
+                      ? 'bg-teal-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 選択サマリー */}
+      {selectedDate && selectedTime && (
+        <div className="bg-teal-50 rounded-lg p-4">
+          <p className="text-sm text-teal-700 mb-1">選択した日時</p>
+          <p className="text-lg font-semibold text-teal-900">
+            {formatDate(selectedDate)} {selectedTime}〜
+          </p>
+          <p className="text-sm text-teal-700 mt-1">
+            所要時間: 約{bookingData.total_duration}分
+          </p>
+        </div>
+      )}
+
+      {/* 次へボタン */}
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <button
+          onClick={handleNext}
+          disabled={!selectedDate || !selectedTime}
+          className={`w-full py-3 rounded-lg font-medium transition-all ${
+            selectedDate && selectedTime
+              ? 'bg-teal-600 text-white hover:bg-teal-700'
+              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          予約内容を確認
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default DateTimeSelect;
