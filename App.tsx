@@ -30,6 +30,7 @@ import FeeStructure from './pages/portal/FeeStructure';
 // --- User (Client) ---
 import UserHome from './pages/user/UserHome';
 import UserHomeNew from './pages/user/UserHomeNew';
+import UserDashboard from './pages/user/UserDashboard';
 import SiteDetail from './pages/user/SiteDetail';
 import TherapistDetail from './pages/user/TherapistDetail';
 import BookingNew from './pages/user/BookingNew';
@@ -177,8 +178,9 @@ const App: React.FC = () => {
         <Route path="/auth/signup/office" element={<SignupOffice />} />
 
         {/* User App - Public pages (no auth required) */}
-        <Route path="/app" element={<UserHomeNew currentUser={currentUser} />} />
+        <Route path="/app" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserDashboard onLogout={handleLogout} /></RequireAuth>} />
         <Route path="/app/home-old" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserHome /></RequireAuth>} />
+        <Route path="/app/home-new" element={<UserHomeNew currentUser={currentUser} />} />
         <Route path="/app/map" element={<SiteMapSearch />} />
         <Route path="/app/sites" element={<SitesList />} />
         <Route path="/app/site/:siteId" element={<SiteDetail />} />
