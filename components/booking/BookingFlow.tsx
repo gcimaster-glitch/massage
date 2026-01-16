@@ -68,6 +68,20 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
     const token = localStorage.getItem('auth_token');
     setIsAuthenticated(!!token);
     
+    // セッションストレージから予約情報を復元
+    const savedBookingData = sessionStorage.getItem('booking_in_progress');
+    if (savedBookingData) {
+      try {
+        const parsedData = JSON.parse(savedBookingData);
+        setBookingData(prev => ({ ...prev, ...parsedData }));
+        // 復元後は削除
+        sessionStorage.removeItem('booking_in_progress');
+        console.log('✅ 予約情報を復元しました:', parsedData);
+      } catch (e) {
+        console.error('予約情報の復元に失敗:', e);
+      }
+    }
+    
     // 初期データをセット
     if (initialTherapist) {
       setBookingData(prev => ({ ...prev, therapist: initialTherapist }));
@@ -112,6 +126,22 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
   
   // 予約確定
   const handleConfirmBooking = async () => {
+    // 未認証の場合、予約情報を保存してログインへ
+    if (!isAuthenticated) {
+      // 予約情報をセッションストレージに保存
+      sessionStorage.setItem('booking_in_progress', JSON.stringify(bookingData));
+      
+      // 現在のURLをreturnUrlとして保存
+      const currentPath = location.pathname + location.search;
+      sessionStorage.setItem('booking_return_url', currentPath);
+      
+      console.log('💾 予約情報を保存してログインページへ:', bookingData);
+      
+      // ログインページへリダイレクト
+      navigate(`/auth/login?returnUrl=${encodeURIComponent(currentPath)}`);
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     

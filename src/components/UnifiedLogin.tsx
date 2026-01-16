@@ -57,8 +57,14 @@ const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         localStorage.setItem('auth_token', token);
         onLogin(role, userName);
         
+        // Check for returnUrl parameter (for booking flow restoration)
+        const returnUrl = searchParams.get('returnUrl');
+        const targetPath = returnUrl || redirectPath;
+        
+        console.log('✅ OAuth認証成功 - リダイレクト先:', targetPath);
+        
         setTimeout(() => {
-          navigate(redirectPath);
+          navigate(targetPath);
           setIsSubmitting(false);
         }, 500);
       } catch (e) {
@@ -95,8 +101,14 @@ const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         localStorage.setItem('auth_token', data.token);
         onLogin(role, data.user.name);
         
+        // Check for returnUrl parameter (for booking flow restoration)
+        const returnUrl = searchParams.get('returnUrl');
+        const targetPath = returnUrl || redirectPath;
+        
+        console.log('✅ ログイン成功 - リダイレクト先:', targetPath);
+        
         setTimeout(() => {
-          navigate(redirectPath);
+          navigate(targetPath);
           setIsSubmitting(false);
         }, 500);
       } else {

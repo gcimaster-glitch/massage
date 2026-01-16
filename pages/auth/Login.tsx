@@ -55,11 +55,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           [Role.AFFILIATE]: '/affiliate'
         };
 
+        // Check for returnUrl parameter (for booking flow restoration)
+        const returnUrl = searchParams.get('returnUrl');
+        const targetPath = returnUrl || paths[role] || '/app';
+        
+        console.log('✅ OAuth認証成功 - リダイレクト先:', targetPath);
+
         // Clean URL (remove token from URL for security)
-        window.history.replaceState({}, '', paths[role] || '/app');
+        window.history.replaceState({}, '', targetPath);
 
         setTimeout(() => {
-          navigate(paths[role] || '/app');
+          navigate(targetPath);
           setIsSubmitting(false);
         }, 500);
       } catch (e) {
@@ -83,8 +89,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       [Role.AFFILIATE]: '/affiliate'
     };
 
+    // Check for returnUrl parameter (for booking flow restoration)
+    const returnUrl = searchParams.get('returnUrl');
+    const targetPath = returnUrl || paths[role] || '/app';
+    
+    console.log('✅ クイックログイン成功 - リダイレクト先:', targetPath);
+
     setTimeout(() => {
-      navigate(paths[role] || '/app');
+      navigate(targetPath);
       setIsSubmitting(false);
     }, 500);
   };
