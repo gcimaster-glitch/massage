@@ -7,8 +7,17 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx}",
     "./App.tsx",
   ],
+  darkMode: 'class', // Enable dark mode with class strategy
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        dark: {
+          bg: '#111827',
+          surface: '#1f2937',
+          border: '#374151',
+        }
+      }
+    },
   },
   plugins: [],
 }
