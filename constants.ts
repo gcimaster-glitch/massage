@@ -68,14 +68,14 @@ export const API_ENDPOINTS = {
  * ============================================
  */
 
-// 11名のセラピストモックデータ（提供された写真使用）
+// 11名のセラピストモックデータ（ローカル写真使用）
 export const MOCK_THERAPISTS = [
   {
     id: 'therapist-1',
     name: '田中 美咲',
     email: 'misaki.tanaka@hogusy.com',
     phone: '090-1234-5678',
-    photo: 'https://www.genspark.ai/api/files/s/K8Y2qbcw',
+    photo: '/therapists/therapist-1.jpg',
     bio: '看護師資格を持つベテランセラピスト。医療知識を活かした丁寧な施術で、お客様一人ひとりの体調に合わせたケアを提供します。',
     specialties: ['メディカルマッサージ', 'リラクゼーション', 'アロマセラピー'],
     experience: 10,
@@ -89,7 +89,7 @@ export const MOCK_THERAPISTS = [
     name: '佐藤 武志',
     email: 'takeshi.sato@hogusy.com',
     phone: '090-2345-6789',
-    photo: 'https://www.genspark.ai/api/files/s/Oa1pAFiR',
+    photo: '/therapists/therapist-2.jpg',
     bio: 'スポーツトレーナー出身の男性セラピスト。筋膜リリースとスポーツマッサージで、アスリートから一般の方まで幅広く対応。',
     specialties: ['スポーツマッサージ', '筋膜リリース', 'ストレッチ'],
     experience: 8,
@@ -103,7 +103,7 @@ export const MOCK_THERAPISTS = [
     name: '山田 健二',
     email: 'kenji.yamada@hogusy.com',
     phone: '090-3456-7890',
-    photo: 'https://www.genspark.ai/api/files/s/n10BTqig',
+    photo: '/therapists/therapist-3.jpg',
     bio: '整体院での経験を活かした施術が得意。深層筋へのアプローチで根本から体を改善します。',
     specialties: ['整体', '深層筋マッサージ', '姿勢改善'],
     experience: 12,
