@@ -44,12 +44,25 @@ const TherapistSelect: React.FC<TherapistSelectProps> = ({
       const area = selectedSite?.area || '';
       const url = area ? `/api/therapists?area=${encodeURIComponent(area)}&limit=50` : '/api/therapists?limit=50';
       
+      console.log('🔍 Fetching therapists from:', url);
+      
       const response = await fetch(url);
-      if (!response.ok) throw new Error('セラピスト情報の取得に失敗しました');
+      
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', errorText);
+        throw new Error(`セラピスト情報の取得に失敗しました (${response.status})`);
+      }
       
       const data = await response.json();
+      console.log('✅ Therapists fetched:', data.therapists?.length || 0);
+      
       setTherapists(data.therapists || []);
     } catch (err: any) {
+      console.error('❌ Failed to fetch therapists:', err);
       setError(err.message || 'セラピスト情報の取得に失敗しました');
     } finally {
       setIsLoading(false);
