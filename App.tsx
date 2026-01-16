@@ -17,6 +17,7 @@ import SignupOffice from './pages/auth/SignupOffice';
 
 // --- Index List (Development Only) ---
 import IndexList from './pages/IndexList';
+import DevLogin from './pages/dev/DevLogin';
 
 // --- Portal (Public) ---
 import PortalHome from './pages/portal/PortalHome';
@@ -151,6 +152,7 @@ const App: React.FC = () => {
       <Routes>
         {/* Development Only - Index List */}
         <Route path="/indexlist" element={<IndexList />} />
+        <Route path="/dev/login" element={<DevLogin onLogin={handleLogin} />} />
         
         {/* Public Portal */}
         <Route path="/" element={<PortalHome />} />
@@ -163,18 +165,40 @@ const App: React.FC = () => {
         <Route path="/legal" element={<Legal />} />
         <Route path="/commercial-transaction" element={<CommercialTransaction />} />
 
-        {/* Auth - Old unified login (kept for compatibility) */}
-        <Route path="/auth/login" element={<Login onLogin={handleLogin} />} />
+        {/* ========================================== */}
+        {/* Authentication Routes - New Structure */}
+        {/* ========================================== */}
         
-        {/* Auth - Role-specific login pages */}
+        {/* User Login & Registration */}
+        <Route path="/login" element={<LoginUser onLogin={handleLogin} />} />
+        <Route path="/signup" element={<SignupUser />} />
+        
+        {/* Therapist Login & Registration */}
+        <Route path="/therapist/login" element={<LoginTherapist onLogin={handleLogin} />} />
+        <Route path="/therapist/join" element={<SignupTherapist />} />
+        
+        {/* Host (Facility) Login & Registration */}
+        <Route path="/host/login" element={<LoginHost onLogin={handleLogin} />} />
+        <Route path="/host/join" element={<SignupHost />} />
+        
+        {/* Therapist Office Login & Registration */}
+        <Route path="/office/login" element={<LoginOffice onLogin={handleLogin} />} />
+        <Route path="/office/join" element={<SignupOffice />} />
+        
+        {/* Admin Login */}
+        <Route path="/admin/login" element={<LoginAdmin onLogin={handleLogin} />} />
+        
+        {/* Affiliate Login (optional) */}
+        <Route path="/affiliate/login" element={<LoginAffiliate onLogin={handleLogin} />} />
+        
+        {/* Legacy Auth Routes (kept for compatibility - redirect to new URLs) */}
+        <Route path="/auth/login" element={<Login onLogin={handleLogin} />} />
         <Route path="/auth/login/user" element={<LoginUser onLogin={handleLogin} />} />
         <Route path="/auth/login/therapist" element={<LoginTherapist onLogin={handleLogin} />} />
         <Route path="/auth/login/office" element={<LoginOffice onLogin={handleLogin} />} />
         <Route path="/auth/login/host" element={<LoginHost onLogin={handleLogin} />} />
         <Route path="/auth/login/affiliate" element={<LoginAffiliate onLogin={handleLogin} />} />
         <Route path="/auth/login/admin" element={<LoginAdmin onLogin={handleLogin} />} />
-        
-        {/* Registration */}
         <Route path="/auth/register-select" element={<RegisterSelect />} />
         <Route path="/auth/signup/user" element={<SignupUser />} />
         <Route path="/auth/signup/therapist" element={<SignupTherapist />} />

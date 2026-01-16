@@ -683,4 +683,92 @@ authApp.delete('/link/:provider', async (c) => {
   }
 })
 
+// ============================================
+// User Registration (Email/Password)
+// ============================================
+authApp.post('/register', async (c) => {
+  try {
+    const { email, password, name, role = 'USER' } = await c.req.json()
+
+    if (!email || !password || !name) {
+      return c.json({ error: 'メールアドレス、パスワード、名前は必須です' }, 400)
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return c.json({ error: '有効なメールアドレスを入力してください' }, 400)
+    }
+
+    // Password validation (minimum 8 characters)
+    if (password.length < 8) {
+      return c.json({ error: 'パスワードは8文字以上である必要があります' }, 400)
+    }
+
+    if (!c.env.DB) {
+      // 開発モード: モックユーザーを返す
+      const mockUser = {
+        id: generateUserId(),
+        email,
+        name,
+        role,
+        created_at: new Date().toISOString(),
+      }
+      
+      const token = createJWT({ userId: mockUser.id, role: mockUser.role }, c.env.JWT_SECRET)
+      
+      return c.json({ 
+        success: true,
+        token, 
+        user: mockUser,
+        message: '開発モード: ユーザー登録が完了しました'
+      })
+    }
+
+    // Check if email already exists
+    const existingUser = await c.env.DB.prepare(
+      'SELECT id FROM users WHERE email = ?'
+    ).bind(email).first()
+
+    if (existingUser) {
+      return c.json({ error: 'このメールアドレスは既に登録されています' }, 400)
+    }
+
+    // Hash password (simple hash for demo - use bcrypt in production)
+    const passwordHash = btoa(password) // Base64 encode (replace with bcrypt)
+
+    // Create new user
+    const userId = generateUserId()
+    await c.env.DB.prepare(
+      `INSERT INTO users (id, email, password_hash, name, role, status, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, 'ACTIVE', datetime('now'), datetime('now'))`
+    ).bind(userId, email, passwordHash, name, role).run()
+
+    // Fetch created user
+    const user = await c.env.DB.prepare(
+      'SELECT id, email, name, role, created_at FROM users WHERE id = ?'
+    ).bind(userId).first()
+
+    // Generate JWT token
+    const token = createJWT({ userId: user.id, role: user.role }, c.env.JWT_SECRET)
+
+    console.log('✅ User registered:', email)
+
+    return c.json({ 
+      success: true,
+      token, 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      message: 'ユーザー登録が完了しました'
+    })
+  } catch (e) {
+    console.error('Registration error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
 export default authApp
