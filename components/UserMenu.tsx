@@ -163,7 +163,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
               : 'bg-white text-teal-600'
             }`}
           >
-            {user.name.charAt(0)}
+            {user.name ? user.name.charAt(0) : 'U'}
           </div>
         )}
         
@@ -172,7 +172,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
           <div className={`text-sm font-semibold leading-tight
             ${variant === 'light' ? 'text-gray-900' : 'text-white'}
           `}>
-            {user.name}
+            {user.name || 'ユーザー'}
           </div>
           <div className={`text-xs leading-tight
             ${variant === 'light' ? 'text-gray-500' : 'text-gray-300'}
@@ -196,15 +196,15 @@ const UserMenu: React.FC<UserMenuProps> = ({
                 />
               ) : (
                 <div className="w-12 h-12 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-lg">
-                  {user.name.charAt(0)}
+                  {user.name ? user.name.charAt(0) : 'U'}
                 </div>
               )}
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-900 truncate">
-                  {user.name}
+                  {user.name || 'ユーザー'}
                 </div>
                 <div className="text-xs text-gray-500 truncate">
-                  {user.email}
+                  {user.email || ''}
                 </div>
               </div>
             </div>

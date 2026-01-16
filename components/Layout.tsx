@@ -102,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout }) => {
             <UserMenu 
               currentUser={currentUser ? {
                 id: 'user-1',
-                name: currentUser.displayName,
+                name: currentUser.displayName || currentUser.role || 'User',
                 email: 'user@example.com',
                 role: currentUser.role,
               } : null}
@@ -116,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout }) => {
             <UserMenu 
               currentUser={currentUser ? {
                 id: 'user-1',
-                name: currentUser.displayName,
+                name: currentUser.displayName || currentUser.role || 'User',
                 email: 'user@example.com',
                 role: currentUser.role,
               } : null}
