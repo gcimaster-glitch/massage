@@ -193,7 +193,7 @@ const TherapistDetail: React.FC = () => {
                           <CheckCircle size={14}/> ID VERIFIED
                        </span>
                        {/* Check if therapist is available now (demo: odd IDs are available) */}
-                       {parseInt(displayTherapist.id.replace(/\D/g, '')) % 2 === 1 && (
+                       {displayTherapist.id && parseInt(displayTherapist.id.replace(/\D/g, '') || '0') % 2 === 1 && (
                          <span className="bg-gray-900 text-white text-[10px] font-black px-4 py-1.5 rounded-full flex items-center gap-2 uppercase tracking-[0.2em] shadow-lg">
                             <Zap size={14} className="text-teal-400 animate-pulse" /> 本日即時予約OK
                          </span>

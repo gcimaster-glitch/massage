@@ -124,7 +124,7 @@ app.get('/:id', async (c) => {
       FROM therapist_profiles tp
       JOIN users u ON tp.user_id = u.id
       LEFT JOIN offices o ON tp.office_id = o.id
-      WHERE tp.user_id = ? AND tp.is_active = 1
+      WHERE tp.user_id = ?
     `;
     
     const therapist = await DB.prepare(therapistQuery).bind(therapistId).first();
@@ -158,7 +158,7 @@ app.get('/:id', async (c) => {
         topt.is_available,
         mo.name as option_name,
         mo.description,
-        mo.duration_add
+        mo.duration
       FROM therapist_options topt
       JOIN master_options mo ON topt.master_option_id = mo.id
       WHERE topt.therapist_id = ? AND topt.is_available = 1
@@ -192,7 +192,10 @@ app.get('/:id', async (c) => {
     });
   } catch (error: any) {
     console.error('Error fetching therapist detail:', error);
-    return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
+    return c.json({ 
+      error: 'セラピストの取得に失敗しました',
+      details: error.message || String(error)
+    }, 500);
   }
 });
 
