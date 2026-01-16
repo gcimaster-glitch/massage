@@ -47,7 +47,7 @@ app.get('/', async (c) => {
     }
     
     if (area) {
-      conditions.push('s.area_code = ?');
+      conditions.push('s.area = ?');
       params.push(area);
     }
     
@@ -74,11 +74,12 @@ app.get('/', async (c) => {
         s.name,
         s.type,
         s.address,
-        s.area_code,
-        s.latitude,
-        s.longitude,
-        s.phone,
-        s.description,
+        s.area,
+        s.lat,
+        s.lng,
+        s.cube_serial_number,
+        s.is_active,
+        s.room_count,
         s.amenities,
         s.status,
         s.created_at,
@@ -177,14 +178,14 @@ app.get('/:id/therapists', async (c) => {
       ORDER BY tp.rating DESC, tp.review_count DESC
     `;
     
-    // 施設のエリアコードを取得
-    const site = await DB.prepare('SELECT area_code FROM sites WHERE id = ?').bind(siteId).first<{ area_code: string }>();
+    // 施設のエリアを取得
+    const site = await DB.prepare('SELECT area FROM sites WHERE id = ?').bind(siteId).first<{ area: string }>();
     
     if (!site) {
       return c.json({ error: '施設が見つかりません' }, 404);
     }
     
-    const result = await DB.prepare(query).bind(`%${site.area_code}%`).all();
+    const result = await DB.prepare(query).bind(`%${site.area}%`).all();
     
     return c.json({
       therapists: result.results || []
