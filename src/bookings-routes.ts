@@ -53,32 +53,28 @@ app.post('/', async (c) => {
       site_id,
       room_id,
       type,
-      scheduled_at,
+      service_name,
       duration,
-      items, // { type: 'COURSE' | 'OPTION', id: string, price: number }[]
+      price,
+      location,
+      scheduled_at,
+      items, // { item_type: 'COURSE' | 'OPTION', item_id: string, item_name: string, price: number }[]
     } = body;
     
     // バリデーション
-    if (!therapist_id || !type || !scheduled_at || !duration || !items || items.length === 0) {
+    if (!therapist_id || !type || !scheduled_at || !duration || !price) {
       return c.json({ error: '必須項目が不足しています' }, 400);
     }
     
-    // 合計金額を計算
-    const totalPrice = items.reduce((sum: number, item: any) => sum + item.price, 0);
-    
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
-    // サービス名を取得（最初のコースの名前）
-    const firstCourse = items.find((item: any) => item.type === 'COURSE');
-    const serviceName = firstCourse?.name || '施術';
     
     // 予約を作成
     const insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, therapist_id, office_id, site_id, room_id,
-        type, status, service_name, duration, price, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
+        type, status, service_name, duration, price, location, scheduled_at, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
     `;
     
     await DB.prepare(insertBookingQuery).bind(
@@ -89,29 +85,32 @@ app.post('/', async (c) => {
       site_id || null,
       room_id || null,
       type,
-      serviceName,
+      service_name || '施術',
       duration,
-      totalPrice,
+      price,
+      location || null,
       scheduled_at
     ).run();
     
     // 予約アイテムを追加
-    for (const item of items) {
-      const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const insertItemQuery = `
-        INSERT INTO booking_items (
-          id, booking_id, item_type, item_id, item_name, price, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-      `;
-      
-      await DB.prepare(insertItemQuery).bind(
-        itemId,
-        bookingId,
-        item.type,
-        item.id,
-        item.name,
-        item.price
-      ).run();
+    if (items && items.length > 0) {
+      for (const item of items) {
+        const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const insertItemQuery = `
+          INSERT INTO booking_items (
+            id, booking_id, item_type, item_id, item_name, price, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        `;
+        
+        await DB.prepare(insertItemQuery).bind(
+          itemId,
+          bookingId,
+          item.item_type,
+          item.item_id,
+          item.item_name,
+          item.price
+        ).run();
+      }
     }
     
     // 作成した予約を取得

@@ -229,4 +229,56 @@ app.get('/:id/schedule', async (c) => {
   }
 });
 
+// ============================================
+// セラピストのメニュー取得（予約フロー用）
+// ============================================
+app.get('/:id/menu', async (c) => {
+  const { DB } = c.env;
+  const therapistId = c.req.param('id');
+  
+  try {
+    // コース取得
+    const coursesQuery = `
+      SELECT 
+        mc.id,
+        mc.name,
+        mc.duration,
+        mc.description,
+        tm.price as base_price,
+        tm.is_available
+      FROM therapist_menu tm
+      JOIN master_courses mc ON tm.master_course_id = mc.id
+      WHERE tm.therapist_id = ? AND tm.is_available = 1
+      ORDER BY mc.duration
+    `;
+    
+    const coursesResult = await DB.prepare(coursesQuery).bind(therapistId).all();
+    
+    // オプション取得
+    const optionsQuery = `
+      SELECT 
+        mo.id,
+        mo.name,
+        mo.duration,
+        mo.description,
+        topt.price as base_price,
+        topt.is_available
+      FROM therapist_options topt
+      JOIN master_options mo ON topt.master_option_id = mo.id
+      WHERE topt.therapist_id = ? AND topt.is_available = 1
+      ORDER BY mo.name
+    `;
+    
+    const optionsResult = await DB.prepare(optionsQuery).bind(therapistId).all();
+    
+    return c.json({
+      courses: coursesResult.results || [],
+      options: optionsResult.results || []
+    });
+  } catch (error: any) {
+    console.error('Error fetching therapist menu:', error);
+    return c.json({ error: 'メニューの取得に失敗しました' }, 500);
+  }
+});
+
 export default app;
