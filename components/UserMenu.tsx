@@ -45,7 +45,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
     }
   }, [currentUser])
 
-  // クリック外でメニューを閉じる
+  // クリック外でメニューを閉じる & キーボード操作
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -53,12 +53,21 @@ const UserMenu: React.FC<UserMenuProps> = ({
       }
     }
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Escape キーでメニューを閉じる
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false)
+      }
+    }
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen])
 

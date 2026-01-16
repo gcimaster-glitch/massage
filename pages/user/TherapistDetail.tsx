@@ -9,6 +9,11 @@ import {
   Shield, Tag, Coffee, Wind, Music, User, Smartphone, Target, Move, AlertCircle, Ban, Loader
 } from 'lucide-react';
 import { MOCK_THERAPISTS, MASTER_COURSES, MASTER_OPTIONS, MOCK_AREAS } from '../../constants';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { NotFoundError } from '../../components/ErrorState';
+import ErrorState from '../../components/ErrorState';
+import Breadcrumb from '../../components/Breadcrumb';
+import BackButton from '../../components/BackButton';
 
 const TherapistDetail: React.FC = () => {
   const { therapistId } = useParams();
@@ -16,6 +21,7 @@ const TherapistDetail: React.FC = () => {
   
   const [therapist, setTherapist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'BIO' | 'MENU' | 'REVIEW' | 'GALLERY'>('BIO');
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -24,7 +30,18 @@ const TherapistDetail: React.FC = () => {
     const fetchTherapist = async () => {
       try {
         setLoading(true);
+        setError(null);
         const res = await fetch(`/api/therapists/${therapistId}`);
+        
+        if (!res.ok) {
+          if (res.status === 404) {
+            setError('NOT_FOUND');
+          } else {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return;
+        }
+        
         const data = await res.json();
         
         // APIレスポンスから therapist, menu, options, reviews を取得
@@ -36,7 +53,7 @@ const TherapistDetail: React.FC = () => {
         });
       } catch (e) {
         console.error('Failed to fetch therapist:', e);
-        setTherapist(null);
+        setError(e instanceof Error ? e.message : 'セラピスト情報の取得に失敗しました。');
       } finally {
         setLoading(false);
       }
@@ -104,30 +121,48 @@ const TherapistDetail: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader size={48} className="animate-spin text-teal-600 mx-auto" />
-          <p className="text-gray-400 font-bold">セラピスト情報を読み込み中...</p>
-        </div>
+        <LoadingSpinner size="lg" text="セラピスト情報を読み込み中..." />
       </div>
+    );
+  }
+
+  // Error state - 404
+  if (error === 'NOT_FOUND') {
+    return <NotFoundError resourceName="セラピスト" />;
+  }
+
+  // Error state - Other
+  if (error) {
+    return (
+      <ErrorState
+        title="セラピスト情報の読み込みに失敗しました"
+        message={error}
+        onRetry={() => window.location.reload()}
+        showBackButton={true}
+        showHomeButton={true}
+        fullScreen={true}
+      />
     );
   }
 
   if (!therapist || !displayTherapist) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle size={48} className="text-red-400 mx-auto" />
-          <p className="text-gray-600 font-bold">セラピストが見つかりませんでした</p>
-          <button onClick={() => navigate(-1)} className="text-teal-600 hover:underline">
-            戻る
-          </button>
-        </div>
-      </div>
-    );
+    return <NotFoundError resourceName="セラピスト" />;
   }
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] pb-40 animate-fade-in font-sans text-gray-900">
+      
+      {/* パンくずリスト */}
+      <div className="bg-white border-b border-gray-100 py-4">
+        <div className="max-w-6xl mx-auto px-4 md:px-6">
+          <Breadcrumb 
+            items={[
+              { label: 'セラピスト一覧', path: '/therapists' },
+              { label: displayTherapist.name }
+            ]}
+          />
+        </div>
+      </div>
       
       {/* 1. ヒーロー・プロフィールセクション */}
       <section className="bg-white border-b border-gray-100 overflow-hidden relative">
@@ -135,9 +170,7 @@ const TherapistDetail: React.FC = () => {
         
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 relative z-10">
            <div className="flex items-center justify-between mb-6 md:mb-8">
-              <button onClick={() => navigate(-1)} className="flex items-center gap-1 md:gap-2 text-gray-400 font-black text-[9px] md:text-[10px] uppercase tracking-wider md:tracking-widest hover:text-teal-600 transition-colors group">
-                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> 戻る
-              </button>
+              <BackButton variant="minimal" label="戻る" />
               <div className="flex items-center gap-2 md:gap-3">
                  <button className="p-2 md:p-3 bg-gray-50 text-gray-400 hover:text-gray-900 rounded-xl md:rounded-2xl transition-all"><ExternalLink size={16} className="md:w-[18px] md:h-[18px]"/></button>
                  <button 

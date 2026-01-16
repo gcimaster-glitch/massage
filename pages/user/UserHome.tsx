@@ -9,16 +9,20 @@ import { useNavigate } from 'react-router-dom';
 import { BookingType } from '../../types';
 import SmartAssistant from '../../components/SmartAssistant';
 import { MOCK_THERAPISTS, MOCK_SITES } from '../../constants';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { SkeletonCard } from '../../components/Skeleton';
 
 const UserHome: React.FC = () => {
   const navigate = useNavigate();
   const [bookingType, setBookingType] = useState<BookingType>(BookingType.ONSITE);
   const [area, setArea] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sites, setSites] = useState<any[]>([]);
   const [therapists, setTherapists] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Tokyo areas
   const areas = [
@@ -60,20 +64,28 @@ const UserHome: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setDataLoading(true);
+        setError(null);
+        
         // Fetch sites
         const sitesRes = await fetch('/api/sites?status=APPROVED&limit=8');
+        if (!sitesRes.ok) throw new Error('Failed to fetch sites');
         const sitesData = await sitesRes.json();
         setSites(sitesData.sites || []);
 
         // Fetch therapists
         const therapistsRes = await fetch('/api/therapists?limit=6');
+        if (!therapistsRes.ok) throw new Error('Failed to fetch therapists');
         const therapistsData = await therapistsRes.json();
         setTherapists(therapistsData.therapists || []);
       } catch (e) {
         console.error('Failed to fetch data:', e);
+        setError(e instanceof Error ? e.message : 'データの読み込みに失敗しました');
         // Fallback to mock data
         setSites(MOCK_SITES);
         setTherapists(MOCK_THERAPISTS);
+      } finally {
+        setDataLoading(false);
       }
     };
 
@@ -192,7 +204,25 @@ const UserHome: React.FC = () => {
                  </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                 {sites.slice(0, 8).map(site => (
+                 {dataLoading ? (
+                   // ローディング状態
+                   Array.from({ length: 4 }).map((_, index) => (
+                     <SkeletonCard key={index} />
+                   ))
+                 ) : error ? (
+                   // エラー表示（簡易版）
+                   <div className="col-span-full text-center py-12">
+                     <p className="text-gray-400 text-sm">{error}</p>
+                     <button 
+                       onClick={() => window.location.reload()} 
+                       className="mt-4 text-teal-600 text-sm font-bold hover:underline"
+                     >
+                       再読み込み
+                     </button>
+                   </div>
+                 ) : (
+                   // データ表示
+                   sites.slice(0, 8).map(site => (
                     <div key={site.id} onClick={() => navigate(`/app/site/${site.id}`)} className="bg-white rounded-[48px] overflow-hidden shadow-sm border border-gray-100 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700 cursor-pointer group">
                        <div className="h-64 relative overflow-hidden">
                           <img src={`https://picsum.photos/600/400?random=${site.id}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={site.name} />
@@ -210,7 +240,8 @@ const UserHome: React.FC = () => {
                           </div>
                        </div>
                     </div>
-                 ))}
+                   ))
+                 )}
               </div>
            </section>
          )}
@@ -228,7 +259,25 @@ const UserHome: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-               {therapists.slice(0, 6).map(t => (
+               {dataLoading ? (
+                 // ローディング状態
+                 Array.from({ length: 4 }).map((_, index) => (
+                   <SkeletonCard key={index} />
+                 ))
+               ) : error ? (
+                 // エラー表示（簡易版）
+                 <div className="col-span-full text-center py-12">
+                   <p className="text-gray-400 text-sm">{error}</p>
+                   <button 
+                     onClick={() => window.location.reload()} 
+                     className="mt-4 text-teal-600 text-sm font-bold hover:underline"
+                   >
+                     再読み込み
+                   </button>
+                 </div>
+               ) : (
+                 // データ表示
+                 therapists.slice(0, 6).map(t => (
                  <div 
                    key={t.id} 
                    onClick={() => navigate(`/app/therapist/${t.id}`)}
@@ -271,7 +320,8 @@ const UserHome: React.FC = () => {
                        </div>
                     </div>
                  </div>
-               ))}
+               ))
+               )}
             </div>
          </section>
 
