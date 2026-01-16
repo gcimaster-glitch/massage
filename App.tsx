@@ -55,6 +55,7 @@ import SupportCenter from './pages/shared/SupportCenter';
 
 // --- Booking Flow Components ---
 import BookingFlow from './components/booking/BookingFlow';
+import BookingFlowWrapper from './components/booking/BookingFlowWrapper';
 
 // --- Therapist ---
 import TherapistDashboard from './pages/therapist/Dashboard';
@@ -216,15 +217,16 @@ const App: React.FC = () => {
         
         {/* User App - Auth required pages */}
         {/* New Booking Flow - 4 Patterns */}
-        <Route path="/app/booking/from-map/:siteId" element={<BookingFlow pattern="from-map" />} />
-        <Route path="/app/booking/from-therapist/:therapistId" element={<BookingFlow pattern="from-therapist" />} />
-        <Route path="/app/booking/direct/:therapistId" element={<BookingFlow pattern="direct" />} />
+        {/* Note: BookingFlow handles authentication internally */}
+        <Route path="/app/booking/from-map/:siteId" element={<BookingFlowWrapper pattern="from-map" />} />
+        <Route path="/app/booking/from-therapist/:therapistId" element={<BookingFlowWrapper pattern="from-therapist" />} />
+        <Route path="/app/booking/direct/:therapistId" element={<BookingFlowWrapper pattern="direct" />} />
         <Route path="/app/booking/ai" element={<BookingFlow pattern="ai-recommend" />} />
         
         {/* Legacy Booking Routes - Redirect to new routes */}
-        <Route path="/booking/from-map/:siteId" element={<BookingFlow pattern="from-map" />} />
-        <Route path="/booking/from-therapist/:therapistId" element={<BookingFlow pattern="from-therapist" />} />
-        <Route path="/booking/direct/:therapistId" element={<BookingFlow pattern="direct" />} />
+        <Route path="/booking/from-map/:siteId" element={<BookingFlowWrapper pattern="from-map" />} />
+        <Route path="/booking/from-therapist/:therapistId" element={<BookingFlowWrapper pattern="from-therapist" />} />
+        <Route path="/booking/direct/:therapistId" element={<BookingFlowWrapper pattern="direct" />} />
         <Route path="/booking/ai" element={<BookingFlow pattern="ai-recommend" />} />
         
         {/* Legacy Booking Routes (kept for compatibility) */}
