@@ -122,21 +122,19 @@ const UserHome: React.FC = () => {
       
       {/* 1. Immersive Hero & Global Search */}
       <section className="relative h-[70vh] md:h-[80vh] min-h-[500px] md:min-h-[600px] flex items-center justify-center overflow-hidden">
-         {/* Background Visual */}
+         {/* Background Visual - Google Maps Style Grayscale */}
          <div className="absolute inset-0 z-0">
-            <img 
-              src="https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&q=80&w=2000" 
-              className="w-full h-full object-cover animate-[slow-zoom_30s_infinite]" 
-              alt="Relaxation Hero" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#FDFCFB]"></div>
+            <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 opacity-60"></div>
+            {/* Subtle map-like pattern overlay */}
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2Q0ZDRkNCIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/40 to-[#FDFCFB]"></div>
          </div>
 
          <div className="relative z-10 w-full max-w-5xl px-4 md:px-6 text-center space-y-8 md:space-y-12">
             <div className="space-y-4 md:space-y-6 animate-fade-in-up">
-               <span className="inline-block bg-white/20 backdrop-blur-xl text-white px-4 md:px-6 py-1.5 md:py-2 rounded-full font-black text-[8px] md:text-[10px] uppercase tracking-[0.3em] md:tracking-[0.4em] border border-white/30 shadow-2xl">Premium Wellness</span>
-               <h1 className="text-4xl sm:text-6xl md:text-9xl font-black text-white tracking-tighter leading-[0.85] drop-shadow-2xl">
-                  探して、<br/><span className="text-teal-400">整える。</span>
+               <span className="inline-block bg-teal-600/90 backdrop-blur-xl text-white px-4 md:px-6 py-1.5 md:py-2 rounded-full font-black text-[8px] md:text-[10px] uppercase tracking-[0.3em] md:tracking-[0.4em] border border-teal-500 shadow-2xl">Premium Wellness</span>
+               <h1 className="text-4xl sm:text-6xl md:text-9xl font-black text-gray-900 tracking-tighter leading-[0.85] drop-shadow-[0_10px_25px_rgba(0,0,0,0.15)]">
+                  探して、<br/><span className="text-teal-600 drop-shadow-[0_5px_15px_rgba(13,148,136,0.3)]">整える。</span>
                </h1>
             </div>
 
@@ -223,20 +221,28 @@ const UserHome: React.FC = () => {
                  ) : (
                    // データ表示
                    sites.slice(0, 8).map(site => (
-                    <div key={site.id} onClick={() => navigate(`/app/site/${site.id}`)} className="bg-white rounded-[48px] overflow-hidden shadow-sm border border-gray-100 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700 cursor-pointer group">
-                       <div className="h-64 relative overflow-hidden">
+                    <div key={site.id} className="bg-white rounded-[48px] overflow-hidden shadow-sm border border-gray-100 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700 group">
+                       <div className="h-64 relative overflow-hidden cursor-pointer" onClick={() => navigate(`/app/site/${site.id}`)}>
                           <img src={`https://picsum.photos/600/400?random=${site.id}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={site.name} />
                           <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md text-white text-[9px] font-black px-4 py-2 rounded-xl border border-white/20 uppercase tracking-widest">
                              {site.area}
                           </div>
                        </div>
                        <div className="p-8 space-y-4">
-                          <h4 className="font-black text-xl text-gray-900 group-hover:text-teal-600 transition-colors tracking-tight truncate">{site.name}</h4>
+                          <h4 className="font-black text-xl text-gray-900 group-hover:text-teal-600 transition-colors tracking-tight truncate cursor-pointer" onClick={() => navigate(`/app/site/${site.id}`)}>{site.name}</h4>
                           <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                              <div className="flex items-center gap-1.5 text-yellow-500 font-black text-sm">
                                 <Star size={16} fill="currentColor" /> 4.9
                              </div>
-                             <span className="text-lg font-black text-gray-900 font-outfit tracking-tighter">¥2,000<span className="text-[10px] text-gray-300 ml-1">/ 60min</span></span>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 navigate(`/booking/from-map/${site.id}`);
+                               }}
+                               className="bg-teal-600 text-white px-6 py-2 rounded-full font-black text-xs uppercase tracking-wider hover:bg-teal-700 transition-all active:scale-90"
+                             >
+                               予約する
+                             </button>
                           </div>
                        </div>
                     </div>
@@ -313,7 +319,13 @@ const UserHome: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-6">
                              <p className="text-3xl font-black text-gray-900 tracking-tighter">¥7,480<span className="text-xs text-gray-300 ml-1 font-bold">〜</span></p>
-                             <button className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl hover:bg-teal-600 transition-all active:scale-90 group-hover:rotate-[-5deg]">
+                             <button 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 navigate(`/booking/direct/${t.id}`);
+                               }}
+                               className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl hover:bg-teal-600 transition-all active:scale-90 group-hover:rotate-[-5deg]"
+                             >
                                 <ArrowRight size={24} />
                              </button>
                           </div>

@@ -52,6 +52,9 @@ import SitesList from './pages/user/SitesList';
 import KYCVerification from './pages/shared/KYCVerification';
 import SupportCenter from './pages/shared/SupportCenter';
 
+// --- Booking Flow Components ---
+import BookingFlow from './components/booking/BookingFlow';
+
 // --- Therapist ---
 import TherapistDashboard from './pages/therapist/Dashboard';
 import TherapistCalendar from './pages/therapist/Calendar';
@@ -188,6 +191,13 @@ const App: React.FC = () => {
         <Route path="/app/therapist/:therapistId" element={<TherapistDetail />} />
         
         {/* User App - Auth required pages */}
+        {/* New Booking Flow - 4 Patterns */}
+        <Route path="/booking/from-map/:siteId" element={<BookingFlow pattern="from-map" />} />
+        <Route path="/booking/from-therapist/:therapistId" element={<BookingFlow pattern="from-therapist" />} />
+        <Route path="/booking/direct/:therapistId" element={<BookingFlow pattern="direct" />} />
+        <Route path="/booking/ai" element={<BookingFlow pattern="ai-recommend" />} />
+        
+        {/* Legacy Booking Routes (kept for compatibility) */}
         <Route path="/app/booking/new" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNewFlow /></RequireAuth>} />
         <Route path="/app/booking/new-old" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNew onAutoLogin={handleLogin} /></RequireAuth>} />
         <Route path="/app/booking/success" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingSuccess /></RequireAuth>} />
