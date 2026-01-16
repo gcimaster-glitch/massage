@@ -45,6 +45,20 @@ const SiteMapSearch: React.FC = () => {
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
 
+  // Parse amenities if it's a string
+  const parseAmenities = (amenities: any): string[] => {
+    if (!amenities) return [];
+    if (Array.isArray(amenities)) return amenities;
+    if (typeof amenities === 'string') {
+      try {
+        return JSON.parse(amenities);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
   // お気に入りをローカルストレージから読み込み
   useEffect(() => {
     const saved = localStorage.getItem('favoriteSites');
@@ -102,11 +116,14 @@ const SiteMapSearch: React.FC = () => {
 
   const fetchSites = async () => {
     try {
-      const res = await fetch('/api/sites');
+      const res = await fetch('/api/sites?status=APPROVED');
       const data = await res.json();
-      setSites(data);
+      // APIレスポンスは {sites: [...], total: ...} の構造
+      setSites(data.sites || []);
     } catch (e) {
       console.error('Failed to fetch sites:', e);
+      // フォールバック: モックデータを使用
+      setSites(MOCK_SITES || []);
     }
   };
 
@@ -160,10 +177,13 @@ const SiteMapSearch: React.FC = () => {
       const res = await fetch('/api/therapists');
       const data = await res.json();
       
+      // APIレスポンスは {therapists: [...], total: ...} の構造
+      const therapistsList = data.therapists || [];
+      
       // 「今予約できる」セラピストを優先的にソート
       // 実際にはAPIから availability データを取得する想定
       // ここでは仮に id が奇数のセラピストを「予約可能」とする
-      const sortedData = data.sort((a: any, b: any) => {
+      const sortedData = therapistsList.sort((a: any, b: any) => {
         // 予約可能なセラピストを優先（実際にはAPIからのデータを使用）
         const aAvailable = parseInt(a.id.replace(/\D/g, '')) % 2 === 1;
         const bAvailable = parseInt(b.id.replace(/\D/g, '')) % 2 === 1;
@@ -636,12 +656,12 @@ const SiteMapSearch: React.FC = () => {
                     {/* 営業状態とアメニティ */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {site.amenities?.includes('WIFI') && (
+                        {parseAmenities(site.amenities).some((a: string) => a.includes('Wi-Fi') || a.includes('WIFI')) && (
                           <div className="bg-white p-1.5 rounded-lg" title="Wi-Fi">
                             <Wifi size={12} className="text-gray-600" />
                           </div>
                         )}
-                        {site.amenities?.includes('SHOWER') && (
+                        {parseAmenities(site.amenities).some((a: string) => a.includes('シャワー') || a.includes('SHOWER')) && (
                           <div className="bg-white p-1.5 rounded-lg" title="シャワー">
                             <Coffee size={12} className="text-gray-600" />
                           </div>
