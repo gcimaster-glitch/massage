@@ -27,7 +27,7 @@ app.get('/', async (c) => {
   const search = c.req.query('search') || '';
   const area = c.req.query('area') || '';
   const type = c.req.query('type') || '';
-  const status = c.req.query('status') || 'APPROVED';
+  const status = c.req.query('status') || '';
   
   const offset = (page - 1) * limit;
   
@@ -47,7 +47,7 @@ app.get('/', async (c) => {
     }
     
     if (area) {
-      conditions.push('s.area_code = ?');
+      conditions.push('s.area = ?');
       params.push(area);
     }
     
@@ -74,11 +74,13 @@ app.get('/', async (c) => {
         s.name,
         s.type,
         s.address,
-        s.area_code as area,
-        s.latitude,
-        s.longitude,
-        s.latitude as lat,
-        s.longitude as lng,
+        s.area,
+        s.lat,
+        s.lng,
+        s.lat as latitude,
+        s.lng as longitude,
+        s.cube_serial_number,
+        s.is_active,
         s.room_count,
         s.amenities,
         s.status,
