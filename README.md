@@ -445,6 +445,67 @@ npm run db:migrate:prod
 
 ---
 
+## 🔐 管理者アカウント情報
+
+### **本番運用用 総管理者アカウント**
+
+**重要**: このアカウントはシステム全体の管理権限を持ちます。第三者に共有しないでください。
+
+#### **ログイン情報**
+- **メールアドレス**: `admin@hogusy.com`
+- **パスワード**: `HogusyAdmin2026!`
+- **ロール**: `ADMIN`（総管理者）
+
+#### **ログインURL**
+```
+https://hogusy.com/auth/login/admin
+```
+
+#### **管理画面アクセス**
+- **ダッシュボード**: https://hogusy.com/admin
+- **ユーザー管理**: https://hogusy.com/admin/users
+- **施設管理**: https://hogusy.com/admin/site-management
+- **売上管理**: https://hogusy.com/admin/payouts
+- **アナリティクス**: https://hogusy.com/admin/analytics
+
+#### **ログイン方法**
+1. **メール/パスワード**（推奨）
+   - メールアドレス: `admin@hogusy.com`
+   - パスワード: `HogusyAdmin2026!`
+
+2. **Google OAuth**
+   - 管理者権限のGoogleアカウントでログイン可能
+
+3. **開発用デモログイン**
+   - ローカル開発時のみ使用
+   - 本番環境では使用不可
+
+#### **セキュリティ推奨事項**
+- ⚠️ パスワードは定期的に変更してください
+- ⚠️ 二要素認証（2FA）の追加を推奨
+- ⚠️ ログイン履歴を定期的に確認
+- ⚠️ 不要になった管理者アカウントは削除
+
+#### **パスワード変更方法**
+```bash
+# 新しいパスワードのハッシュを生成
+node -e "
+const crypto = require('crypto');
+const password = '新しいパスワード';
+const hash = crypto.createHash('sha256').update(password).digest('hex');
+console.log('Password Hash:', hash);
+"
+
+# データベースを更新
+npx wrangler d1 execute hogusy-db-production --remote --command="
+UPDATE users 
+SET password_hash = '生成されたハッシュ' 
+WHERE email = 'admin@hogusy.com';
+"
+```
+
+---
+
 ## 📂 ディレクトリ構造
 
 ```
