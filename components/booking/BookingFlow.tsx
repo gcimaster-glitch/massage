@@ -103,6 +103,16 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
     }
   };
   
+  // 日付フォーマット
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+    return `${month}月${day}日(${dayOfWeek})`;
+  };
+  
   // 次のステップへ
   const handleNext = (updatedData: Partial<BookingData>) => {
     setBookingData(prev => ({ ...prev, ...updatedData }));
@@ -188,6 +198,40 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
       }
       
       const result = await response.json();
+      console.log('✅ Booking created:', result);
+      
+      // 予約確認メールを送信
+      try {
+        const emailResponse = await fetch('/api/email/booking-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            bookingId: result.id,
+            userEmail: result.user_email || 'user@example.com', // 実際のユーザーメールアドレス
+            therapistEmail: bookingData.therapist?.email || '',
+            bookingDetails: {
+              userName: result.user_name || 'お客様',
+              therapistName: bookingData.therapist?.name || '指定なし',
+              siteName: bookingData.site?.name || '出張',
+              scheduledAt: `${formatDate(bookingData.scheduled_date || '')} ${bookingData.scheduled_time || ''}`,
+              duration: bookingData.total_duration || 0,
+              price: bookingData.total_price || 0,
+            }
+          })
+        });
+
+        if (emailResponse.ok) {
+          console.log('✅ Booking confirmation email sent');
+        } else {
+          console.warn('⚠️ Failed to send booking confirmation email');
+        }
+      } catch (emailErr) {
+        console.error('❌ Email sending error:', emailErr);
+        // メール送信失敗してもエラーにしない
+      }
       
       // 完了画面へ
       setCurrentStep(getTotalSteps() + 1);

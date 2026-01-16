@@ -12,6 +12,8 @@ import sitesRoutesApp from './sites-routes'
 import therapistsRoutesApp from './therapists-routes'
 import bookingsRoutesApp from './bookings-routes'
 import schedulesRoutesApp from './schedules-routes'
+import paymentApp from './routes/payment-routes'
+import emailApp from './routes/email-routes'
 
 // ============================================
 // Type Definitions
@@ -120,6 +122,16 @@ app.route('/api/bookings', bookingsRoutesApp)
 // Schedules Routes
 // ============================================
 app.route('/api/schedules', schedulesRoutesApp)
+
+// ============================================
+// Payment Routes
+// ============================================
+app.route('/api/payment', paymentApp)
+
+// ============================================
+// Email Routes
+// ============================================
+app.route('/api/email', emailApp)
 
 // ============================================
 // Auth Routes
