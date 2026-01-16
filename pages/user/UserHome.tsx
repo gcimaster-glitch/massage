@@ -90,25 +90,26 @@ const UserHome: React.FC = () => {
       
       {/* Welcome Banner for Logged-in Users */}
       {isLoggedIn && userName && (
-        <div className="fixed top-4 right-4 z-50 bg-white rounded-2xl shadow-lg px-6 py-4 flex items-center gap-3 animate-fade-in border border-teal-100">
-          <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-            <User size={20} className="text-teal-600" />
+        <div className="fixed top-2 md:top-4 right-2 md:right-4 z-50 bg-white rounded-xl md:rounded-2xl shadow-lg px-3 md:px-6 py-2 md:py-4 flex items-center gap-2 md:gap-3 animate-fade-in border border-teal-100">
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-teal-100 rounded-full flex items-center justify-center">
+            <User size={16} className="md:w-5 md:h-5 text-teal-600" />
           </div>
-          <div>
+          <div className="hidden md:block">
             <p className="text-xs text-gray-500 font-bold">ログイン中</p>
             <p className="font-black text-gray-900">{userName}</p>
           </div>
           <button
             onClick={() => navigate('/app/account')}
-            className="ml-4 text-teal-600 hover:text-teal-700 font-bold text-sm"
+            className="ml-2 md:ml-4 text-teal-600 hover:text-teal-700 font-bold text-xs md:text-sm whitespace-nowrap"
           >
-            マイページ →
+            <span className="hidden md:inline">マイページ →</span>
+            <span className="md:hidden">→</span>
           </button>
         </div>
       )}
       
       {/* 1. Immersive Hero & Global Search */}
-      <section className="relative h-[80vh] min-h-[600px] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[70vh] md:h-[80vh] min-h-[500px] md:min-h-[600px] flex items-center justify-center overflow-hidden">
          {/* Background Visual */}
          <div className="absolute inset-0 z-0">
             <img 
@@ -119,55 +120,55 @@ const UserHome: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#FDFCFB]"></div>
          </div>
 
-         <div className="relative z-10 w-full max-w-5xl px-4 md:px-6 text-center space-y-12">
-            <div className="space-y-6 animate-fade-in-up">
-               <span className="inline-block bg-white/20 backdrop-blur-xl text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.4em] border border-white/30 shadow-2xl">Premium Wellness Infrastructure</span>
-               <h1 className="text-6xl md:text-9xl font-black text-white tracking-tighter leading-[0.85] drop-shadow-2xl">
+         <div className="relative z-10 w-full max-w-5xl px-4 md:px-6 text-center space-y-8 md:space-y-12">
+            <div className="space-y-4 md:space-y-6 animate-fade-in-up">
+               <span className="inline-block bg-white/20 backdrop-blur-xl text-white px-4 md:px-6 py-1.5 md:py-2 rounded-full font-black text-[8px] md:text-[10px] uppercase tracking-[0.3em] md:tracking-[0.4em] border border-white/30 shadow-2xl">Premium Wellness</span>
+               <h1 className="text-4xl sm:text-6xl md:text-9xl font-black text-white tracking-tighter leading-[0.85] drop-shadow-2xl">
                   探して、<br/><span className="text-teal-400">整える。</span>
                </h1>
             </div>
 
             {/* Global Search Console */}
-            <div className="bg-white rounded-[56px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.3)] p-4 md:p-6 border border-white/50 backdrop-blur-2xl animate-fade-in-up delay-100">
-               <div className="flex flex-col md:flex-row items-center gap-4">
-                  <div className="flex-1 grid grid-cols-2 gap-4 w-full">
+            <div className="bg-white rounded-3xl md:rounded-[56px] shadow-[0_60px_120px_-20px_rgba(0,0,0,0.3)] p-3 md:p-6 border border-white/50 backdrop-blur-2xl animate-fade-in-up delay-100">
+               <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4">
+                  <div className="flex-1 grid grid-cols-2 gap-2 md:gap-4 w-full">
                      <button 
                        onClick={() => setBookingType(BookingType.ONSITE)}
-                       className={`flex items-center justify-center gap-4 py-8 rounded-[40px] transition-all duration-500 border-4 ${bookingType === BookingType.ONSITE ? 'bg-teal-600 border-teal-400 text-white shadow-xl scale-[1.03]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-100'}`}
+                       className={`flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 py-4 md:py-8 rounded-2xl md:rounded-[40px] transition-all duration-500 border-2 md:border-4 ${bookingType === BookingType.ONSITE ? 'bg-teal-600 border-teal-400 text-white shadow-xl scale-[1.03]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-100'}`}
                      >
-                        <Box size={28} />
-                        <div className="text-left leading-none">
-                           <p className="font-black text-lg">CARE CUBE</p>
-                           <p className="text-[9px] font-bold uppercase opacity-60 mt-1">Booth Booking</p>
+                        <Box size={20} className="md:w-7 md:h-7" />
+                        <div className="text-center md:text-left leading-none">
+                           <p className="font-black text-sm md:text-lg">CUBE</p>
+                           <p className="text-[8px] md:text-[9px] font-bold uppercase opacity-60 mt-0.5 md:mt-1">Booth</p>
                         </div>
                      </button>
                      <button 
                        onClick={() => setBookingType(BookingType.MOBILE)}
-                       className={`flex items-center justify-center gap-4 py-8 rounded-[40px] transition-all duration-500 border-4 ${bookingType === BookingType.MOBILE ? 'bg-orange-600 border-orange-400 text-white shadow-xl scale-[1.03]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-100'}`}
+                       className={`flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 py-4 md:py-8 rounded-2xl md:rounded-[40px] transition-all duration-500 border-2 md:border-4 ${bookingType === BookingType.MOBILE ? 'bg-orange-600 border-orange-400 text-white shadow-xl scale-[1.03]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-100'}`}
                      >
-                        <Home size={28} />
-                        <div className="text-left leading-none">
-                           <p className="font-black text-lg">出張で呼ぶ</p>
-                           <p className="text-[9px] font-bold uppercase opacity-60 mt-1">Home Dispatch</p>
+                        <Home size={20} className="md:w-7 md:h-7" />
+                        <div className="text-center md:text-left leading-none">
+                           <p className="font-black text-sm md:text-lg">出張</p>
+                           <p className="text-[8px] md:text-[9px] font-bold uppercase opacity-60 mt-0.5 md:mt-1">Dispatch</p>
                         </div>
                      </button>
                   </div>
-                  <div className="w-full md:w-auto h-full flex flex-col md:flex-row gap-4 items-center">
+                  <div className="w-full md:w-auto h-full flex flex-col md:flex-row gap-3 md:gap-4 items-center">
                      <div className="h-16 w-px bg-gray-100 hidden md:block mx-4"></div>
                      <div className="relative w-full md:w-64 group">
-                        <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-teal-500" size={20} />
+                        <MapPin className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-teal-500" size={18} />
                         <select 
                           value={area}
                           onChange={e => setArea(e.target.value)}
-                          className="w-full pl-14 pr-10 py-5 bg-gray-50 rounded-[28px] font-black text-sm border-0 outline-none appearance-none group-focus-within:bg-white group-focus-within:ring-4 ring-teal-500/10 transition-all"
+                          className="w-full pl-12 md:pl-14 pr-8 md:pr-10 py-4 md:py-5 bg-gray-50 rounded-2xl md:rounded-[28px] font-black text-xs md:text-sm border-0 outline-none appearance-none group-focus-within:bg-white group-focus-within:ring-4 ring-teal-500/10 transition-all"
                         >
-                           <option value="">全てのエリア</option>
+                           <option value="">全エリア</option>
                            {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
-                        <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 rotate-90" size={16} />
+                        <ChevronRight className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 text-gray-300 rotate-90" size={14} />
                      </div>
-                     <button className="w-full md:w-20 h-20 bg-gray-900 text-white rounded-full flex items-center justify-center hover:bg-teal-600 transition-all shadow-2xl active:scale-90 group">
-                        <Search size={32} className="group-hover:scale-110 transition-transform" />
+                     <button className="w-full md:w-20 h-16 md:h-20 bg-gray-900 text-white rounded-2xl md:rounded-full flex items-center justify-center hover:bg-teal-600 transition-all shadow-2xl active:scale-90 group">
+                        <Search size={24} className="md:w-8 md:h-8 group-hover:scale-110 transition-transform" />
                      </button>
                   </div>
                </div>
