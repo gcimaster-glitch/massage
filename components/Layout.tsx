@@ -3,10 +3,8 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Role } from '../types';
 import { BRAND } from '../constants';
-import { 
-  Home, Calendar, ShieldAlert, User, Briefcase, 
-  MapPin, Settings, LogOut, Menu, X, LayoutDashboard, JapaneseYen, PieChart, FileText, History, BarChart3, Building2, UserPlus, List, HelpCircle, ShieldCheck, Search, Activity, ClipboardCheck, ExternalLink, Megaphone, Palette, Map as MapIcon, Gift, Building, LogIn, CreditCard, Radio, Siren, Zap, Users, Heart, MessageSquare, TrendingUp, UserCheck
-} from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
+import { getMenuForRole } from '../src/config/menu-config';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,158 +17,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
-  const navGroups = (role?: Role) => {
-    if (!role) return [];
-    switch (role) {
-      case Role.USER:
-        return [
-          { 
-            title: 'サービス', 
-            items: [
-              { label: 'ホーム', path: '/app', icon: Home },
-              { label: 'マップ検索', path: '/app/map', icon: MapIcon },
-              { label: '予約一覧', path: '/app/bookings', icon: Calendar },
-              { label: 'サブスク', path: '/app/subscriptions', icon: Zap },
-            ] 
-          },
-          { 
-            title: '健康管理', 
-            items: [
-              { label: '身体の記録', path: '/app/account/wellness', icon: Activity },
-              { label: 'ギフト', path: '/app/gifting', icon: Gift },
-            ] 
-          },
-          { 
-            title: '設定・サポート', 
-            items: [
-              { label: 'アカウント設定', path: '/app/account', icon: User },
-              { label: 'サポート', path: '/app/support', icon: HelpCircle },
-            ] 
-          }
-        ];
-      case Role.THERAPIST:
-        return [
-          { 
-            title: '業務管理', 
-            items: [
-              { label: 'ダッシュボード', path: '/t', icon: LayoutDashboard },
-              { label: 'スケジュール', path: '/t/calendar', icon: Calendar },
-            ] 
-          },
-          { 
-            title: '報酬・設定', 
-            items: [
-              { label: '報酬明細', path: '/t/earnings', icon: JapaneseYen },
-              { label: 'プロフィール設定', path: '/t/profile', icon: Settings },
-              { label: '自己PR編集', path: '/t/bio', icon: Palette },
-            ] 
-          },
-          { 
-            title: '安全', 
-            items: [
-              { label: '安全センター', path: '/t/safety', icon: ShieldAlert },
-            ] 
-          }
-        ];
-      case Role.THERAPIST_OFFICE:
-        return [
-          { 
-            title: '事務所運営', 
-            items: [
-              { label: 'ダッシュボード', path: '/o', icon: LayoutDashboard },
-              { label: 'セラピスト管理', path: '/o/therapists', icon: Users },
-              { label: '採用管理', path: '/o/recruitment', icon: UserPlus },
-            ] 
-          },
-          { 
-            title: '財務・メニュー', 
-            items: [
-              { label: '収益管理', path: '/o/earnings', icon: JapaneseYen },
-              { label: '料金・メニュー', path: '/o/menu', icon: ClipboardCheck },
-            ] 
-          },
-          { 
-            title: '安全・サポート', 
-            items: [
-              { label: '安全監視', path: '/o/safety', icon: Siren },
-              { label: 'サポート受信箱', path: '/o/support', icon: MessageSquare },
-            ] 
-          },
-          { 
-            title: '設定', 
-            items: [
-              { label: '事務所設定', path: '/o/settings', icon: Settings },
-            ] 
-          }
-        ];
-      case Role.HOST:
-        return [
-          { 
-            title: '施設運営', 
-            items: [
-              { label: 'ダッシュボード', path: '/h', icon: LayoutDashboard },
-              { label: '施設管理', path: '/h/sites', icon: MapPin },
-            ] 
-          },
-          { 
-            title: '財務・安全', 
-            items: [
-              { label: '収益明細', path: '/h/earnings', icon: JapaneseYen },
-              { label: 'インシデント報告', path: '/h/incidents', icon: ShieldAlert },
-            ] 
-          }
-        ];
-      case Role.ADMIN:
-        return [
-          { 
-            title: 'メイン', 
-            items: [
-              { label: 'ダッシュボード', path: '/admin', icon: LayoutDashboard },
-              { label: 'ユーザー管理', path: '/admin/users', icon: Users },
-              { label: '施設管理', path: '/admin/site-management', icon: Building2 },
-              { label: '予約管理', path: '/admin/logs', icon: ClipboardCheck },
-            ] 
-          },
-          { 
-            title: '財務・売上', 
-            items: [
-              { label: '売上・支払い', path: '/admin/payouts', icon: JapaneseYen },
-              { label: '売上設定', path: '/admin/revenue-config', icon: Settings },
-              { label: 'Stripe管理', path: '/admin/stripe', icon: CreditCard },
-            ] 
-          },
-          { 
-            title: 'システム', 
-            items: [
-              { label: 'アナリティクス', path: '/admin/analytics', icon: BarChart3 },
-              { label: 'インシデント管理', path: '/admin/incidents', icon: ShieldAlert },
-              { label: 'メール設定', path: '/admin/emails', icon: MessageSquare },
-              { label: 'アフィリエイト', path: '/admin/affiliates', icon: Megaphone },
-            ] 
-          },
-          { 
-            title: 'サポート', 
-            items: [
-              { label: 'お問い合わせ', path: '/admin/support', icon: HelpCircle },
-            ] 
-          }
-        ];
-      case Role.AFFILIATE:
-        return [
-          { 
-            title: 'アフィリエイト', 
-            items: [
-              { label: 'ダッシュボード', path: '/affiliate', icon: LayoutDashboard },
-              { label: '報酬明細', path: '/affiliate/earnings', icon: JapaneseYen },
-            ] 
-          }
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const currentNavGroups = navGroups(currentUser?.role);
+  // Get menu from config file
+  const currentNavGroups = getMenuForRole(currentUser?.role);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-gray-900 font-sans overflow-x-hidden">

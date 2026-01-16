@@ -11,6 +11,9 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -36,6 +39,46 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
       }
     }
   }, [searchParams, onLogin, navigate]);
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Check if user is admin
+        if (data.user.role !== 'ADMIN') {
+          setError('管理者権限が必要です');
+          setIsSubmitting(false);
+          return;
+        }
+
+        localStorage.setItem('auth_token', data.token);
+        onLogin(Role.ADMIN, data.user.name);
+        
+        setTimeout(() => {
+          navigate('/admin');
+          setIsSubmitting(false);
+        }, 500);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'ログインに失敗しました');
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      setError('ログイン処理中にエラーが発生しました');
+      setIsSubmitting(false);
+    }
+  };
 
   const handleQuickLogin = () => {
     setIsSubmitting(true);
@@ -95,6 +138,57 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
           </div>
         ) : (
           <>
+            {/* Email/Password Login Form */}
+            <form onSubmit={handleEmailLogin} className="mb-8 space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  管理者メールアドレス
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@hogusy.com"
+                  className="w-full px-5 py-4 border-2 border-gray-200 rounded-2xl focus:border-gray-900 focus:outline-none font-medium text-gray-900 transition-all"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  パスワード
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-5 py-4 border-2 border-gray-200 rounded-2xl focus:border-gray-900 focus:outline-none font-medium text-gray-900 transition-all"
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
+                  <p className="text-sm font-bold text-red-600">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full p-5 bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-2xl font-bold text-lg transition-all hover:shadow-xl active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSubmitting ? 'ログイン中...' : 'ログイン'}
+              </button>
+            </form>
+
+            <div className="py-4 flex items-center gap-4">
+              <div className="flex-1 h-px bg-gray-200"></div>
+              <span className="text-xs font-medium text-gray-400">または</span>
+              <div className="flex-1 h-px bg-gray-200"></div>
+            </div>
+
             <div className="mb-8">
               <button
                 onClick={handleGoogleLogin}
@@ -110,18 +204,14 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
               </button>
             </div>
 
-            <div className="py-4 flex items-center gap-4">
-              <div className="flex-1 h-px bg-gray-200"></div>
-              <span className="text-xs font-medium text-gray-400">または</span>
-              <div className="flex-1 h-px bg-gray-200"></div>
+            <div className="text-center mb-8">
+              <button
+                onClick={handleQuickLogin}
+                className="text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors"
+              >
+                開発用デモログイン
+              </button>
             </div>
-
-            <button
-              onClick={handleQuickLogin}
-              className="w-full p-5 bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-2xl font-bold text-lg transition-all hover:shadow-xl active:scale-[0.98]"
-            >
-              デモログイン（開発用）
-            </button>
 
             <div className="mt-10 grid gap-4">
               <div className="flex items-center gap-3 text-sm text-gray-600">
