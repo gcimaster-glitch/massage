@@ -185,13 +185,15 @@ const TherapistListPage: React.FC = () => {
            <main className="lg:col-span-9 space-y-6">
               
               {/* ソート & ヒット件数 */}
-              <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                 <div className="flex items-baseline gap-2">
-                    <h2 className="text-xl font-black text-gray-900 tracking-tight">{currentAreaName}</h2>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest"><span className="text-2xl text-teal-600 ml-1">{filteredAndSortedTherapists.length}</span> therapists found</span>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm">
+                 <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-2">
+                    <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">{currentAreaName}</h2>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider md:tracking-widest">
+                      <span className="text-xl md:text-2xl text-teal-600">{filteredAndSortedTherapists.length}</span> 件
+                    </span>
                  </div>
-                 <div className="flex bg-gray-100 p-1 rounded-2xl">
-                    <SortButton label="おすすめ順" active={sortBy === 'RECOMMENDED'} onClick={() => setSortBy('RECOMMENDED')} />
+                 <div className="flex bg-gray-100 p-1 rounded-xl md:rounded-2xl w-full md:w-auto overflow-x-auto">
+                    <SortButton label="おすすめ" active={sortBy === 'RECOMMENDED'} onClick={() => setSortBy('RECOMMENDED')} />
                     <SortButton label="評価順" active={sortBy === 'RATING'} onClick={() => setSortBy('RATING')} />
                     <SortButton label="安い順" active={sortBy === 'PRICE_ASC'} onClick={() => setSortBy('PRICE_ASC')} />
                  </div>
@@ -204,7 +206,7 @@ const TherapistListPage: React.FC = () => {
                   <p className="mt-4 text-gray-500">読み込み中...</p>
                 </div>
               ) : (
-                <div className="grid gap-10">
+                <div className="grid gap-6 md:gap-10">
                   {filteredAndSortedTherapists.map(t => (
                     <TherapistCatalogCard key={t.id} therapist={t} onBook={() => navigate(`/app/therapist/${t.id}`)} />
                   ))}
@@ -247,11 +249,11 @@ const TherapistCatalogCard: React.FC<{ therapist: any, onBook: () => void }> = (
   return (
     <div 
       onClick={onBook}
-      className="bg-white rounded-[40px] border border-gray-100 shadow-sm hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.08)] transition-all duration-700 cursor-pointer overflow-hidden group relative"
+      className="bg-white rounded-2xl md:rounded-[40px] border border-gray-100 shadow-sm hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.08)] transition-all duration-700 cursor-pointer overflow-hidden group relative"
     >
        <div className="flex flex-col md:flex-row">
           {/* 左: ビジュアルセクション */}
-          <div className="w-full md:w-[320px] h-80 md:h-auto relative overflow-hidden flex-shrink-0 bg-gray-100">
+          <div className="w-full md:w-[280px] lg:w-[320px] h-64 md:h-auto relative overflow-hidden flex-shrink-0 bg-gray-100">
              <img src={therapist.imageUrl} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt={therapist.name} />
              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
              
@@ -271,9 +273,9 @@ const TherapistCatalogCard: React.FC<{ therapist: any, onBook: () => void }> = (
              </button>
           </div>
 
-          {/* 右: 情報詳細 (Hot Pepper Style Hierarchy) */}
-          <div className="flex-1 p-8 md:p-10 flex flex-col justify-between">
-             <div className="space-y-6">
+          {/* 右: 情報詳細 */}
+          <div className="flex-1 p-5 md:p-8 lg:p-10 flex flex-col justify-between">
+             <div className="space-y-4 md:space-y-6">
                 <div className="flex flex-wrap items-center gap-2">
                    {therapist.categories.includes('LICENSED') && (
                       <span className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1">
@@ -284,26 +286,30 @@ const TherapistCatalogCard: React.FC<{ therapist: any, onBook: () => void }> = (
                    <span className="bg-orange-50 text-orange-600 text-[9px] font-black px-3 py-1 rounded-full border border-orange-100">深夜OK</span>
                 </div>
 
-                <div className="flex justify-between items-start gap-4">
-                   <div>
-                      <h3 className="text-2xl font-black text-gray-900 tracking-tighter group-hover:text-teal-600 transition-colors leading-none">
+                <div className="flex justify-between items-start gap-3 md:gap-4">
+                   <div className="flex-1 min-w-0">
+                      <h3 className="text-xl md:text-2xl font-black text-gray-900 tracking-tighter group-hover:text-teal-600 transition-colors leading-none truncate">
                         {therapist.name}
-                        <span className="text-[10px] font-bold text-gray-300 ml-3 uppercase tracking-widest">田中 有紀</span>
                       </h3>
-                      <p className="text-xs font-bold text-gray-400 mt-2 flex items-center gap-2">
-                        歴12年 / <span className="text-gray-900 border-b border-teal-500/20">深層筋・骨盤調整・小顔</span>
+                      <p className="text-xs font-bold text-gray-400 mt-2 flex flex-wrap items-center gap-2">
+                        <span>歴{therapist.experience_years || 12}年</span>
+                        {therapist.categories && therapist.categories.length > 0 && (
+                          <span className="text-gray-900 border-b border-teal-500/20 truncate">
+                            {Array.isArray(therapist.categories) ? therapist.categories.slice(0, 2).join('・') : ''}
+                          </span>
+                        )}
                       </p>
                    </div>
-                   <div className="text-right">
-                      <div className="flex items-center gap-1.5 text-yellow-500 font-black text-xl bg-yellow-50 px-3 py-1 rounded-xl border border-yellow-100 shadow-sm">
-                         <Star size={16} fill="currentColor" /> {therapist.rating}
+                   <div className="text-right flex-shrink-0">
+                      <div className="flex items-center gap-1 md:gap-1.5 text-yellow-500 font-black text-base md:text-xl bg-yellow-50 px-2 md:px-3 py-1 rounded-lg md:rounded-xl border border-yellow-100 shadow-sm">
+                         <Star size={14} className="md:w-4 md:h-4" fill="currentColor" /> {therapist.rating}
                       </div>
-                      <p className="text-[9px] font-black text-gray-300 mt-1 uppercase tracking-widest">{therapist.reviewCount} Reviews</p>
+                      <p className="text-[8px] md:text-[9px] font-black text-gray-300 mt-1 uppercase tracking-wider md:tracking-widest">{therapist.reviewCount}</p>
                    </div>
                 </div>
 
-                <p className="text-gray-500 font-bold leading-relaxed line-clamp-2 italic border-l-4 border-teal-500/10 pl-5 text-base">
-                   「{therapist.bio || "インナーマッスルへの的確なアプローチで、翌朝驚くほど身体が軽くなる体験をご提供します。" }」
+                <p className="text-gray-500 text-sm md:text-base font-bold leading-relaxed line-clamp-2 border-l-2 md:border-l-4 border-teal-500/10 pl-3 md:pl-5">
+                   {therapist.bio || "プロフェッショナルな施術で心と体をサポートします。"}
                 </p>
 
                 {/* メニュープレビュー: ここがHot Pepperの大きな特徴 */}
@@ -321,19 +327,19 @@ const TherapistCatalogCard: React.FC<{ therapist: any, onBook: () => void }> = (
              </div>
 
              {/* フッター: 予約可能枠 & CTA */}
-             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6 pt-6 border-t border-gray-50 mt-8">
-                <div className="flex items-center gap-3">
-                   <div className="bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-100 flex items-center gap-2 shadow-inner">
+             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 md:gap-6 pt-4 md:pt-6 border-t border-gray-50 mt-4 md:mt-8">
+                <div className="flex items-center gap-2 md:gap-3 overflow-x-auto">
+                   <div className="bg-emerald-50 px-3 md:px-4 py-2 rounded-xl md:rounded-2xl border border-emerald-100 flex items-center gap-2 shadow-inner flex-shrink-0">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                       <div className="text-left">
-                         <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest leading-none">本日 空きあり</p>
-                         <p className="text-[10px] font-black text-emerald-600 mt-1">18:00 / 20:30 / 21:00〜</p>
+                         <p className="text-[8px] md:text-[9px] font-black text-emerald-800 uppercase tracking-wider md:tracking-widest leading-none whitespace-nowrap">本日空き</p>
+                         <p className="text-[9px] md:text-[10px] font-black text-emerald-600 mt-1 whitespace-nowrap">18:00 / 20:30</p>
                       </div>
                    </div>
                 </div>
 
-                <button className="bg-gray-900 text-white px-10 py-4 rounded-[22px] font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-teal-600 transition-all active:scale-95 flex items-center justify-center gap-2 group/btn">
-                   空き状況・予約 <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                <button className="bg-gray-900 text-white px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-[22px] font-black text-xs uppercase tracking-wider md:tracking-[0.2em] shadow-2xl hover:bg-teal-600 transition-all active:scale-95 flex items-center justify-center gap-2 group/btn whitespace-nowrap">
+                   予約する <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
                 </button>
              </div>
           </div>
@@ -361,7 +367,7 @@ const FilterGroup = ({ title, items }: { title: string, items: string[] }) => (
 const SortButton = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <button 
     onClick={onClick}
-    className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${active ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+    className={`px-4 md:px-6 py-2 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-wide md:tracking-widest transition-all whitespace-nowrap ${active ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
   >
      {label}
   </button>

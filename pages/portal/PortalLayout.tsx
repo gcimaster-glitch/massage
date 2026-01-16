@@ -33,22 +33,22 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col selection:bg-teal-100">
-      <header className="fixed top-0 w-full z-[100] transition-all duration-500 px-6 py-4">
-        <div className="max-w-7xl mx-auto h-20 bg-white/90 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] flex items-center justify-between px-8">
-          <div className="flex items-center gap-2 cursor-pointer group" onClick={() => navigate('/')}>
-             <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-xl group-hover:bg-teal-600 transition-colors">H</div>
+      <header className="fixed top-0 w-full z-[100] transition-all duration-500 px-3 md:px-6 py-3 md:py-4">
+        <div className="max-w-7xl mx-auto h-16 md:h-20 bg-white/90 backdrop-blur-2xl rounded-2xl md:rounded-[32px] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] flex items-center justify-between px-4 md:px-8">
+          <div className="flex items-center gap-1.5 md:gap-2 cursor-pointer group" onClick={() => navigate('/')}>
+             <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-900 rounded-lg md:rounded-xl flex items-center justify-center text-white font-black text-lg md:text-xl shadow-xl group-hover:bg-teal-600 transition-colors">H</div>
              <div className="flex flex-col">
-                <span className="text-xl font-black text-gray-900 tracking-tighter leading-none">HOGUSY</span>
-                <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">ほぐす、を、もっと身近に。</span>
+                <span className="text-base md:text-xl font-black text-gray-900 tracking-tighter leading-none">HOGUSY</span>
+                <span className="hidden md:block text-[8px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">ほぐす、を、もっと身近に。</span>
              </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-8">
             {navItems.map(item => (
               <button 
                 key={item.label}
                 onClick={() => navigate(item.path)}
-                className={`text-[10px] font-black transition-all uppercase tracking-[0.2em] ${location.pathname === item.path ? 'text-teal-600 underline underline-offset-8 decoration-2' : 'text-gray-400 hover:text-gray-900'}`}
+                className={`text-[9px] xl:text-[10px] font-black transition-all uppercase tracking-[0.15em] xl:tracking-[0.2em] whitespace-nowrap ${location.pathname === item.path ? 'text-teal-600 underline underline-offset-8 decoration-2' : 'text-gray-400 hover:text-gray-900'}`}
               >
                 {item.label}
               </button>
@@ -79,28 +79,29 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             )}
           </nav>
 
-          <button className="md:hidden p-3 bg-gray-50 rounded-xl text-gray-900" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X /> : <Menu />}
+          <button className="lg:hidden p-2 md:p-3 bg-gray-50 rounded-lg md:rounded-xl text-gray-900" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 top-24 bg-white/98 backdrop-blur-3xl z-50 p-8 animate-fade-in">
-            <div className="flex flex-col space-y-6">
+          <div className="lg:hidden fixed inset-0 top-20 md:top-24 bg-white/98 backdrop-blur-3xl z-50 p-6 md:p-8 animate-fade-in overflow-y-auto">
+            <div className="flex flex-col space-y-4 md:space-y-6">
               {navItems.map(item => (
                 <button 
                   key={item.label}
                   onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-                  className="text-left font-black text-gray-900 text-3xl tracking-tighter"
+                  className="text-left font-black text-gray-900 text-2xl md:text-3xl tracking-tighter flex items-center gap-3"
                 >
+                  {item.icon && <item.icon size={24} className="text-teal-600" />}
                   {item.label}
                 </button>
               ))}
               <hr className="border-gray-100" />
-              <div className="flex flex-col gap-4">
-                 <button onClick={() => { navigate('/auth/login'); setMobileMenuOpen(false); }} className="bg-gray-100 py-6 rounded-[28px] font-black text-xl">ログイン</button>
-                 <button onClick={() => { navigate('/auth/register-select'); setMobileMenuOpen(false); }} className="bg-teal-600 text-white py-6 rounded-[28px] font-black text-xl shadow-xl">パートナー加盟・登録</button>
+              <div className="flex flex-col gap-3 md:gap-4">
+                 <button onClick={() => { navigate('/auth/login'); setMobileMenuOpen(false); }} className="bg-gray-100 py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl">ログイン</button>
+                 <button onClick={() => { navigate('/auth/register-select'); setMobileMenuOpen(false); }} className="bg-teal-600 text-white py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl shadow-xl">パートナー加盟</button>
               </div>
             </div>
           </div>
