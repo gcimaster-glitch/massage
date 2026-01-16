@@ -9,6 +9,11 @@ import {
   ChevronRight as ChevronRightIcon, Map as MapIcon,
   Tag, Timer, UserCheck, Sparkles, Scissors, Users, Home
 } from 'lucide-react';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { SkeletonTherapistCard } from '../../components/Skeleton';
+import ErrorState from '../../components/ErrorState';
+import Breadcrumb from '../../components/Breadcrumb';
+import BackButton from '../../components/BackButton';
 
 const TherapistListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +23,7 @@ const TherapistListPage: React.FC = () => {
   // API State
   const [therapists, setTherapists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Filter States
   const [area, setArea] = useState('');
@@ -31,7 +37,14 @@ const TherapistListPage: React.FC = () => {
 
   const fetchTherapists = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const res = await fetch('/api/therapists');
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
       // APIレスポンスは {therapists: [...], total: ...} の構造
       const therapistsList = data.therapists || [];
@@ -44,6 +57,7 @@ const TherapistListPage: React.FC = () => {
       })));
     } catch (e) {
       console.error('Failed to fetch therapists:', e);
+      setError(e instanceof Error ? e.message : 'セラピスト情報の取得に失敗しました。');
     } finally {
       setLoading(false);
     }
@@ -75,6 +89,18 @@ const TherapistListPage: React.FC = () => {
   return (
     <PortalLayout>
       <div className="bg-[#F8F9FA] min-h-screen pb-32 pt-[72px] font-sans text-gray-900">
+        
+        {/* パンくずリスト & 戻るボタン */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <Breadcrumb 
+              items={[
+                { label: 'セラピスト一覧' }
+              ]}
+            />
+            <BackButton variant="minimal" />
+          </div>
+        </div>
         
         {/* モード表示バナー（出張予約の場合） */}
         {mode === 'dispatch' && (
@@ -200,35 +226,46 @@ const TherapistListPage: React.FC = () => {
               </div>
 
               {/* リスト表示 */}
+              {/* ローディング状態 */}
               {loading ? (
-                <div className="text-center py-20">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-500">読み込み中...</p>
-                </div>
-              ) : (
                 <div className="grid gap-6 md:gap-10">
-                  {filteredAndSortedTherapists.map(t => (
-                    <TherapistCatalogCard key={t.id} therapist={t} onBook={() => navigate(`/app/therapist/${t.id}`)} />
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <SkeletonTherapistCard key={index} />
                   ))}
                 </div>
-              )}
-
-              {/* Pagination (Mock) */}
-              {filteredAndSortedTherapists.length > 0 && (
-                <div className="flex items-center justify-center gap-2 pt-10">
-                   <button className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50"><ChevronLeft size={20}/></button>
-                   <button className="w-12 h-12 rounded-2xl bg-gray-900 text-white flex items-center justify-center text-sm font-black shadow-lg">1</button>
-                   <button className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-sm font-black text-gray-600 hover:bg-gray-50">2</button>
-                   <button className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50"><ChevronRightIcon size={20}/></button>
-                </div>
-              )}
-
-              {filteredAndSortedTherapists.length === 0 && (
-                <div className="bg-white p-24 rounded-[64px] text-center border-4 border-dashed border-gray-200">
+              ) : error ? (
+                /* エラー状態 */
+                <ErrorState
+                  title="セラピスト情報の読み込みに失敗しました"
+                  message={error}
+                  onRetry={fetchTherapists}
+                  showBackButton={false}
+                  showHomeButton={false}
+                />
+              ) : filteredAndSortedTherapists.length === 0 ? (
+                /* データなし */
+                <div className="bg-white p-12 md:p-24 rounded-2xl md:rounded-[64px] text-center border-4 border-dashed border-gray-200">
                    <Info size={56} className="mx-auto text-gray-200 mb-6" />
-                   <h3 className="text-2xl font-black text-gray-400 uppercase tracking-widest">条件に一致するセラピストが見つかりません</h3>
+                   <h3 className="text-xl md:text-2xl font-black text-gray-400 uppercase tracking-widest">条件に一致するセラピストが見つかりません</h3>
                    <button onClick={() => { setArea(''); setCategory(''); }} className="mt-8 bg-gray-900 text-white px-10 py-4 rounded-2xl font-black text-sm">全てリセットして再表示</button>
                 </div>
+              ) : (
+                /* データ表示 */
+                <>
+                  <div className="grid gap-6 md:gap-10">
+                    {filteredAndSortedTherapists.map(t => (
+                      <TherapistCatalogCard key={t.id} therapist={t} onBook={() => navigate(`/app/therapist/${t.id}`)} />
+                    ))}
+                  </div>
+
+                  {/* Pagination (Mock) */}
+                  <div className="flex items-center justify-center gap-2 pt-10">
+                     <button className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50"><ChevronLeft size={20}/></button>
+                     <button className="w-12 h-12 rounded-2xl bg-gray-900 text-white flex items-center justify-center text-sm font-black shadow-lg">1</button>
+                     <button className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-sm font-black text-gray-600 hover:bg-gray-50">2</button>
+                     <button className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50"><ChevronRightIcon size={20}/></button>
+                  </div>
+                </>
               )}
            </main>
         </div>
