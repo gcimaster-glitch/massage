@@ -35,6 +35,7 @@ interface Site {
 interface BookingData {
   therapist: Therapist;
   course: Course | null;
+  options?: Course[];
   date: string;
   time: string;
   totalPrice: number;
@@ -59,6 +60,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   const [bookingData, setBookingData] = useState<BookingData>({
     therapist,
     course: null,
+    options: [],
     date: '',
     time: '',
     totalPrice: 0,
@@ -92,6 +94,29 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         <div className="bg-teal-50 p-3 rounded-lg mb-4">
           <p className="text-sm font-medium text-teal-900">担当: {therapist.name}</p>
         </div>
+        
+        {/* ログイン案内 */}
+        {!isLoggedIn && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+            <p className="text-sm text-blue-800 mb-2">
+              <strong>会員の方:</strong> ログインすると予約がスムーズです
+            </p>
+            <button
+              onClick={() => {
+                // 現在のURLを保存してログイン後に戻る
+                const currentUrl = window.location.pathname + window.location.search;
+                navigate(`/auth/login/user?returnUrl=${encodeURIComponent(currentUrl)}`);
+              }}
+              className="text-blue-600 underline text-sm font-bold hover:text-blue-800"
+            >
+              ログインする →
+            </button>
+            <p className="text-xs text-blue-600 mt-2">
+              会員登録は予約の途中でもできます
+            </p>
+          </div>
+        )}
+        
         <div className="space-y-3">
           {courses.map((course) => (
             <div
@@ -604,8 +629,14 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
             }),
           });
 
-          // 完了画面へ（会員はステップ5、非会員はステップ6）
-          setStep(isLoggedIn ? 5 : 6);
+          // 完了画面へ
+          // 出張予約会員: ステップ6、出張予約非会員: ステップ7
+          // 店舗予約会員: ステップ5、店舗予約非会員: ステップ6
+          if (bookingType === 'MOBILE') {
+            setStep(isLoggedIn ? 6 : 7);
+          } else {
+            setStep(isLoggedIn ? 5 : 6);
+          }
         }
       } catch (error: any) {
         console.error('決済エラー:', error);

@@ -57,15 +57,13 @@ const SiteDetail: React.FC = () => {
     }
   };
 
-  const handleBookWithTherapist = (therapist?: any) => {
-    const params = new URLSearchParams({
-      type: 'ONSITE',
-      siteId: site.id
-    });
-    if (therapist) {
-      params.append('therapistId', therapist.id);
+  const handleBookWithTherapist = (therapist: any) => {
+    if (!therapist || !therapist.id) {
+      console.error('Invalid therapist:', therapist);
+      return;
     }
-    navigate(`/app/booking/new?${params.toString()}`);
+    // セラピストIDをURLパラメータに含めて予約ページへ
+    navigate(`/app/booking/direct/${therapist.id}?type=ONSITE&siteId=${site.id}`);
   };
 
   // Loading state
