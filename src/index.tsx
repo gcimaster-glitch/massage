@@ -575,21 +575,44 @@ app.get('/api/therapists/:id/menu', async (c) => {
     }
     
     // DB実装
-    // 1. コースを取得
-    const { results: courses } = await c.env.DB.prepare(`
-      SELECT id, name, duration, base_price, description
-      FROM menu_items
-      WHERE therapist_id = ? AND item_type = 'COURSE' AND is_active = 1
-      ORDER BY display_order, base_price
+    // 1. セラピストプロフィールIDを取得
+    const { results: therapistProfiles } = await c.env.DB.prepare(`
+      SELECT id FROM therapist_profiles WHERE user_id = ?
     `).bind(therapistId).all()
     
-    // 2. オプションを取得
+    if (!therapistProfiles || therapistProfiles.length === 0) {
+      return c.json({ courses: [], options: [] })
+    }
+    
+    const therapistProfileId = therapistProfiles[0].id
+    
+    // 2. コースを取得（therapist_menu と master_courses を JOIN）
+    const { results: courses } = await c.env.DB.prepare(`
+      SELECT 
+        mc.id,
+        mc.name,
+        mc.duration,
+        tm.price as base_price,
+        mc.description
+      FROM therapist_menu tm
+      JOIN master_courses mc ON tm.master_course_id = mc.id
+      WHERE tm.therapist_id = ? AND tm.is_available = 1
+      ORDER BY tm.price
+    `).bind(therapistProfileId).all()
+    
+    // 3. オプションを取得（therapist_options と master_options を JOIN）
     const { results: options } = await c.env.DB.prepare(`
-      SELECT id, name, duration, base_price, description
-      FROM menu_items
-      WHERE therapist_id = ? AND item_type = 'OPTION' AND is_active = 1
-      ORDER BY display_order, base_price
-    `).bind(therapistId).all()
+      SELECT 
+        mo.id,
+        mo.name,
+        mo.duration,
+        topt.price as base_price,
+        mo.description
+      FROM therapist_options topt
+      JOIN master_options mo ON topt.master_option_id = mo.id
+      WHERE topt.therapist_id = ? AND topt.is_available = 1
+      ORDER BY topt.price
+    `).bind(therapistProfileId).all()
     
     return c.json({
       courses: courses || [],
