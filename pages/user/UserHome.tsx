@@ -69,19 +69,30 @@ const UserHome: React.FC = () => {
         
         // Fetch sites
         const sitesRes = await fetch('/api/sites?status=APPROVED&limit=8');
-        if (!sitesRes.ok) throw new Error('Failed to fetch sites');
+        if (!sitesRes.ok) {
+          console.warn('⚠️ Sites API returned error:', sitesRes.status);
+          throw new Error('Failed to fetch sites');
+        }
         const sitesData = await sitesRes.json();
         setSites(sitesData.sites || []);
+        console.log('✅ Sites loaded:', sitesData.sites?.length || 0);
 
         // Fetch therapists
         const therapistsRes = await fetch('/api/therapists?limit=6');
-        if (!therapistsRes.ok) throw new Error('Failed to fetch therapists');
+        if (!therapistsRes.ok) {
+          console.warn('⚠️ Therapists API returned error:', therapistsRes.status);
+          throw new Error('Failed to fetch therapists');
+        }
         const therapistsData = await therapistsRes.json();
         setTherapists(therapistsData.therapists || []);
+        console.log('✅ Therapists loaded:', therapistsData.therapists?.length || 0);
       } catch (e) {
-        console.error('Failed to fetch data:', e);
-        setError(e instanceof Error ? e.message : 'データの読み込みに失敗しました');
-        // Fallback to mock data
+        console.error('❌ Failed to fetch data:', e);
+        const errorMessage = e instanceof Error ? e.message : 'データの読み込みに失敗しました';
+        setError(errorMessage);
+        
+        // Fallback to mock data for better UX
+        console.log('📦 Using fallback mock data');
         setSites(MOCK_SITES);
         setTherapists(MOCK_THERAPISTS);
       } finally {
@@ -99,6 +110,21 @@ const UserHome: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] pb-40 font-sans text-gray-900 overflow-x-hidden">
+      
+      {/* Error Banner - Show if error but data is loaded */}
+      {error && (sites.length > 0 || therapists.length > 0) && (
+        <div className="fixed top-16 md:top-20 left-4 right-4 md:left-8 md:right-8 z-40 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3 animate-fade-in shadow-lg">
+          <div className="text-amber-600 text-sm flex-1">
+            ⚠️ データの一部読み込みに失敗しましたが、キャッシュデータを表示しています。
+          </div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="text-amber-700 text-xs font-bold hover:underline whitespace-nowrap"
+          >
+            再読み込み
+          </button>
+        </div>
+      )}
       
       {/* Welcome Banner for Logged-in Users */}
       {isLoggedIn && userName && (
@@ -207,10 +233,10 @@ const UserHome: React.FC = () => {
                    Array.from({ length: 4 }).map((_, index) => (
                      <SkeletonCard key={index} />
                    ))
-                 ) : error ? (
-                   // エラー表示（簡易版）
+                 ) : sites.length === 0 ? (
+                   // データなしの場合のみエラー表示
                    <div className="col-span-full text-center py-12">
-                     <p className="text-gray-400 text-sm">{error}</p>
+                     <p className="text-gray-400 text-sm">{error || 'データがありません'}</p>
                      <button 
                        onClick={() => window.location.reload()} 
                        className="mt-4 text-teal-600 text-sm font-bold hover:underline"
@@ -219,7 +245,7 @@ const UserHome: React.FC = () => {
                      </button>
                    </div>
                  ) : (
-                   // データ表示
+                   // データ表示（エラーがあってもデータがあれば表示）
                    sites.slice(0, 8).map(site => (
                     <div key={site.id} className="bg-white rounded-[48px] overflow-hidden shadow-sm border border-gray-100 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700 group">
                        <div className="h-64 relative overflow-hidden cursor-pointer" onClick={() => navigate(`/app/site/${site.id}`)}>
@@ -270,10 +296,10 @@ const UserHome: React.FC = () => {
                  Array.from({ length: 4 }).map((_, index) => (
                    <SkeletonCard key={index} />
                  ))
-               ) : error ? (
-                 // エラー表示（簡易版）
+               ) : therapists.length === 0 ? (
+                 // データなしの場合のみエラー表示
                  <div className="col-span-full text-center py-12">
-                   <p className="text-gray-400 text-sm">{error}</p>
+                   <p className="text-gray-400 text-sm">{error || 'データがありません'}</p>
                    <button 
                      onClick={() => window.location.reload()} 
                      className="mt-4 text-teal-600 text-sm font-bold hover:underline"
@@ -282,6 +308,7 @@ const UserHome: React.FC = () => {
                    </button>
                  </div>
                ) : (
+                 // データ表示（エラーがあってもデータがあれば表示）
                  // データ表示
                  therapists.slice(0, 6).map(t => (
                  <div 
