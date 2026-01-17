@@ -44,10 +44,12 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
   // 現在のステップ
   const [currentStep, setCurrentStep] = useState<number>(1);
   
-  // 予約データ
+  // 予約データ（CRITICAL: initialTherapist/initialSite を初期状態に含める）
   const [bookingData, setBookingData] = useState<BookingData>({
     pattern,
     type: 'ONSITE',
+    therapist: initialTherapist,
+    site: initialSite,
     courses: [],
     options: [],
     total_duration: 0,
@@ -64,6 +66,11 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
   
   // 初期化
   useEffect(() => {
+    console.log('🚀 BookingFlow initialized');
+    console.log('🚀 Pattern:', pattern);
+    console.log('🚀 Initial Therapist:', initialTherapist);
+    console.log('🚀 Initial Site:', initialSite);
+    
     // 認証状態をチェック
     const token = localStorage.getItem('auth_token');
     setIsAuthenticated(!!token);
@@ -81,15 +88,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
         console.error('予約情報の復元に失敗:', e);
       }
     }
-    
-    // 初期データをセット
-    if (initialTherapist) {
-      setBookingData(prev => ({ ...prev, therapist: initialTherapist }));
-    }
-    if (initialSite) {
-      setBookingData(prev => ({ ...prev, site: initialSite }));
-    }
-  }, [initialTherapist, initialSite]);
+  }, [pattern, initialTherapist, initialSite]);
   
   // ステップごとの総数を計算
   const getTotalSteps = (): number => {
