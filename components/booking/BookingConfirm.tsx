@@ -24,6 +24,19 @@ const BookingConfirm: React.FC<BookingConfirmProps> = ({
   // Debug: Log bookingData to console
   console.log('📋 BookingConfirm rendered with bookingData:', bookingData);
   
+  // CRITICAL: データが不完全な場合のチェック
+  const hasRequiredData = bookingData.scheduled_date && bookingData.courses && bookingData.courses.length > 0;
+  
+  if (!hasRequiredData) {
+    console.error('❌ BookingConfirm: 必要なデータが不足しています', {
+      scheduled_date: bookingData.scheduled_date,
+      courses: bookingData.courses,
+      options: bookingData.options,
+      total_price: bookingData.total_price,
+      total_duration: bookingData.total_duration
+    });
+  }
+  
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
