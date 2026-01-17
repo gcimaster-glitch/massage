@@ -1,7 +1,7 @@
 // HOGUSY Service Worker
-const CACHE_NAME = 'hogusy-v3'; // Updated version to force re-install (fix 206 error)
-const STATIC_CACHE_NAME = 'hogusy-static-v3';
-const DYNAMIC_CACHE_NAME = 'hogusy-dynamic-v3';
+const CACHE_NAME = 'hogusy-v4'; // Updated version (fix icon references)
+const STATIC_CACHE_NAME = 'hogusy-static-v4';
+const DYNAMIC_CACHE_NAME = 'hogusy-dynamic-v4';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -150,8 +150,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'HOGUSY';
   const options = {
     body: data.body || '新しい通知があります',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     data: data.url || '/',
     vibrate: [200, 100, 200],
     tag: 'hogusy-notification'
