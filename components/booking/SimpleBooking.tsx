@@ -527,8 +527,42 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           onClick={handleConfirm}
           className="w-full py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700"
         >
-          予約を確定する
+          次へ（決済画面）
         </button>
+
+        {/* キャンセルポリシー */}
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
+          <h3 className="text-sm font-bold text-yellow-800 mb-2">キャンセルポリシー</h3>
+          <ul className="text-xs text-yellow-700 space-y-1">
+            <li>• 予約日の24時間前まで: キャンセル料無料</li>
+            <li>• 予約日の24時間以内: 料金の50%</li>
+            <li>• 予約日当日または無断キャンセル: 料金の100%</li>
+          </ul>
+        </div>
+
+        {/* 編集リンク */}
+        <div className="flex justify-center gap-4 mt-4">
+          <button
+            onClick={() => setStep(1)}
+            className="text-sm text-teal-600 underline hover:text-teal-800"
+          >
+            メニューを変更
+          </button>
+          <button
+            onClick={() => setStep(2)}
+            className="text-sm text-teal-600 underline hover:text-teal-800"
+          >
+            日時を変更
+          </button>
+          {bookingType === 'MOBILE' && (
+            <button
+              onClick={() => setStep(3)}
+              className="text-sm text-teal-600 underline hover:text-teal-800"
+            >
+              住所を変更
+            </button>
+          )}
+        </div>
       </div>
     );
   };
@@ -799,7 +833,25 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         }
       } catch (error: any) {
         console.error('決済エラー:', error);
-        setErrorMessage(error.message || '決済処理中にエラーが発生しました');
+        
+        // エラーメッセージをより詳細に
+        let userMessage = '決済処理中にエラーが発生しました';
+        
+        if (error.message) {
+          if (error.message.includes('予約の作成に失敗')) {
+            userMessage = '予約の作成に失敗しました。もう一度お試しください。';
+          } else if (error.message.includes('決済の準備に失敗')) {
+            userMessage = '決済の準備に失敗しました。しばらく待ってから再度お試しください。';
+          } else if (error.message.includes('カード情報')) {
+            userMessage = 'カード情報が見つかりません。カード情報を正しく入力してください。';
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            userMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+          } else {
+            userMessage = error.message;
+          }
+        }
+        
+        setErrorMessage(userMessage);
       } finally {
         setIsProcessing(false);
       }
@@ -845,8 +897,25 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           </div>
 
           {errorMessage && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
-              {errorMessage}
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-bold text-red-800">決済エラー</h3>
+                  <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+                  <button
+                    type="button"
+                    onClick={() => setErrorMessage('')}
+                    className="mt-2 text-xs text-red-600 underline hover:text-red-800"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -931,24 +1000,113 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     );
   };
 
-  const totalSteps = isLoggedIn ? 4 : 6;
+  // 総ステップ数を動的に計算
+  const getTotalSteps = () => {
+    if (bookingType === 'MOBILE') {
+      // 出張予約: メニュー → 日時 → 住所 → [登録] → 確認 → 決済 → 完了
+      return isLoggedIn ? 6 : 7;
+    } else {
+      // 店舗予約: メニュー → 日時 → [登録] → 確認 → 決済 → 完了
+      return isLoggedIn ? 5 : 6;
+    }
+  };
+
+  const getStepLabel = () => {
+    const labels: { [key: number]: string } = {};
+    
+    if (bookingType === 'MOBILE') {
+      if (isLoggedIn) {
+        // 出張予約（会員）
+        labels[1] = 'メニュー選択';
+        labels[2] = '日時選択';
+        labels[3] = '住所入力';
+        labels[4] = '予約確認';
+        labels[5] = '決済';
+        labels[6] = '完了';
+      } else {
+        // 出張予約（非会員）
+        labels[1] = 'メニュー選択';
+        labels[2] = '日時選択';
+        labels[3] = '住所入力';
+        labels[4] = '会員登録';
+        labels[5] = '予約確認';
+        labels[6] = '決済';
+        labels[7] = '完了';
+      }
+    } else {
+      if (isLoggedIn) {
+        // 店舗予約（会員）
+        labels[1] = 'メニュー選択';
+        labels[2] = '日時選択';
+        labels[3] = '予約確認';
+        labels[4] = '決済';
+        labels[5] = '完了';
+      } else {
+        // 店舗予約（非会員）
+        labels[1] = 'メニュー選択';
+        labels[2] = '日時選択';
+        labels[3] = '会員登録';
+        labels[4] = '予約確認';
+        labels[5] = '決済';
+        labels[6] = '完了';
+      }
+    }
+    
+    return labels[step] || `ステップ ${step}`;
+  };
+
+  const totalSteps = getTotalSteps();
   const progress = (step / totalSteps) * 100;
+  const stepLabel = getStepLabel();
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* プログレスバー（完了画面では非表示） */}
-        {step !== 5 && step !== 6 && (
-          <div className="mb-6">
-            <div className="flex justify-between mb-2">
-              <h1 className="text-lg font-bold text-gray-900">予約</h1>
-              <span className="text-sm text-gray-600">{step}/{totalSteps}</span>
+        {step < totalSteps && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">予約手続き</h1>
+                <p className="text-sm text-gray-600 mt-1">{stepLabel}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-bold text-teal-600">ステップ {step}</span>
+                <span className="text-sm text-gray-400"> / {totalSteps}</span>
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            
+            {/* プログレスバー */}
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div
-                className="bg-teal-600 h-2 rounded-full transition-all"
+                className="bg-gradient-to-r from-teal-500 to-teal-600 h-3 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${progress}%` }}
               />
+            </div>
+            
+            {/* ステップインジケーター */}
+            <div className="flex justify-between mt-3">
+              {Array.from({ length: totalSteps }).map((_, index) => {
+                const stepNumber = index + 1;
+                const isCompleted = step > stepNumber;
+                const isCurrent = step === stepNumber;
+                
+                return (
+                  <div key={stepNumber} className="flex flex-col items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                        isCompleted
+                          ? 'bg-teal-600 text-white'
+                          : isCurrent
+                          ? 'bg-teal-100 text-teal-600 border-2 border-teal-600'
+                          : 'bg-gray-200 text-gray-400'
+                      }`}
+                    >
+                      {isCompleted ? '✓' : stepNumber}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
