@@ -801,7 +801,6 @@ const SiteMapSearch: React.FC = () => {
                           // セラピスト選択画面を表示
                           fetchTherapists();
                         }}
-                        }}
                         className="flex-1 bg-gradient-to-r from-teal-600 to-blue-600 text-white px-6 py-3 rounded-xl font-black text-base hover:from-teal-700 hover:to-blue-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
                       >
                          <Zap size={20} />
