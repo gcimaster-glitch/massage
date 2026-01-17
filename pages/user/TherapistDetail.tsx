@@ -63,6 +63,17 @@ const TherapistDetail: React.FC = () => {
 
   // useMemo hooks must be before any conditional returns
   const displayTherapist = useMemo(() => {
+    
+    // Parse specialties from JSON string if needed
+    let categories = therapist.specialties || [];
+    if (typeof categories === 'string') {
+      try {
+        categories = JSON.parse(categories);
+      } catch (e) {
+        console.error('❌ Failed to parse specialties:', e);
+        categories = [];
+      }
+    }
     if (!therapist) return null;
     return {
       ...therapist,
@@ -70,7 +81,7 @@ const TherapistDetail: React.FC = () => {
       name: therapist.name || '名前未設定',
       rating: therapist.rating || 5.0,
       reviewCount: therapist.review_count || 0,
-      categories: therapist.specialties || [],
+      categories: categories,
       bio: therapist.bio || 'プロフェッショナルなセラピストです。',
     };
   }, [therapist]);

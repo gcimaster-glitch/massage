@@ -56,7 +56,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         };
 
         // Check for returnUrl parameter (for booking flow restoration)
-        const returnUrl = searchParams.get('returnUrl');
+        // Priority: URL param > sessionStorage > default path
+        let returnUrl = searchParams.get('returnUrl');
+        
+        // If no URL param, check sessionStorage
+        if (!returnUrl) {
+          returnUrl = sessionStorage.getItem('booking_return_url');
+          if (returnUrl) {
+            console.log('✅ SessionStorage から予約フロー復帰URL を取得:', returnUrl);
+          }
+        }
+        
         const targetPath = returnUrl || paths[role] || '/app';
         
         console.log('✅ OAuth認証成功 - リダイレクト先:', targetPath);
@@ -90,7 +100,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     };
 
     // Check for returnUrl parameter (for booking flow restoration)
-    const returnUrl = searchParams.get('returnUrl');
+    // Priority: URL param > sessionStorage > default path
+    let returnUrl = searchParams.get('returnUrl');
+    
+    // If no URL param, check sessionStorage
+    if (!returnUrl) {
+      returnUrl = sessionStorage.getItem('booking_return_url');
+      if (returnUrl) {
+        console.log('✅ SessionStorage から予約フロー復帰URL を取得:', returnUrl);
+        // Clear after using
+        sessionStorage.removeItem('booking_return_url');
+      }
+    }
+    
     const targetPath = returnUrl || paths[role] || '/app';
     
     console.log('✅ クイックログイン成功 - リダイレクト先:', targetPath);

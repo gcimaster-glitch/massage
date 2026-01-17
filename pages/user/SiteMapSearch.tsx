@@ -676,9 +676,9 @@ const SiteMapSearch: React.FC = () => {
                     {/* 予約ボタン */}
                     <button
                       onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedSite(site);
-                        setShowQuickBooking(true);
+                        navigate(`/app/booking/from-map/${site.id}`);
+                        // setSelectedSite(site);
+                        // setShowQuickBooking(true);
                       }}
                       className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white py-2.5 rounded-xl text-sm font-black hover:shadow-lg transition-all flex items-center justify-center gap-2"
                     >
@@ -979,10 +979,10 @@ const SiteMapSearch: React.FC = () => {
                         <>
                           <button 
                             onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedTherapist(therapist);
-                              setShowTherapists(false);
-                              setShowQuickBooking(true);
+                              navigate(`/app/booking/from-therapist/${therapist.id}`);
+                              // setSelectedTherapist(therapist);
+                              // setShowTherapists(false);
+                              // setShowQuickBooking(true);
                             }}
                             className="flex-1 bg-gradient-to-r from-teal-600 to-blue-600 text-white py-3 rounded-xl text-sm font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2"
                           >
