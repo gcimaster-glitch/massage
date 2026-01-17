@@ -517,6 +517,117 @@ app.get('/api/therapists/:id', async (c) => {
   }
 })
 
+// セラピストのメニュー取得
+app.get('/api/therapists/:id/menu', async (c) => {
+  const therapistId = c.req.param('id')
+  
+  try {
+    if (!c.env.DB) {
+      // モックデータ（開発環境用）
+      return c.json({
+        courses: [
+          {
+            id: 'course-1',
+            name: '整体コース（60分）',
+            duration: 60,
+            base_price: 8000,
+            description: '全身の疲れをほぐす整体コース',
+          },
+          {
+            id: 'course-2',
+            name: 'リラクゼーション（90分）',
+            duration: 90,
+            base_price: 12000,
+            description: 'じっくりとリラックスできるコース',
+          },
+          {
+            id: 'course-3',
+            name: 'ショートコース（30分）',
+            duration: 30,
+            base_price: 5000,
+            description: '肩・首を集中的にほぐすコース',
+          },
+        ],
+        options: [
+          {
+            id: 'option-1',
+            name: 'ヘッドマッサージ追加',
+            duration: 15,
+            base_price: 2000,
+            description: '頭皮をほぐしてリフレッシュ',
+          },
+          {
+            id: 'option-2',
+            name: 'フットケア追加',
+            duration: 15,
+            base_price: 1500,
+            description: '足裏をじっくりほぐす',
+          },
+          {
+            id: 'option-3',
+            name: 'アロマオイル',
+            duration: 0,
+            base_price: 1000,
+            description: 'リラックス効果のあるアロマオイル',
+          },
+        ],
+      })
+    }
+    
+    // DB実装
+    // 1. コースを取得
+    const { results: courses } = await c.env.DB.prepare(`
+      SELECT id, name, duration, base_price, description
+      FROM menu_items
+      WHERE therapist_id = ? AND item_type = 'COURSE' AND is_active = 1
+      ORDER BY display_order, base_price
+    `).bind(therapistId).all()
+    
+    // 2. オプションを取得
+    const { results: options } = await c.env.DB.prepare(`
+      SELECT id, name, duration, base_price, description
+      FROM menu_items
+      WHERE therapist_id = ? AND item_type = 'OPTION' AND is_active = 1
+      ORDER BY display_order, base_price
+    `).bind(therapistId).all()
+    
+    return c.json({
+      courses: courses || [],
+      options: options || [],
+    })
+  } catch (e) {
+    console.error('メニュー取得エラー:', e)
+    // エラー時はモックデータを返す
+    return c.json({
+      courses: [
+        {
+          id: 'course-1',
+          name: '整体コース（60分）',
+          duration: 60,
+          base_price: 8000,
+          description: '全身の疲れをほぐす整体コース',
+        },
+        {
+          id: 'course-2',
+          name: 'リラクゼーション（90分）',
+          duration: 90,
+          base_price: 12000,
+          description: 'じっくりとリラックスできるコース',
+        },
+      ],
+      options: [
+        {
+          id: 'option-1',
+          name: 'ヘッドマッサージ追加',
+          duration: 15,
+          base_price: 2000,
+          description: '頭皮をほぐしてリフレッシュ',
+        },
+      ],
+    })
+  }
+})
+
 // ============================================
 // Sites Routes (施設一覧・検索)
 // ============================================

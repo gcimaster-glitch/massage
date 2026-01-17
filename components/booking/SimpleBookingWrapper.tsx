@@ -45,25 +45,42 @@ const SimpleBookingWrapper: React.FC = () => {
         if (!therapistResponse.ok) throw new Error('セラピスト情報の取得に失敗しました');
         
         const therapistData = await therapistResponse.json();
-        setTherapist({
-          id: therapistData.user_id || therapistData.id,
-          name: therapistData.name,
-          avatar_url: therapistData.avatar_url,
-        });
+        console.log('🔍 セラピストデータ:', therapistData);
+        console.log('🔍 データ型:', typeof therapistData);
+        console.log('🔍 データキー:', Object.keys(therapistData || {}));
+        
+        // APIレスポンスの構造を確認して適切にマッピング
+        // モックデータとDB結合データの両方に対応
+        const therapistInfo = {
+          id: therapistData.user_id || therapistData.id || therapistId,
+          name: therapistData.name || therapistData.therapist_name || therapistData.display_name || '担当セラピスト',
+          avatar_url: therapistData.avatar_url || therapistData.therapist_avatar || therapistData.imageUrl || null,
+        };
+        
+        console.log('✅ 設定されたセラピスト情報:', therapistInfo);
+        
+        // セラピスト名が取得できていない場合は警告
+        if (!therapistInfo.name || therapistInfo.name === '担当セラピスト') {
+          console.warn('⚠️ セラピスト名が取得できませんでした。デフォルト値を使用します。');
+        }
+        
+        setTherapist(therapistInfo);
 
         // 施設IDが指定されている場合は施設情報を取得
         if (siteId) {
           const siteResponse = await fetch(`/api/sites/${siteId}`);
           if (siteResponse.ok) {
             const siteData = await siteResponse.json();
+            console.log('施設データ:', siteData);
             setSite({
-              id: siteData.id,
-              name: siteData.name,
-              address: siteData.address,
+              id: siteData.id || siteData.site?.id,
+              name: siteData.name || siteData.site?.name,
+              address: siteData.address || siteData.site?.address,
             });
           }
         }
       } catch (err) {
+        console.error('データ取得エラー:', err);
         setError('データの取得に失敗しました');
       } finally {
         setLoading(false);

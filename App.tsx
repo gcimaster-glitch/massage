@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import LoginUser from './pages/auth/LoginUser';
@@ -116,6 +116,29 @@ import CommercialTransaction from './pages/shared/CommercialTransaction';
 
 import { Role } from './types';
 
+// MAPからの予約リダイレクト
+const RedirectToSiteDetail: React.FC = () => {
+  const { siteId } = useParams<{ siteId: string }>();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (siteId) {
+      navigate(`/app/site/${siteId}`, { replace: true });
+    } else {
+      navigate('/app/sites', { replace: true });
+    }
+  }, [siteId, navigate]);
+  
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">リダイレクト中...</p>
+      </div>
+    </div>
+  );
+};
+
 const RequireAuth: React.FC<any> = ({ children, allowedRoles, currentUser, onLogout }) => {
   const location = useLocation();
   if (!currentUser) return <Navigate to="/auth/login" state={{ from: location }} replace />;
@@ -226,8 +249,18 @@ const App: React.FC = () => {
         <Route path="/booking/from-therapist/:therapistId" element={<SimpleBookingWrapper />} />
         
         {/* Disabled routes - redirect to home */}
-        <Route path="/app/booking/from-map/:siteId" element={<Navigate to="/" replace />} />
-        <Route path="/booking/from-map/:siteId" element={<Navigate to="/" replace />} />
+        <Route 
+          path="/app/booking/from-map/:siteId" 
+          element={
+            <RedirectToSiteDetail />
+          } 
+        />
+        <Route 
+          path="/booking/from-map/:siteId" 
+          element={
+            <RedirectToSiteDetail />
+          } 
+        />
         <Route path="/app/booking/ai" element={<Navigate to="/" replace />} />
         <Route path="/booking/ai" element={<Navigate to="/" replace />} />
         
