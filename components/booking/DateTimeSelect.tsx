@@ -97,18 +97,26 @@ const DateTimeSelect: React.FC<DateTimeSelectProps> = ({
   };
 
   const handleNext = () => {
+    console.log('🟢 DateTimeSelect: handleNext called');
+    console.log('🟢 DateTimeSelect: selectedDate:', selectedDate);
+    console.log('🟢 DateTimeSelect: selectedTime:', selectedTime);
+    
     if (!selectedDate || !selectedTime) {
       alert('日時を選択してください');
       return;
     }
 
     const scheduled_at = `${selectedDate}T${selectedTime}:00`;
-
-    onNext({
+    
+    const dataToPass = {
       scheduled_date: selectedDate,
       scheduled_time: selectedTime,
       scheduled_at
-    });
+    };
+    
+    console.log('🟢 DateTimeSelect: Calling onNext with data:', dataToPass);
+    onNext(dataToPass);
+    console.log('🟢 DateTimeSelect: onNext called successfully');
   };
 
   return (

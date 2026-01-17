@@ -22,19 +22,26 @@ const BookingConfirm: React.FC<BookingConfirmProps> = ({
   isLoading
 }) => {
   // Debug: Log bookingData to console
-  console.log('📋 BookingConfirm rendered with bookingData:', bookingData);
+  console.log('========================================');
+  console.log('📋 BookingConfirm rendered');
+  console.log('📋 bookingData:', JSON.stringify(bookingData, null, 2));
+  console.log('========================================');
   
   // CRITICAL: データが不完全な場合のチェック
   const hasRequiredData = bookingData.scheduled_date && bookingData.courses && bookingData.courses.length > 0;
   
   if (!hasRequiredData) {
-    console.error('❌ BookingConfirm: 必要なデータが不足しています', {
-      scheduled_date: bookingData.scheduled_date,
-      courses: bookingData.courses,
-      options: bookingData.options,
-      total_price: bookingData.total_price,
-      total_duration: bookingData.total_duration
-    });
+    console.error('========================================');
+    console.error('❌ BookingConfirm: 必要なデータが不足しています');
+    console.error('❌ scheduled_date:', bookingData.scheduled_date);
+    console.error('❌ scheduled_time:', bookingData.scheduled_time);
+    console.error('❌ courses:', bookingData.courses);
+    console.error('❌ options:', bookingData.options);
+    console.error('❌ total_price:', bookingData.total_price);
+    console.error('❌ total_duration:', bookingData.total_duration);
+    console.error('❌ therapist:', bookingData.therapist);
+    console.error('❌ site:', bookingData.site);
+    console.error('========================================');
   }
   
   const formatDate = (dateStr?: string) => {

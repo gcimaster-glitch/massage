@@ -117,19 +117,28 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
   
   // 次のステップへ
   const handleNext = (updatedData: Partial<BookingData>) => {
-    console.log('📊 BookingFlow handleNext called with:', updatedData);
+    console.log('========================================');
+    console.log('📊 BookingFlow handleNext called');
+    console.log('📊 Current Step:', currentStep);
+    console.log('📊 Pattern:', pattern);
+    console.log('📊 Updated Data:', JSON.stringify(updatedData, null, 2));
+    
     setBookingData(prev => {
       const newData = { ...prev, ...updatedData };
-      console.log('📊 Updated bookingData:', newData);
+      console.log('📊 Previous bookingData:', JSON.stringify(prev, null, 2));
+      console.log('📊 New bookingData:', JSON.stringify(newData, null, 2));
       return newData;
     });
     
     // 出張予約の場合、KYCチェック
     if (updatedData.type === 'DISPATCH' && !isAuthenticated) {
+      console.log('📊 Setting needsKYC = true');
       setNeedsKYC(true);
     }
     
+    console.log('📊 Moving to next step:', currentStep + 1);
     setCurrentStep(prev => prev + 1);
+    console.log('========================================');
   };
   
   // 前のステップへ

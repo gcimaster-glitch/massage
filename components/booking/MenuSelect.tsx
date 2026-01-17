@@ -76,19 +76,27 @@ const MenuSelect: React.FC<MenuSelectProps> = ({
   };
 
   const handleNext = () => {
+    console.log('🔵 MenuSelect: handleNext called');
+    console.log('🔵 MenuSelect: selectedCourse:', selectedCourse);
+    console.log('🔵 MenuSelect: selectedOptions:', selectedOptions);
+    
     if (!selectedCourse) {
       alert('コースを選択してください');
       return;
     }
 
     const { totalPrice, totalDuration } = calculateTotal();
-
-    onNext({
+    
+    const dataToPass = {
       courses: [selectedCourse],
       options: selectedOptions,
       total_price: totalPrice,
       total_duration: totalDuration
-    });
+    };
+    
+    console.log('🔵 MenuSelect: Calling onNext with data:', dataToPass);
+    onNext(dataToPass);
+    console.log('🔵 MenuSelect: onNext called successfully');
   };
 
   if (isLoading) {
