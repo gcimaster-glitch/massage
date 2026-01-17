@@ -48,6 +48,27 @@ const BookingConfirm: React.FC<BookingConfirmProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Debug: データ不足の場合の詳細表示 */}
+      {!hasRequiredData && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <strong className="font-bold">デバッグ情報:</strong>
+          <pre className="text-xs mt-2 overflow-auto">
+            {JSON.stringify({
+              pattern: bookingData.pattern,
+              type: bookingData.type,
+              therapist: bookingData.therapist?.name || 'なし',
+              site: bookingData.site?.name || 'なし',
+              courses: bookingData.courses?.length || 0,
+              options: bookingData.options?.length || 0,
+              scheduled_date: bookingData.scheduled_date || 'なし',
+              scheduled_time: bookingData.scheduled_time || 'なし',
+              total_price: bookingData.total_price,
+              total_duration: bookingData.total_duration
+            }, null, 2)}
+          </pre>
+        </div>
+      )}
+      
       {/* Debug: 警告メッセージ */}
       {!bookingData.scheduled_date && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
