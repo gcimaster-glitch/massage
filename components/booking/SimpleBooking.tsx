@@ -1,11 +1,16 @@
 /**
  * SimpleBooking: シンプルな予約フロー
- * 会員: 3ステップ（メニュー → 日時 → 確認）
- * 非会員: 5ステップ（メニュー → 日時 → 会員登録 → 決済 → 確認）
+ * 会員: 4ステップ（メニュー → 日時 → 確認 → 決済 → 完了）
+ * 非会員: 6ステップ（メニュー → 日時 → 会員登録 → 確認 → 決済 → 完了）
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Stripe公開可能キー（環境変数から取得）
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_dummy');
 
 interface Therapist {
   id: string;
@@ -180,75 +185,16 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
     );
   };
 
-  // Step 3: 確認（会員）
+  // Step 3/4: 確認（会員はステップ3、非会員はステップ4）
   const ConfirmStep = () => {
     const handleConfirm = async () => {
-      try {
-        // 予約アイテムを構築（コース + オプション）
-        const items = [];
-        
-        // コースを追加
-        if (bookingData.course) {
-          items.push({
-            item_type: 'COURSE',
-            item_id: bookingData.course.id,
-            item_name: bookingData.course.name,
-            price: bookingData.course.base_price,
-          });
-        }
-        
-        // オプションを追加
-        if (bookingData.options && bookingData.options.length > 0) {
-          bookingData.options.forEach(option => {
-            items.push({
-              item_type: 'OPTION',
-              item_id: option.id,
-              item_name: option.name,
-              price: option.base_price,
-            });
-          });
-        }
-        
-        // scheduled_at を ISO 8601 形式に変換
-        const scheduledAt = `${bookingData.date}T${bookingData.time}:00`;
-        
-        const response = await fetch('/api/bookings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-          body: JSON.stringify({
-            therapist_id: bookingData.therapist.id,
-            therapist_name: bookingData.therapist.name,
-            site_id: bookingData.site?.id || null,
-            type: 'ONSITE', // 施設予約
-            service_name: bookingData.course?.name || '施術',
-            duration: bookingData.totalDuration,
-            price: bookingData.totalPrice,
-            location: bookingData.site?.name || null,
-            scheduled_at: scheduledAt,
-            items: items,
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setBookingId(result.booking.id);
-          setStep(6); // 完了画面へ
-        } else {
-          const error = await response.json();
-          alert(`予約に失敗しました: ${error.error || '不明なエラー'}`);
-        }
-      } catch (error) {
-        console.error('予約エラー:', error);
-        alert('エラーが発生しました');
-      }
+      // 会員はステップ4（決済）、非会員はステップ5（決済）へ進む
+      setStep(isLoggedIn ? 4 : 5);
     };
 
     return (
       <div className="space-y-4">
-        <button onClick={() => setStep(2)} className="text-teal-600 text-sm">← 戻る</button>
+        <button onClick={() => setStep(isLoggedIn ? 2 : 3)} className="text-teal-600 text-sm">← 戻る</button>
         <h2 className="text-xl font-bold text-gray-900 mb-4">予約内容の確認</h2>
         
         <div className="bg-white p-4 rounded-lg border space-y-3">
@@ -302,7 +248,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
         if (response.ok) {
           const data = await response.json();
           localStorage.setItem('auth_token', data.token);
-          setStep(5); // 決済へ
+          localStorage.setItem('user_email', email);
+          setStep(4); // 確認画面へ（非会員はステップ4が確認）
         } else {
           alert('会員登録に失敗しました');
         }
@@ -409,7 +356,202 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
     );
   };
 
-  // Step 6: 完了画面
+  // Step 4: 決済（Stripe）
+  const PaymentStepContent = () => {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const handlePayment = async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (!stripe || !elements) {
+        return;
+      }
+
+      setIsProcessing(true);
+      setErrorMessage('');
+
+      try {
+        // Step 1: 予約を作成
+        const items = [];
+        if (bookingData.course) {
+          items.push({
+            item_type: 'COURSE',
+            item_id: bookingData.course.id,
+            item_name: bookingData.course.name,
+            price: bookingData.course.base_price,
+          });
+        }
+        if (bookingData.options && bookingData.options.length > 0) {
+          bookingData.options.forEach(option => {
+            items.push({
+              item_type: 'OPTION',
+              item_id: option.id,
+              item_name: option.name,
+              price: option.base_price,
+            });
+          });
+        }
+
+        const scheduledAt = `${bookingData.date}T${bookingData.time}:00`;
+        
+        const bookingResponse = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+          body: JSON.stringify({
+            therapist_id: bookingData.therapist.id,
+            therapist_name: bookingData.therapist.name,
+            site_id: bookingData.site?.id || null,
+            type: 'ONSITE',
+            service_name: bookingData.course?.name || '施術',
+            duration: bookingData.totalDuration,
+            price: bookingData.totalPrice,
+            location: bookingData.site?.name || null,
+            scheduled_at: scheduledAt,
+            items: items,
+          }),
+        });
+
+        if (!bookingResponse.ok) {
+          throw new Error('予約の作成に失敗しました');
+        }
+
+        const { booking } = await bookingResponse.json();
+        setBookingId(booking.id);
+
+        // Step 2: Payment Intent を作成
+        const intentResponse = await fetch('/api/payment/create-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: bookingData.totalPrice,
+            booking_id: booking.id,
+            metadata: {
+              therapist_id: bookingData.therapist.id,
+              user_email: localStorage.getItem('user_email') || '',
+            },
+          }),
+        });
+
+        if (!intentResponse.ok) {
+          throw new Error('決済の準備に失敗しました');
+        }
+
+        const { clientSecret } = await intentResponse.json();
+
+        // Step 3: Stripe で決済を確定
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+          throw new Error('カード情報が見つかりません');
+        }
+
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+          },
+        });
+
+        if (error) {
+          setErrorMessage(error.message || '決済に失敗しました');
+          setIsProcessing(false);
+          return;
+        }
+
+        if (paymentIntent.status === 'succeeded') {
+          // Step 4: 決済確認APIを呼び出し
+          await fetch('/api/payment/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentIntentId: paymentIntent.id,
+              bookingId: booking.id,
+            }),
+          });
+
+          // 完了画面へ（会員はステップ5、非会員はステップ6）
+          setStep(isLoggedIn ? 5 : 6);
+        }
+      } catch (error: any) {
+        console.error('決済エラー:', error);
+        setErrorMessage(error.message || '決済処理中にエラーが発生しました');
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    return (
+      <form onSubmit={handlePayment} className="space-y-4">
+        <button type="button" onClick={() => setStep(isLoggedIn ? 3 : 4)} className="text-teal-600 text-sm">← 戻る</button>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">お支払い情報</h2>
+        
+        <div className="bg-white p-6 rounded-lg border space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">コース</span>
+              <span className="font-bold">{bookingData.course?.name}</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t">
+              <span className="text-gray-600">合計金額</span>
+              <span className="text-xl font-bold text-teal-600">¥{bookingData.totalPrice.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">カード情報</label>
+            <div className="border rounded-lg p-3 bg-white">
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: '16px',
+                      color: '#424770',
+                      '::placeholder': {
+                        color: '#aab7c4',
+                      },
+                    },
+                    invalid: {
+                      color: '#9e2146',
+                    },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+              {errorMessage}
+            </div>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="w-full py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          {isProcessing ? '処理中...' : `¥${bookingData.totalPrice.toLocaleString()} を支払う`}
+        </button>
+
+        <p className="text-xs text-gray-500 text-center">
+          クレジットカード情報は安全に暗号化されます
+        </p>
+      </form>
+    );
+  };
+
+  const PaymentStepWrapper = () => (
+    <Elements stripe={stripePromise}>
+      <PaymentStepContent />
+    </Elements>
+  );
+
+  // Step 6/7: 完了画面
   const CompleteStep = () => {
     return (
       <div className="space-y-6 text-center">
@@ -468,14 +610,14 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
     );
   };
 
-  const totalSteps = isLoggedIn ? 3 : 5;
+  const totalSteps = isLoggedIn ? 4 : 6;
   const progress = (step / totalSteps) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* プログレスバー（完了画面では非表示） */}
-        {step !== 6 && (
+        {step !== 5 && step !== 6 && (
           <div className="mb-6">
             <div className="flex justify-between mb-2">
               <h1 className="text-lg font-bold text-gray-900">予約</h1>
@@ -493,10 +635,10 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
         {/* ステップ表示 */}
         {step === 1 && <MenuStep />}
         {step === 2 && <DateTimeStep />}
-        {step === 3 && <ConfirmStep />}
-        {step === 4 && <RegisterStep />}
-        {step === 5 && <PaymentStep />}
-        {step === 6 && <CompleteStep />}
+        {step === 3 && (isLoggedIn ? <ConfirmStep /> : <RegisterStep />)}
+        {step === 4 && (isLoggedIn ? <PaymentStepWrapper /> : <ConfirmStep />)}
+        {step === 5 && (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)}
+        {step === 6 && !isLoggedIn && <CompleteStep />}
       </div>
     </div>
   );
