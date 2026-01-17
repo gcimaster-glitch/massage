@@ -241,20 +241,21 @@ app.get('/:id/menu', async (c) => {
   const therapistId = c.req.param('id');
   
   try {
-    // therapist_id (therapist-3) から profile_id (profile-3) へのマッピング
-    const profileQuery = `
-      SELECT id FROM therapist_profiles WHERE user_id = ?
-    `;
-    const profileResult = await DB.prepare(profileQuery).bind(therapistId).first<{ id: string }>();
-    
-    if (!profileResult) {
-      return c.json({
-        courses: [],
-        options: []
-      });
+    // therapist_profiles が存在しない場合に備えて、直接 therapist_id で検索
+    // まず profile_id を取得
+    let profileId = null;
+    try {
+      const profileQuery = `SELECT id FROM therapist_profiles WHERE user_id = ?`;
+      const profileResult = await DB.prepare(profileQuery).bind(therapistId).first<{ id: string }>();
+      if (profileResult) {
+        profileId = profileResult.id;
+      }
+    } catch (e) {
+      // therapist_profiles テーブルが存在しない場合は無視
     }
     
-    const profileId = profileResult.id;
+    // profile_id が見つからない場合は therapist_id をそのまま使用
+    const searchId = profileId || therapistId;
     
     // コース取得
     const coursesQuery = `
@@ -271,7 +272,7 @@ app.get('/:id/menu', async (c) => {
       ORDER BY mc.duration
     `;
     
-    const coursesResult = await DB.prepare(coursesQuery).bind(profileId).all();
+    const coursesResult = await DB.prepare(coursesQuery).bind(searchId).all();
     
     // オプション取得
     const optionsQuery = `
@@ -288,7 +289,7 @@ app.get('/:id/menu', async (c) => {
       ORDER BY mo.name
     `;
     
-    const optionsResult = await DB.prepare(optionsQuery).bind(profileId).all();
+    const optionsResult = await DB.prepare(optionsQuery).bind(searchId).all();
     
     return c.json({
       courses: coursesResult.results || [],
