@@ -26,6 +26,12 @@ interface Course {
   description?: string;
 }
 
+interface Site {
+  id: string;
+  name: string;
+  address?: string;
+}
+
 interface BookingData {
   therapist: Therapist;
   course: Course | null;
@@ -33,13 +39,18 @@ interface BookingData {
   time: string;
   totalPrice: number;
   totalDuration: number;
+  bookingType?: 'ONSITE' | 'MOBILE';
+  site?: Site | null;
+  userAddress?: string;
 }
 
 interface SimpleBookingProps {
   therapist: Therapist;
+  bookingType?: 'ONSITE' | 'MOBILE';
+  site?: Site | null;
 }
 
-const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
+const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 'ONSITE', site = null }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isLoggedIn] = useState(() => !!localStorage.getItem('auth_token'));
@@ -52,6 +63,9 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
     time: '',
     totalPrice: 0,
     totalDuration: 0,
+    bookingType,
+    site,
+    userAddress: '',
   });
 
   // Step 1: メニュー選択
@@ -120,10 +134,16 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
       }
       setBookingData(prev => ({ ...prev, date: selectedDate, time: selectedTime }));
       
-      if (isLoggedIn) {
-        setStep(3); // 会員は確認へ
+      // 出張予約の場合は住所入力へ
+      if (bookingType === 'MOBILE') {
+        setStep(isLoggedIn ? 3 : 4); // 会員は住所入力(3)、非会員は会員登録(4)
       } else {
-        setStep(4); // 非会員は会員登録へ
+        // 店舗予約の場合
+        if (isLoggedIn) {
+          setStep(3); // 会員は確認へ
+        } else {
+          setStep(4); // 非会員は会員登録へ
+        }
       }
     };
 
@@ -185,23 +205,128 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
     );
   };
 
-  // Step 3/4: 確認（会員はステップ3、非会員はステップ4）
-  const ConfirmStep = () => {
-    const handleConfirm = async () => {
-      // 会員はステップ4（決済）、非会員はステップ5（決済）へ進む
+  // Step 2.5: 住所入力（出張予約のみ）
+  const AddressStep = () => {
+    const [address, setAddress] = useState(bookingData.userAddress || '');
+    const [postalCode, setPostalCode] = useState('');
+    const [building, setBuilding] = useState('');
+
+    const handleNext = () => {
+      if (!address) {
+        alert('住所を入力してください');
+        return;
+      }
+      const fullAddress = `〒${postalCode} ${address}${building ? ' ' + building : ''}`;
+      setBookingData(prev => ({ ...prev, userAddress: fullAddress }));
+      
+      // 非会員は会員登録へ、会員は確認へ
       setStep(isLoggedIn ? 4 : 5);
     };
 
     return (
       <div className="space-y-4">
-        <button onClick={() => setStep(isLoggedIn ? 2 : 3)} className="text-teal-600 text-sm">← 戻る</button>
+        <button onClick={() => setStep(2)} className="text-teal-600 text-sm">← 戻る</button>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">訪問先住所の入力</h2>
+        
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+          <p className="text-sm text-yellow-800">
+            <strong>出張予約について:</strong> セラピストがご指定の場所へ訪問します。正確な住所をご入力ください。
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg border space-y-4">
+          <div>
+            <label className="block text-sm font-semibold mb-2">郵便番号</label>
+            <input
+              type="text"
+              value={postalCode}
+              onChange={(e) => setPostalCode(e.target.value)}
+              placeholder="例: 150-0001"
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">住所 <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="例: 東京都渋谷区神宮前1-2-3"
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">建物名・部屋番号</label>
+            <input
+              type="text"
+              value={building}
+              onChange={(e) => setBuilding(e.target.value)}
+              placeholder="例: ◯◯マンション 101号室"
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={handleNext}
+          className="w-full py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700"
+        >
+          次へ
+        </button>
+      </div>
+    );
+  };
+
+  // Step 3/4: 確認（会員はステップ3、非会員はステップ4）
+  const ConfirmStep = () => {
+    const handleConfirm = async () => {
+      // 出張予約会員はステップ5、非会員はステップ6
+      // 店舗予約会員はステップ4、非会員はステップ5
+      if (bookingType === 'MOBILE') {
+        setStep(isLoggedIn ? 5 : 6);
+      } else {
+        setStep(isLoggedIn ? 4 : 5);
+      }
+    };
+
+    const handleBack = () => {
+      // 出張予約会員はステップ3(住所)、非会員はステップ4(会員登録)
+      // 店舗予約会員はステップ2(日時)、非会員はステップ3(会員登録)
+      if (bookingType === 'MOBILE') {
+        setStep(isLoggedIn ? 3 : 4);
+      } else {
+        setStep(isLoggedIn ? 2 : 3);
+      }
+    };
+
+    return (
+      <div className="space-y-4">
+        <button onClick={handleBack} className="text-teal-600 text-sm">← 戻る</button>
         <h2 className="text-xl font-bold text-gray-900 mb-4">予約内容の確認</h2>
         
         <div className="bg-white p-4 rounded-lg border space-y-3">
           <div>
+            <p className="text-sm text-gray-600">予約タイプ</p>
+            <p className="font-bold">{bookingData.bookingType === 'MOBILE' ? '出張訪問' : '店舗利用'}</p>
+          </div>
+          <div>
             <p className="text-sm text-gray-600">担当セラピスト</p>
             <p className="font-bold">{bookingData.therapist.name}</p>
           </div>
+          {bookingData.bookingType === 'ONSITE' && bookingData.site && (
+            <div>
+              <p className="text-sm text-gray-600">施設</p>
+              <p className="font-bold">{bookingData.site.name}</p>
+            </div>
+          )}
+          {bookingData.bookingType === 'MOBILE' && bookingData.userAddress && (
+            <div>
+              <p className="text-sm text-gray-600">訪問先住所</p>
+              <p className="font-bold">{bookingData.userAddress}</p>
+            </div>
+          )}
           <div>
             <p className="text-sm text-gray-600">コース</p>
             <p className="font-bold">{bookingData.course?.name}</p>
@@ -249,7 +374,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
           const data = await response.json();
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
-          setStep(4); // 確認画面へ（非会員はステップ4が確認）
+          // 出張予約は確認画面(5)へ、店舗予約は確認画面(4)へ
+          setStep(bookingType === 'MOBILE' ? 5 : 4);
         } else {
           alert('会員登録に失敗しました');
         }
@@ -258,9 +384,14 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
       }
     };
 
+    const handleBack = () => {
+      // 出張予約は住所入力(3)へ、店舗予約は日時選択(2)へ
+      setStep(bookingType === 'MOBILE' ? 3 : 2);
+    };
+
     return (
       <div className="space-y-4">
-        <button onClick={() => setStep(2)} className="text-teal-600 text-sm">← 戻る</button>
+        <button onClick={handleBack} className="text-teal-600 text-sm">← 戻る</button>
         <h2 className="text-xl font-bold text-gray-900 mb-4">会員登録</h2>
         
         <div className="bg-white p-4 rounded-lg border space-y-3">
@@ -406,12 +537,12 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
           body: JSON.stringify({
             therapist_id: bookingData.therapist.id,
             therapist_name: bookingData.therapist.name,
-            site_id: bookingData.site?.id || null,
-            type: 'ONSITE',
+            site_id: bookingData.bookingType === 'ONSITE' ? (bookingData.site?.id || null) : null,
+            type: bookingData.bookingType || 'ONSITE',
             service_name: bookingData.course?.name || '施術',
             duration: bookingData.totalDuration,
             price: bookingData.totalPrice,
-            location: bookingData.site?.name || null,
+            location: bookingData.bookingType === 'MOBILE' ? bookingData.userAddress : (bookingData.site?.name || null),
             scheduled_at: scheduledAt,
             items: items,
           }),
@@ -635,10 +766,29 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
         {/* ステップ表示 */}
         {step === 1 && <MenuStep />}
         {step === 2 && <DateTimeStep />}
-        {step === 3 && (isLoggedIn ? <ConfirmStep /> : <RegisterStep />)}
-        {step === 4 && (isLoggedIn ? <PaymentStepWrapper /> : <ConfirmStep />)}
-        {step === 5 && (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)}
-        {step === 6 && !isLoggedIn && <CompleteStep />}
+        {step === 3 && (
+          // 出張予約の場合は住所入力、店舗予約の場合は確認または登録
+          bookingType === 'MOBILE' ? <AddressStep /> : (isLoggedIn ? <ConfirmStep /> : <RegisterStep />)
+        )}
+        {step === 4 && (
+          // 出張予約会員: 確認、出張予約非会員: 会員登録、店舗予約会員: 決済、店舗予約非会員: 確認
+          bookingType === 'MOBILE' 
+            ? (isLoggedIn ? <ConfirmStep /> : <RegisterStep />)
+            : (isLoggedIn ? <PaymentStepWrapper /> : <ConfirmStep />)
+        )}
+        {step === 5 && (
+          // 出張予約会員: 決済、出張予約非会員: 確認、店舗予約会員: 完了、店舗予約非会員: 決済
+          bookingType === 'MOBILE'
+            ? (isLoggedIn ? <PaymentStepWrapper /> : <ConfirmStep />)
+            : (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)
+        )}
+        {step === 6 && (
+          // 出張予約会員: 完了、出張予約非会員: 決済、店舗予約非会員: 完了
+          bookingType === 'MOBILE'
+            ? (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)
+            : <CompleteStep />
+        )}
+        {step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <CompleteStep />}
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ const BookingDetail: React.FC = () => {
   });
 
   const [booking, setBooking] = useState<any>(null);
+  const [bookingItems, setBookingItems] = useState<any[]>([]);
   const [therapist, setTherapist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<BookingStatus | undefined>(undefined);
@@ -55,6 +56,7 @@ const BookingDetail: React.FC = () => {
 
         const data = await res.json();
         setBooking(data.booking);
+        setBookingItems(data.items || []);
         setStatus(data.booking.status as BookingStatus);
 
         // Fetch therapist data
@@ -247,6 +249,85 @@ const BookingDetail: React.FC = () => {
                   </div>
                </div>
             </div>
+
+            {/* 予約アイテム */}
+            {items && items.length > 0 && (
+              <section className="bg-white p-12 rounded-[56px] shadow-sm border-2 border-purple-50 space-y-10">
+                <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black tracking-tight">予約内容</h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Booking Items</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* コース */}
+                  {items.filter((item: any) => item.item_type === 'COURSE').map((item: any) => (
+                    <div key={item.id} className="bg-purple-50 p-8 rounded-[32px] border-2 border-purple-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-purple-600 text-white rounded-2xl flex items-center justify-center shadow-lg text-xs font-black">
+                            COURSE
+                          </div>
+                          <div>
+                            <p className="text-lg font-black text-gray-900">{item.item_name}</p>
+                            <p className="text-sm text-gray-600 font-bold mt-1">{item.duration || 60}分</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-black text-purple-600">¥{item.price?.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500 font-bold mt-1">税込</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* オプション */}
+                  {items.filter((item: any) => item.item_type === 'OPTION').map((item: any) => (
+                    <div key={item.id} className="bg-teal-50 p-8 rounded-[32px] border-2 border-teal-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-teal-600 text-white rounded-2xl flex items-center justify-center shadow-lg text-xs font-black">
+                            OPTION
+                          </div>
+                          <div>
+                            <p className="text-lg font-black text-gray-900">{item.item_name}</p>
+                            <p className="text-sm text-gray-600 font-bold mt-1">+{item.duration || 20}分</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-black text-teal-600">¥{item.price?.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500 font-bold mt-1">税込</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 合計 */}
+                <div className="bg-gradient-to-r from-purple-600 to-teal-600 p-8 rounded-[32px] text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-lg font-black">合計金額</p>
+                      <p className="text-sm opacity-90 font-bold mt-1">
+                        合計所要時間: {items.reduce((sum: number, item: any) => sum + (item.duration || 60), 0)}分
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-4xl font-black">¥{booking?.price?.toLocaleString()}</p>
+                      <p className="text-sm opacity-90 font-bold mt-1">税込</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
 
             {/* 延長リクエスト・モジュール */}
             <section className="bg-white p-12 rounded-[56px] shadow-sm border-2 border-indigo-50 space-y-10 group overflow-hidden relative">

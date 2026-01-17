@@ -1,9 +1,9 @@
 /**
- * SimpleBookingWrapper: セラピスト情報を取得してSimpleBookingに渡す
+ * SimpleBookingWrapper: セラピスト情報と施設情報を取得してSimpleBookingに渡す
  */
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import SimpleBooking from './SimpleBooking';
 
 interface Therapist {
@@ -12,15 +12,27 @@ interface Therapist {
   avatar_url?: string;
 }
 
+interface Site {
+  id: string;
+  name: string;
+  address?: string;
+}
+
 const SimpleBookingWrapper: React.FC = () => {
   const { therapistId } = useParams<{ therapistId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [therapist, setTherapist] = useState<Therapist | null>(null);
+  const [site, setSite] = useState<Site | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // URLパラメータから予約タイプと施設IDを取得
+  const bookingType = (searchParams.get('type') as 'ONSITE' | 'MOBILE') || 'ONSITE';
+  const siteId = searchParams.get('siteId');
+
   useEffect(() => {
-    const fetchTherapist = async () => {
+    const fetchData = async () => {
       if (!therapistId) {
         setError('セラピストIDが指定されていません');
         setLoading(false);
@@ -28,24 +40,38 @@ const SimpleBookingWrapper: React.FC = () => {
       }
 
       try {
-        const response = await fetch(`/api/therapists/${therapistId}`);
-        if (!response.ok) throw new Error('セラピスト情報の取得に失敗しました');
+        // セラピスト情報を取得
+        const therapistResponse = await fetch(`/api/therapists/${therapistId}`);
+        if (!therapistResponse.ok) throw new Error('セラピスト情報の取得に失敗しました');
         
-        const data = await response.json();
+        const therapistData = await therapistResponse.json();
         setTherapist({
-          id: data.user_id || data.id,
-          name: data.name,
-          avatar_url: data.avatar_url,
+          id: therapistData.user_id || therapistData.id,
+          name: therapistData.name,
+          avatar_url: therapistData.avatar_url,
         });
+
+        // 施設IDが指定されている場合は施設情報を取得
+        if (siteId) {
+          const siteResponse = await fetch(`/api/sites/${siteId}`);
+          if (siteResponse.ok) {
+            const siteData = await siteResponse.json();
+            setSite({
+              id: siteData.id,
+              name: siteData.name,
+              address: siteData.address,
+            });
+          }
+        }
       } catch (err) {
-        setError('セラピスト情報の取得に失敗しました');
+        setError('データの取得に失敗しました');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTherapist();
-  }, [therapistId]);
+    fetchData();
+  }, [therapistId, siteId]);
 
   if (loading) {
     return (
@@ -77,7 +103,7 @@ const SimpleBookingWrapper: React.FC = () => {
     );
   }
 
-  return <SimpleBooking therapist={therapist} />;
+  return <SimpleBooking therapist={therapist} bookingType={bookingType} site={site} />;
 };
 
 export default SimpleBookingWrapper;
