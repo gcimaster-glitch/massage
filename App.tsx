@@ -106,6 +106,7 @@ import AdminSiteManagement from './pages/admin/SiteManagement';
 import AdminCorporateDashboard from './pages/admin/CorporateDashboard';
 import AdminSupportInbox from './pages/admin/SupportInbox';
 import AdminMarketingDashboard from './pages/admin/MarketingDashboard';
+import MockDataManager from './pages/admin/MockDataManager';
 import ImageUpload from './pages/admin/ImageUpload';
 
 // --- Shared ---
@@ -336,6 +337,7 @@ const App: React.FC = () => {
         <Route path="/admin/support" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSupportInbox /></RequireAuth>} />
         <Route path="/admin/marketing" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminMarketingDashboard /></RequireAuth>} />
         <Route path="/admin/images" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><ImageUpload /></RequireAuth>} />
+        <Route path="/admin/mock-data" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><MockDataManager /></RequireAuth>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
