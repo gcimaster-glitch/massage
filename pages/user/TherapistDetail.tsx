@@ -63,6 +63,8 @@ const TherapistDetail: React.FC = () => {
 
   // useMemo hooks must be before any conditional returns
   const displayTherapist = useMemo(() => {
+    // CRITICAL: Check if therapist exists FIRST
+    if (!therapist) return null;
     
     // Parse specialties from JSON string if needed
     let categories = therapist.specialties || [];
@@ -74,7 +76,7 @@ const TherapistDetail: React.FC = () => {
         categories = [];
       }
     }
-    if (!therapist) return null;
+    
     return {
       ...therapist,
       imageUrl: therapist.avatar_url || `/therapists/${therapist.id}.jpg`,

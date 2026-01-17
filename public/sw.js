@@ -1,7 +1,7 @@
 // HOGUSY Service Worker
-const CACHE_NAME = 'hogusy-v1';
-const STATIC_CACHE_NAME = 'hogusy-static-v1';
-const DYNAMIC_CACHE_NAME = 'hogusy-dynamic-v1';
+const CACHE_NAME = 'hogusy-v2'; // Updated version to force re-install
+const STATIC_CACHE_NAME = 'hogusy-static-v2';
+const DYNAMIC_CACHE_NAME = 'hogusy-dynamic-v2';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -56,6 +56,44 @@ self.addEventListener('fetch', (event) => {
   // Skip API requests (always fetch fresh)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(request));
+    return;
+  }
+
+  // CRITICAL: Cache-first strategy for CSS/JS assets to prevent loading failures
+  if (url.pathname.startsWith('/assets/') || 
+      url.pathname.endsWith('.css') || 
+      url.pathname.endsWith('.js')) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          // Return cached version immediately
+          console.log('[Service Worker] Serving from cache:', url.pathname);
+          
+          // Update cache in background
+          fetch(request).then((fetchResponse) => {
+            caches.open(DYNAMIC_CACHE_NAME).then((cache) => {
+              cache.put(request, fetchResponse);
+            });
+          }).catch(() => {
+            // Network failed, but we have cache
+            console.log('[Service Worker] Network failed, using cached version:', url.pathname);
+          });
+          
+          return cachedResponse;
+        }
+        
+        // No cache, fetch from network
+        return fetch(request).then((fetchResponse) => {
+          return caches.open(DYNAMIC_CACHE_NAME).then((cache) => {
+            cache.put(request, fetchResponse.clone());
+            return fetchResponse;
+          });
+        }).catch((error) => {
+          console.error('[Service Worker] Failed to fetch asset:', url.pathname, error);
+          throw error;
+        });
+      })
+    );
     return;
   }
 
