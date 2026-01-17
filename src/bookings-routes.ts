@@ -49,6 +49,7 @@ app.post('/', async (c) => {
     const body = await c.req.json();
     const {
       therapist_id,
+      therapist_name, // 追加
       office_id,
       site_id,
       room_id,
@@ -61,6 +62,13 @@ app.post('/', async (c) => {
       items, // { item_type: 'COURSE' | 'OPTION', item_id: string, item_name: string, price: number }[]
     } = body;
     
+    // セラピスト名を取得（渡されていない場合）
+    let finalTherapistName = therapist_name;
+    if (!finalTherapistName && therapist_id) {
+      const therapistQuery = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(therapist_id).first<{ name: string }>();
+      finalTherapistName = therapistQuery?.name || 'セラピスト';
+    }
+    
     // バリデーション
     if (!therapist_id || !type || !scheduled_at || !duration || !price) {
       return c.json({ error: '必須項目が不足しています' }, 400);
@@ -72,15 +80,16 @@ app.post('/', async (c) => {
     // 予約を作成
     const insertBookingQuery = `
       INSERT INTO bookings (
-        id, user_id, therapist_id, office_id, site_id, room_id,
+        id, user_id, therapist_id, therapist_name, office_id, site_id, room_id,
         type, status, service_name, duration, price, location, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
     `;
     
     await DB.prepare(insertBookingQuery).bind(
       bookingId,
       userId,
       therapist_id,
+      finalTherapistName,
       office_id || null,
       site_id || null,
       room_id || null,

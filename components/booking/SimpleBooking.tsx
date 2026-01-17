@@ -38,6 +38,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isLoggedIn] = useState(() => !!localStorage.getItem('auth_token'));
+  const [bookingId, setBookingId] = useState<string | null>(null);
   
   const [bookingData, setBookingData] = useState<BookingData>({
     therapist,
@@ -183,6 +184,34 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
   const ConfirmStep = () => {
     const handleConfirm = async () => {
       try {
+        // 予約アイテムを構築（コース + オプション）
+        const items = [];
+        
+        // コースを追加
+        if (bookingData.course) {
+          items.push({
+            item_type: 'COURSE',
+            item_id: bookingData.course.id,
+            item_name: bookingData.course.name,
+            price: bookingData.course.base_price,
+          });
+        }
+        
+        // オプションを追加
+        if (bookingData.options && bookingData.options.length > 0) {
+          bookingData.options.forEach(option => {
+            items.push({
+              item_type: 'OPTION',
+              item_id: option.id,
+              item_name: option.name,
+              price: option.base_price,
+            });
+          });
+        }
+        
+        // scheduled_at を ISO 8601 形式に変換
+        const scheduledAt = `${bookingData.date}T${bookingData.time}:00`;
+        
         const response = await fetch('/api/bookings', {
           method: 'POST',
           headers: {
@@ -191,21 +220,28 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
           },
           body: JSON.stringify({
             therapist_id: bookingData.therapist.id,
-            course_id: bookingData.course?.id,
-            scheduled_date: bookingData.date,
-            scheduled_time: bookingData.time,
-            total_price: bookingData.totalPrice,
-            total_duration: bookingData.totalDuration,
+            therapist_name: bookingData.therapist.name,
+            site_id: bookingData.site?.id || null,
+            type: 'ONSITE', // 施設予約
+            service_name: bookingData.course?.name || '施術',
+            duration: bookingData.totalDuration,
+            price: bookingData.totalPrice,
+            location: bookingData.site?.name || null,
+            scheduled_at: scheduledAt,
+            items: items,
           }),
         });
 
         if (response.ok) {
-          alert('予約が完了しました！');
-          navigate('/app/bookings');
+          const result = await response.json();
+          setBookingId(result.booking.id);
+          setStep(6); // 完了画面へ
         } else {
-          alert('予約に失敗しました');
+          const error = await response.json();
+          alert(`予約に失敗しました: ${error.error || '不明なエラー'}`);
         }
       } catch (error) {
+        console.error('予約エラー:', error);
         alert('エラーが発生しました');
       }
     };
@@ -373,25 +409,86 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
     );
   };
 
+  // Step 6: 完了画面
+  const CompleteStep = () => {
+    return (
+      <div className="space-y-6 text-center">
+        <div className="bg-white p-8 rounded-lg border">
+          <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-10 h-10 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">予約が完了しました！</h2>
+          <p className="text-gray-600 mb-6">
+            予約IDは <span className="font-mono font-bold text-teal-600">{bookingId}</span> です
+          </p>
+          
+          <div className="bg-gray-50 p-4 rounded-lg text-left space-y-2 mb-6">
+            <div className="flex justify-between">
+              <span className="text-gray-600">担当セラピスト</span>
+              <span className="font-bold">{bookingData.therapist.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">コース</span>
+              <span className="font-bold">{bookingData.course?.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">日時</span>
+              <span className="font-bold">{bookingData.date} {bookingData.time}</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t">
+              <span className="text-gray-600">合計金額</span>
+              <span className="text-xl font-bold text-teal-600">¥{bookingData.totalPrice.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-600 mb-4">
+            予約確認メールを送信しました。<br />
+            予約の詳細は予約一覧からご確認いただけます。
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => navigate('/app/user/bookings')}
+            className="flex-1 py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700"
+          >
+            予約一覧を見る
+          </button>
+          <button
+            onClick={() => navigate('/app')}
+            className="flex-1 py-3 bg-white text-gray-700 rounded-lg font-bold border hover:bg-gray-50"
+          >
+            ホームに戻る
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const totalSteps = isLoggedIn ? 3 : 5;
   const progress = (step / totalSteps) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
-        {/* プログレスバー */}
-        <div className="mb-6">
-          <div className="flex justify-between mb-2">
-            <h1 className="text-lg font-bold text-gray-900">予約</h1>
-            <span className="text-sm text-gray-600">{step}/{totalSteps}</span>
+        {/* プログレスバー（完了画面では非表示） */}
+        {step !== 6 && (
+          <div className="mb-6">
+            <div className="flex justify-between mb-2">
+              <h1 className="text-lg font-bold text-gray-900">予約</h1>
+              <span className="text-sm text-gray-600">{step}/{totalSteps}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-teal-600 h-2 rounded-full transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-teal-600 h-2 rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
+        )}
 
         {/* ステップ表示 */}
         {step === 1 && <MenuStep />}
@@ -399,6 +496,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist }) => {
         {step === 3 && <ConfirmStep />}
         {step === 4 && <RegisterStep />}
         {step === 5 && <PaymentStep />}
+        {step === 6 && <CompleteStep />}
       </div>
     </div>
   );
