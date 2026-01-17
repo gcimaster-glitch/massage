@@ -72,21 +72,96 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
   // Step 1: メニュー選択
   const MenuStep = () => {
-    const [courses] = useState<Course[]>([
-      { id: '1', name: '整体コース（60分）', duration: 60, base_price: 8000, description: '全身の歪みを整えます' },
-      { id: '2', name: 'リラクゼーション（90分）', duration: 90, base_price: 12000, description: '深いリラックス' },
-      { id: '3', name: 'ショートコース（30分）', duration: 30, base_price: 5000, description: '肩・首集中' },
-    ]);
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [options, setOptions] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedOptions, setSelectedOptions] = useState<Course[]>([]);
+
+    // APIからメニューを取得
+    useEffect(() => {
+      const fetchMenu = async () => {
+        try {
+          setLoading(true);
+          const response = await fetch(`/api/therapists/${therapist.id}/menu`);
+          if (!response.ok) throw new Error('メニューの取得に失敗しました');
+          
+          const data = await response.json();
+          
+          // コースを設定（APIからのデータを使用）
+          const coursesData = data.courses?.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            duration: c.duration,
+            base_price: c.base_price,
+            description: c.description || '',
+          })) || [];
+          
+          // オプションを設定
+          const optionsData = data.options?.map((o: any) => ({
+            id: o.id,
+            name: o.name,
+            duration: o.duration || 0,
+            base_price: o.base_price,
+            description: o.description || '',
+          })) || [];
+          
+          setCourses(coursesData);
+          setOptions(optionsData);
+        } catch (error) {
+          console.error('メニュー取得エラー:', error);
+          // フォールバック: ダミーデータ
+          setCourses([
+            { id: '1', name: '整体コース（60分）', duration: 60, base_price: 8000, description: '全身の歪みを整えます' },
+            { id: '2', name: 'リラクゼーション（90分）', duration: 90, base_price: 12000, description: '深いリラックス' },
+            { id: '3', name: 'ショートコース（30分）', duration: 30, base_price: 5000, description: '肩・首集中' },
+          ]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchMenu();
+    }, [therapist.id]);
 
     const handleSelectCourse = (course: Course) => {
+      // コースを選択して価格と時間を計算
+      const totalPrice = course.base_price + selectedOptions.reduce((sum, opt) => sum + opt.base_price, 0);
+      const totalDuration = course.duration + selectedOptions.reduce((sum, opt) => sum + opt.duration, 0);
+      
       setBookingData(prev => ({
         ...prev,
         course,
-        totalPrice: course.base_price,
-        totalDuration: course.duration,
+        options: selectedOptions,
+        totalPrice,
+        totalDuration,
       }));
       setStep(2);
     };
+
+    const handleToggleOption = (option: Course) => {
+      setSelectedOptions(prev => {
+        const exists = prev.find(o => o.id === option.id);
+        if (exists) {
+          return prev.filter(o => o.id !== option.id);
+        } else {
+          return [...prev, option];
+        }
+      });
+    };
+
+    if (loading) {
+      return (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">メニュー選択</h2>
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">メニューを読み込み中...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-4">
@@ -117,24 +192,84 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           </div>
         )}
         
+        {/* コース選択 */}
         <div className="space-y-3">
-          {courses.map((course) => (
-            <div
-              key={course.id}
-              onClick={() => handleSelectCourse(course)}
-              className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-teal-600 cursor-pointer transition"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-900">{course.name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{course.description}</p>
-                  <p className="text-sm text-gray-500 mt-2">{course.duration}分</p>
+          <h3 className="font-semibold text-gray-900">コースを選択</h3>
+          {courses.length === 0 ? (
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+              <p className="text-sm text-yellow-800">現在、予約可能なコースがありません。</p>
+            </div>
+          ) : (
+            courses.map((course) => (
+              <div
+                key={course.id}
+                onClick={() => handleSelectCourse(course)}
+                className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-teal-600 cursor-pointer transition"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900">{course.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{course.description}</p>
+                    <p className="text-sm text-gray-500 mt-2">{course.duration}分</p>
+                  </div>
+                  <p className="text-lg font-bold text-teal-600">¥{course.base_price.toLocaleString()}</p>
                 </div>
-                <p className="text-lg font-bold text-teal-600">¥{course.base_price.toLocaleString()}</p>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* オプション選択 */}
+        {options.length > 0 && (
+          <div className="space-y-3 mt-6">
+            <h3 className="font-semibold text-gray-900">オプション（任意）</h3>
+            <p className="text-xs text-gray-600">複数選択可能です</p>
+            {options.map((option) => {
+              const isSelected = selectedOptions.some(o => o.id === option.id);
+              return (
+                <div
+                  key={option.id}
+                  onClick={() => handleToggleOption(option)}
+                  className={`bg-white p-4 rounded-lg border-2 cursor-pointer transition ${
+                    isSelected ? 'border-teal-600 bg-teal-50' : 'border-gray-200 hover:border-teal-400'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          readOnly
+                          className="w-4 h-4 text-teal-600"
+                        />
+                        <h3 className="font-bold text-gray-900">{option.name}</h3>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1 ml-6">{option.description}</p>
+                      <p className="text-sm text-gray-500 mt-1 ml-6">+{option.duration}分</p>
+                    </div>
+                    <p className="text-lg font-bold text-teal-600">¥{option.base_price.toLocaleString()}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 合計表示 */}
+        {selectedOptions.length > 0 && (
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-gray-600">選択中のオプション: {selectedOptions.length}件</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  +{selectedOptions.reduce((sum, opt) => sum + opt.duration, 0)}分 / 
+                  +¥{selectedOptions.reduce((sum, opt) => sum + opt.base_price, 0).toLocaleString()}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -355,10 +490,32 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           <div>
             <p className="text-sm text-gray-600">コース</p>
             <p className="font-bold">{bookingData.course?.name}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {bookingData.course?.duration}分 / ¥{bookingData.course?.base_price.toLocaleString()}
+            </p>
           </div>
+          {bookingData.options && bookingData.options.length > 0 && (
+            <div>
+              <p className="text-sm text-gray-600">オプション</p>
+              <div className="space-y-1 mt-1">
+                {bookingData.options.map((option) => (
+                  <div key={option.id} className="text-sm">
+                    <p className="font-bold">{option.name}</p>
+                    <p className="text-xs text-gray-500">
+                      +{option.duration}分 / ¥{option.base_price.toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <p className="text-sm text-gray-600">日時</p>
             <p className="font-bold">{bookingData.date} {bookingData.time}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">所要時間</p>
+            <p className="font-bold">{bookingData.totalDuration}分</p>
           </div>
           <div className="pt-3 border-t">
             <p className="text-sm text-gray-600">合計金額</p>
@@ -538,6 +695,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
             item_id: bookingData.course.id,
             item_name: bookingData.course.name,
             price: bookingData.course.base_price,
+            duration: bookingData.course.duration,
           });
         }
         if (bookingData.options && bookingData.options.length > 0) {
@@ -547,6 +705,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
               item_id: option.id,
               item_name: option.name,
               price: option.base_price,
+              duration: option.duration,
             });
           });
         }
