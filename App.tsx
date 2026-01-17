@@ -54,8 +54,7 @@ import KYCVerification from './pages/shared/KYCVerification';
 import SupportCenter from './pages/shared/SupportCenter';
 
 // --- Booking Flow Components ---
-import BookingFlow from './components/booking/BookingFlow';
-import BookingFlowWrapper from './components/booking/BookingFlowWrapper';
+import SimpleBookingWrapper from './components/booking/SimpleBookingWrapper';
 
 // --- Therapist ---
 import TherapistDashboard from './pages/therapist/Dashboard';
@@ -216,18 +215,21 @@ const App: React.FC = () => {
         <Route path="/app/therapist/:therapistId" element={<TherapistDetail />} />
         
         {/* User App - Auth required pages */}
-        {/* New Booking Flow - 4 Patterns */}
-        {/* Note: BookingFlow handles authentication internally */}
-        <Route path="/app/booking/from-map/:siteId" element={<BookingFlowWrapper pattern="from-map" />} />
-        <Route path="/app/booking/from-therapist/:therapistId" element={<BookingFlowWrapper pattern="from-therapist" />} />
-        <Route path="/app/booking/direct/:therapistId" element={<BookingFlowWrapper pattern="direct" />} />
-        <Route path="/app/booking/ai" element={<BookingFlow pattern="ai-recommend" />} />
+        {/* New Simple Booking Flow */}
+        <Route path="/app/booking/:therapistId" element={<SimpleBookingWrapper />} />
+        <Route path="/booking/:therapistId" element={<SimpleBookingWrapper />} />
         
-        {/* Legacy Booking Routes - Redirect to new routes */}
-        <Route path="/booking/from-map/:siteId" element={<BookingFlowWrapper pattern="from-map" />} />
-        <Route path="/booking/from-therapist/:therapistId" element={<BookingFlowWrapper pattern="from-therapist" />} />
-        <Route path="/booking/direct/:therapistId" element={<BookingFlowWrapper pattern="direct" />} />
-        <Route path="/booking/ai" element={<BookingFlow pattern="ai-recommend" />} />
+        {/* Legacy routes - redirect to simple flow */}
+        <Route path="/app/booking/direct/:therapistId" element={<SimpleBookingWrapper />} />
+        <Route path="/booking/direct/:therapistId" element={<SimpleBookingWrapper />} />
+        <Route path="/app/booking/from-therapist/:therapistId" element={<SimpleBookingWrapper />} />
+        <Route path="/booking/from-therapist/:therapistId" element={<SimpleBookingWrapper />} />
+        
+        {/* Disabled routes - redirect to home */}
+        <Route path="/app/booking/from-map/:siteId" element={<Navigate to="/" replace />} />
+        <Route path="/booking/from-map/:siteId" element={<Navigate to="/" replace />} />
+        <Route path="/app/booking/ai" element={<Navigate to="/" replace />} />
+        <Route path="/booking/ai" element={<Navigate to="/" replace />} />
         
         {/* Legacy Booking Routes (kept for compatibility) */}
         <Route path="/app/booking/new" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNewFlow /></RequireAuth>} />
