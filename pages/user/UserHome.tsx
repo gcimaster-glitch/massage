@@ -248,8 +248,8 @@ const UserHome: React.FC = () => {
                    // データ表示（エラーがあってもデータがあれば表示）
                    sites.slice(0, 8).map(site => (
                     <div key={site.id} className="bg-white rounded-[48px] overflow-hidden shadow-sm border border-gray-100 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700 group">
-                       <div className="h-64 relative overflow-hidden cursor-pointer" onClick={() => navigate(`/app/site/${site.id}`)}>
-                          <img src={`https://picsum.photos/600/400?random=${site.id}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={site.name} />
+                       <div className="h-48 md:h-56 relative overflow-hidden cursor-pointer" onClick={() => navigate(`/app/site/${site.id}`)}>
+                          <img src={`https://picsum.photos/300/200?random=${site.id}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={site.name} loading="lazy" />
                           <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md text-white text-[9px] font-black px-4 py-2 rounded-xl border border-white/20 uppercase tracking-widest">
                              {site.area}
                           </div>
@@ -316,8 +316,8 @@ const UserHome: React.FC = () => {
                    onClick={() => navigate(`/app/therapist/${t.id}`)}
                    className="bg-white rounded-[64px] border border-gray-100 overflow-hidden shadow-sm hover:shadow-[0_60px_100px_-20px_rgba(0,0,0,0.12)] transition-all duration-1000 cursor-pointer group flex flex-col md:flex-row relative"
                  >
-                    <div className="w-full md:w-72 h-80 md:h-auto overflow-hidden relative flex-shrink-0">
-                       <img src={t.avatar_url || `/therapists/${t.id}.jpg`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" alt={t.name} />
+                    <div className="w-full md:w-64 h-64 md:h-auto overflow-hidden relative flex-shrink-0">
+                       <img src={t.avatar_url || `/therapists/${t.id}.jpg`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3000ms]" alt={t.name} loading="lazy" />
                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                        <div className="absolute bottom-6 left-6 right-6 opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0 flex gap-2">
                           <button className="bg-white text-gray-900 p-3 rounded-full shadow-2xl active:scale-90"><Heart size={18}/></button>
