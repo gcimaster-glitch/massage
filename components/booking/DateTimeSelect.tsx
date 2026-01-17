@@ -31,12 +31,16 @@ const DateTimeSelect: React.FC<DateTimeSelectProps> = ({
   ];
 
   useEffect(() => {
-    // 今日から7日分の日付を生成
+    // 今日から7日分の日付を生成（日本時間基準）
     const dates: string[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
-      dates.push(date.toISOString().split('T')[0]);
+      // 日本時間の日付文字列を生成（YYYY-MM-DD）
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
     }
     setAvailableDates(dates);
   }, []);
@@ -49,8 +53,9 @@ const DateTimeSelect: React.FC<DateTimeSelectProps> = ({
     }
 
     const now = new Date();
-    const selectedDateTime = new Date(selectedDate);
-    const isToday = selectedDateTime.toDateString() === now.toDateString();
+    // 日本時間の今日の日付文字列（YYYY-MM-DD）
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const isToday = selectedDate === todayStr;
 
     if (!isToday) {
       // 今日以外は全時間帯が選択可能

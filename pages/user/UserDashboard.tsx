@@ -46,35 +46,51 @@ const UserDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   }, []);
 
   const loadDashboardData = async () => {
-    const token = localStorage.getItem('auth_token');
-
+    // TEMPORARY: API未実装のため、モックデータを使用
     try {
-      // Load notifications
-      const notifResponse = await fetch('/api/users/notifications', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (notifResponse.ok) {
-        const data = await notifResponse.json();
-        setNotifications(data.notifications || []);
-      }
+      // モック通知
+      setNotifications([
+        {
+          id: '1',
+          title: 'ポイント付与',
+          message: '予約完了で100ポイントが付与されました',
+          type: 'success',
+          date: new Date().toISOString(),
+          read: false
+        }
+      ]);
 
-      // Load recent bookings
-      const bookingsResponse = await fetch('/api/users/bookings?limit=5', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (bookingsResponse.ok) {
-        const data = await bookingsResponse.json();
-        setRecentBookings(data.bookings || []);
-      }
+      // モック予約履歴
+      setRecentBookings([
+        {
+          id: '1',
+          therapist_name: '山田 太郎',
+          site_name: 'CARE CUBE 新宿三丁目',
+          date: '2026-01-20',
+          time: '14:00',
+          status: 'upcoming',
+          amount: 8000
+        }
+      ]);
 
-      // Load stats
-      const statsResponse = await fetch('/api/users/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      // モック統計
+      setStats({
+        totalBookings: 5,
+        totalSpent: 40000,
+        favoriteCount: 3,
+        points: 500
       });
-      if (statsResponse.ok) {
-        const data = await statsResponse.json();
-        setStats(data.stats || stats);
-      }
+      
+      // TODO: API実装後に以下を有効化
+      // const token = localStorage.getItem('auth_token');
+      // const notifResponse = await fetch('/api/users/notifications', {
+      //   headers: { 'Authorization': `Bearer ${token}` }
+      // });
+      // if (notifResponse.ok) {
+      //   const data = await notifResponse.json();
+      //   setNotifications(data.notifications || []);
+      // }
+      // ... 他のAPI呼び出し
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     }

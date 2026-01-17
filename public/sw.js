@@ -1,7 +1,7 @@
 // HOGUSY Service Worker
-const CACHE_NAME = 'hogusy-v2'; // Updated version to force re-install
-const STATIC_CACHE_NAME = 'hogusy-static-v2';
-const DYNAMIC_CACHE_NAME = 'hogusy-dynamic-v2';
+const CACHE_NAME = 'hogusy-v3'; // Updated version to force re-install (fix 206 error)
+const STATIC_CACHE_NAME = 'hogusy-static-v3';
+const DYNAMIC_CACHE_NAME = 'hogusy-dynamic-v3';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -119,6 +119,13 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
+        // CRITICAL FIX: Do not cache partial responses (status code 206)
+        // Partial responses are not supported by Cache API
+        if (response.status === 206) {
+          console.log('[Service Worker] Skipping cache for partial response (206):', url.pathname);
+          return response;
+        }
+        
         // Clone the response before caching
         const responseClone = response.clone();
         caches.open(DYNAMIC_CACHE_NAME).then((cache) => {
