@@ -33,7 +33,9 @@ const BookingFlowWrapper: React.FC<BookingFlowWrapperProps> = ({ pattern }) => {
           if (!response.ok) {
             throw new Error('セラピスト情報の取得に失敗しました');
           }
-          const therapist = await response.json();
+          const data = await response.json();
+          // APIレスポンスがネストされている場合に対応
+          const therapist = data.therapist || data;
           setInitialTherapist(therapist);
           console.log('✅ Therapist fetched:', therapist);
         }
@@ -45,7 +47,9 @@ const BookingFlowWrapper: React.FC<BookingFlowWrapperProps> = ({ pattern }) => {
           if (!response.ok) {
             throw new Error('施設情報の取得に失敗しました');
           }
-          const site = await response.json();
+          const data = await response.json();
+          // APIレスポンスがネストされている場合に対応
+          const site = data.site || data;
           setInitialSite(site);
           console.log('✅ Site fetched:', site);
         }

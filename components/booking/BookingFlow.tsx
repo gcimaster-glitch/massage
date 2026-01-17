@@ -94,10 +94,12 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
   // ステップごとの総数を計算
   const getTotalSteps = (): number => {
     switch (pattern) {
-      case 'DIRECT': return 2; // 指名予約
+      case 'DIRECT': return 3; // 指名予約: メニュー+施設 → 日時 → 確認+決済 → 完了
       case 'FROM_MAP':
       case 'FROM_THERAPIST':
+        return 5; // 施設/セラピスト → セラピスト/施設 → メニュー → 日時 → 確認+決済 → 完了
       case 'AI_RECOMMEND':
+        return 4; // AI: AIチャット → 推奨 → 日時 → 確認+決済 → 完了
       default:
         return 3;
     }
@@ -247,22 +249,32 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
     switch (pattern) {
       case 'FROM_MAP':
         if (currentStep === 1) return '施設を選択';
-        if (currentStep === 2) return 'セラピストとメニューを選択';
-        if (currentStep === 3) return '日時を選択';
+        if (currentStep === 2) return 'セラピストを選択';
+        if (currentStep === 3) return 'メニューを選択';
+        if (currentStep === 4) return '日時を選択';
+        if (currentStep === 5) return '予約内容の確認と決済';
+        if (currentStep === 6) return '予約完了';
         break;
       case 'FROM_THERAPIST':
         if (currentStep === 1) return 'セラピストを選択';
-        if (currentStep === 2) return '施設とメニューを選択';
-        if (currentStep === 3) return '日時を選択';
+        if (currentStep === 2) return '施設を選択';
+        if (currentStep === 3) return 'メニューを選択';
+        if (currentStep === 4) return '日時を選択';
+        if (currentStep === 5) return '予約内容の確認と決済';
+        if (currentStep === 6) return '予約完了';
         break;
       case 'DIRECT':
         if (currentStep === 1) return 'メニューと施設を選択';
         if (currentStep === 2) return '日時を選択';
+        if (currentStep === 3) return '予約内容の確認と決済';
+        if (currentStep === 4) return '予約完了';
         break;
       case 'AI_RECOMMEND':
         if (currentStep === 1) return 'お悩みを教えてください';
         if (currentStep === 2) return 'AIのおすすめ';
         if (currentStep === 3) return '日時を選択';
+        if (currentStep === 4) return '予約内容の確認と決済';
+        if (currentStep === 5) return '予約完了';
         break;
     }
     return '予約内容の確認';
@@ -286,6 +298,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
     // パターンごとのステップ
     switch (pattern) {
       case 'FROM_MAP':
+        // Pattern 1: 施設 → セラピスト → メニュー → 日時 → 確認+決済 → 完了
         if (currentStep === 1) {
           return <SiteSelect onNext={handleNext} onBack={handleBack} initialSite={initialSite} />;
         }
@@ -293,17 +306,21 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
           return <TherapistSelect onNext={handleNext} onBack={handleBack} selectedSite={bookingData.site} />;
         }
         if (currentStep === 3) {
-          return <DateTimeSelect bookingData={bookingData} onNext={handleNext} onBack={handleBack} />;
+          return <MenuSelect bookingData={bookingData} onNext={handleNext} onBack={handleBack} />;
         }
         if (currentStep === 4) {
-          return <BookingConfirm bookingData={bookingData} onConfirm={handleConfirmBooking} onBack={handleBack} isLoading={isLoading} />;
+          return <DateTimeSelect bookingData={bookingData} onNext={handleNext} onBack={handleBack} />;
         }
         if (currentStep === 5) {
+          return <BookingConfirm bookingData={bookingData} onConfirm={handleConfirmBooking} onBack={handleBack} isLoading={isLoading} />;
+        }
+        if (currentStep === 6) {
           return <BookingComplete bookingData={bookingData} />;
         }
         break;
         
       case 'FROM_THERAPIST':
+        // Pattern 2: セラピスト → 施設 → メニュー → 日時 → 確認+決済 → 完了
         if (currentStep === 1) {
           return <TherapistSelect onNext={handleNext} onBack={handleBack} initialTherapist={initialTherapist} />;
         }
@@ -311,17 +328,21 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
           return <SiteSelect onNext={handleNext} onBack={handleBack} selectedTherapist={bookingData.therapist} />;
         }
         if (currentStep === 3) {
-          return <DateTimeSelect bookingData={bookingData} onNext={handleNext} onBack={handleBack} />;
+          return <MenuSelect bookingData={bookingData} onNext={handleNext} onBack={handleBack} />;
         }
         if (currentStep === 4) {
-          return <BookingConfirm bookingData={bookingData} onConfirm={handleConfirmBooking} onBack={handleBack} isLoading={isLoading} />;
+          return <DateTimeSelect bookingData={bookingData} onNext={handleNext} onBack={handleBack} />;
         }
         if (currentStep === 5) {
+          return <BookingConfirm bookingData={bookingData} onConfirm={handleConfirmBooking} onBack={handleBack} isLoading={isLoading} />;
+        }
+        if (currentStep === 6) {
           return <BookingComplete bookingData={bookingData} />;
         }
         break;
         
       case 'DIRECT':
+        // Pattern 3: メニュー+施設 → 日時 → 確認+決済 → 完了
         if (currentStep === 1) {
           return <MenuSelect bookingData={bookingData} onNext={handleNext} onBack={handleBack} />;
         }
@@ -337,7 +358,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
         break;
         
       case 'AI_RECOMMEND':
-        // AI予約は後で実装
+        // Pattern 4: AI予約は後で実装
         return <div className="text-center py-8">AI予約は準備中です</div>;
     }
     
