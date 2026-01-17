@@ -117,7 +117,12 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
   
   // 次のステップへ
   const handleNext = (updatedData: Partial<BookingData>) => {
-    setBookingData(prev => ({ ...prev, ...updatedData }));
+    console.log('📊 BookingFlow handleNext called with:', updatedData);
+    setBookingData(prev => {
+      const newData = { ...prev, ...updatedData };
+      console.log('📊 Updated bookingData:', newData);
+      return newData;
+    });
     
     // 出張予約の場合、KYCチェック
     if (updatedData.type === 'DISPATCH' && !isAuthenticated) {

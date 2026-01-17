@@ -21,6 +21,9 @@ const BookingConfirm: React.FC<BookingConfirmProps> = ({
   onBack,
   isLoading
 }) => {
+  // Debug: Log bookingData to console
+  console.log('📋 BookingConfirm rendered with bookingData:', bookingData);
+  
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -32,6 +35,18 @@ const BookingConfirm: React.FC<BookingConfirmProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Debug: 警告メッセージ */}
+      {!bookingData.scheduled_date && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <strong>警告:</strong> 予約日時が設定されていません。前のステップに戻って日時を選択してください。
+        </div>
+      )}
+      {bookingData.courses.length === 0 && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <strong>警告:</strong> コースが選択されていません。前のステップに戻ってコースを選択してください。
+        </div>
+      )}
+      
       <div className="bg-white rounded-lg shadow-sm p-4">
         <button onClick={onBack} className="flex items-center text-gray-600 hover:text-gray-900 mb-4">
           <ArrowLeft className="w-5 h-5 mr-2" />
