@@ -1,0 +1,62 @@
+-- マスターコース・オプションデータの投入
+-- 共通のメニューマスターを定義
+
+-- ===== master_courses =====
+-- カテゴリは GENERAL, RELAXATION, SPORTS, HEAD, RECOVERY のみ許可
+INSERT INTO master_courses (id, name, duration, category, description, base_price) VALUES
+('course-relax-60', '全身リラクゼーション（60分）', 60, 'RELAXATION', '全身をしっかりとほぐす定番コース', 8000),
+('course-relax-90', '全身リラクゼーション（90分）', 90, 'RELAXATION', 'じっくり時間をかけて全身をケア', 12000),
+('course-shoulder-45', '肩・首集中ケア（45分）', 45, 'RELAXATION', 'デスクワークの方におすすめ', 6000),
+('course-massage-60', '全身もみほぐし（60分）', 60, 'RELAXATION', 'しっかりとした圧で全身をほぐします', 8500),
+('course-massage-90', '全身もみほぐし（90分）', 90, 'RELAXATION', '時間をかけて丁寧にケア', 12500),
+('course-back-45', '腰・肩集中ケア（45分）', 45, 'RECOVERY', '腰痛・肩こりにお悩みの方へ', 6500),
+('course-therapy-60', '整体（60分）', 60, 'RECOVERY', '骨格から整える本格整体', 9000),
+('course-therapy-90', '整体（90分）', 90, 'RECOVERY', 'じっくり時間をかけた整体', 13000),
+('course-posture-75', '姿勢改善コース（75分）', 75, 'RECOVERY', '姿勢の歪みを根本から改善', 11000),
+('course-lymph-60', 'リンパマッサージ（60分）', 60, 'RECOVERY', '老廃物を流してスッキリ', 8500),
+('course-lymph-90', 'リンパマッサージ（90分）', 90, 'RECOVERY', '全身のリンパを丁寧にケア', 12500),
+('course-facial-45', 'フェイシャルリンパ（45分）', 45, 'HEAD', '顔のむくみ・たるみケア', 7000),
+('course-thai-60', 'タイ古式マッサージ（60分）', 60, 'GENERAL', 'ストレッチと指圧を組み合わせた施術', 8000),
+('course-thai-90', 'タイ古式マッサージ（90分）', 90, 'GENERAL', 'じっくり体を伸ばしてリラックス', 12000),
+('course-headspa-45', 'ヘッドスパ（45分）', 45, 'HEAD', '頭皮から癒しを', 6500),
+('course-aroma-60', 'アロママッサージ（60分）', 60, 'RELAXATION', '天然アロマオイルでリラックス', 9000),
+('course-aroma-90', 'アロママッサージ（90分）', 90, 'RELAXATION', 'じっくりアロマで癒される', 13000),
+('course-balinese-75', 'バリニーズマッサージ（75分）', 75, 'RELAXATION', 'バリ島伝統のオイルマッサージ', 11000),
+('course-sports-60', 'スポーツマッサージ（60分）', 60, 'SPORTS', 'アスリート向けの本格施術', 9000),
+('course-sports-90', 'スポーツマッサージ（90分）', 90, 'SPORTS', '疲労回復・パフォーマンス向上', 13000),
+('course-condition-45', 'コンディショニング（45分）', 45, 'SPORTS', '運動前後のケア', 6500),
+('course-shiatsu-60', '指圧マッサージ（60分）', 60, 'RECOVERY', '経絡・ツボを刺激して体調改善', 8500),
+('course-shiatsu-90', '指圧マッサージ（90分）', 90, 'RECOVERY', 'じっくり全身のツボをケア', 12500),
+('course-acupuncture-60', '鍼灸（60分）', 60, 'RECOVERY', '東洋医学の伝統的な施術', 10000),
+('course-reflexology-60', 'リフレクソロジー（60分）', 60, 'RECOVERY', '足裏から全身を整える', 7500),
+('course-reflexology-90', 'リフレクソロジー（90分）', 90, 'RECOVERY', 'じっくり足裏をケア', 11000),
+('course-hand-45', 'ハンドリフレ（45分）', 45, 'RELAXATION', '手のひらから癒しを', 6000),
+('course-oil-60', 'オイルマッサージ（60分）', 60, 'RELAXATION', 'なめらかなオイルで全身をケア', 8500),
+('course-oil-90', 'オイルマッサージ（90分）', 90, 'RELAXATION', 'リラックス効果抜群', 12500),
+('course-bodycare-45', 'ボディケア（45分）', 45, 'GENERAL', '服を着たままの全身ケア', 6000),
+('course-partial-30', '部分集中ケア（30分）', 30, 'GENERAL', '気になる部位を集中ケア', 4500);
+
+-- ===== master_options =====
+INSERT INTO master_options (id, name, duration, base_price, description) VALUES
+('option-head', 'ヘッドマッサージ', 15, 2000, '頭部を丁寧にほぐします'),
+('option-foot', 'フットケア', 15, 2000, '足裏・ふくらはぎのケア'),
+('option-aroma', 'アロマオイル', 0, 1000, 'お好みの香りで癒し効果UP'),
+('option-stretch', 'ストレッチ', 15, 2000, '施術後のストレッチで効果UP'),
+('option-footreflex', '足つぼマッサージ', 20, 2500, '足裏の反射区を刺激'),
+('option-pelvis', '骨盤調整', 20, 3000, '骨盤の歪みを整えます'),
+('option-cupping', 'カッピング', 20, 3000, '血行促進・デトックス効果'),
+('option-beauty-needle', '美容鍼', 30, 4000, '顔のツボを刺激して美肌効果'),
+('option-decollete', 'デコルテケア', 15, 2000, '首・肩・デコルテを集中ケア'),
+('option-thai-foot', '足裏マッサージ', 20, 2500, 'タイ式の足裏ケア'),
+('option-hotstone', 'ホットストーン', 20, 3000, '温めた石で深部をほぐす'),
+('option-bodyscrub', 'ボディスクラブ', 20, 3000, '古い角質を除去してツルツル肌に'),
+('option-reflexology', 'リフレクソロジー', 20, 2500, '足裏の反射区をケア'),
+('option-taping', 'テーピング', 15, 2000, '筋肉・関節のサポート'),
+('option-icing', 'アイシング', 10, 1000, '炎症部位のクールダウン'),
+('option-moxibustion', 'お灸', 15, 2000, '温熱効果で血行促進'),
+('option-suction', '吸い玉', 20, 2500, '血流改善・デトックス'),
+('option-calf', 'ふくらはぎケア', 15, 2000, 'むくみ・疲れを集中ケア'),
+('option-paraffin', 'パラフィンパック', 20, 2500, '手足の保湿・血行促進'),
+('option-aroma-add', 'アロマ追加', 0, 1000, '香りでリラックス効果UP'),
+('option-extend-15', '延長（15分）', 15, 2000, '施術時間を延長'),
+('option-hottowel', 'ホットタオル', 0, 500, '温めて血行促進');

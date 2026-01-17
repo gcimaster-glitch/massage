@@ -241,6 +241,21 @@ app.get('/:id/menu', async (c) => {
   const therapistId = c.req.param('id');
   
   try {
+    // therapist_id (therapist-3) から profile_id (profile-3) へのマッピング
+    const profileQuery = `
+      SELECT id FROM therapist_profiles WHERE user_id = ?
+    `;
+    const profileResult = await DB.prepare(profileQuery).bind(therapistId).first<{ id: string }>();
+    
+    if (!profileResult) {
+      return c.json({
+        courses: [],
+        options: []
+      });
+    }
+    
+    const profileId = profileResult.id;
+    
     // コース取得
     const coursesQuery = `
       SELECT 
@@ -256,7 +271,7 @@ app.get('/:id/menu', async (c) => {
       ORDER BY mc.duration
     `;
     
-    const coursesResult = await DB.prepare(coursesQuery).bind(therapistId).all();
+    const coursesResult = await DB.prepare(coursesQuery).bind(profileId).all();
     
     // オプション取得
     const optionsQuery = `
@@ -273,7 +288,7 @@ app.get('/:id/menu', async (c) => {
       ORDER BY mo.name
     `;
     
-    const optionsResult = await DB.prepare(optionsQuery).bind(therapistId).all();
+    const optionsResult = await DB.prepare(optionsQuery).bind(profileId).all();
     
     return c.json({
       courses: coursesResult.results || [],
