@@ -58,7 +58,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     const savedStep = sessionStorage.getItem('bookingStep');
     return savedStep ? parseInt(savedStep, 10) : 1;
   });
-  const [isLoggedIn] = useState(() => !!localStorage.getItem('auth_token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('auth_token'));
   const [bookingId, setBookingId] = useState<string | null>(null);
   
   const [bookingData, setBookingData] = useState<BookingData>(() => {
@@ -521,22 +521,30 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   // Step 3/4: 確認（会員はステップ3、非会員はステップ4）
   const ConfirmStep = () => {
     const handleConfirm = async () => {
-      // 出張予約会員はステップ5、非会員はステップ6
-      // 店舗予約会員はステップ4、非会員はステップ5
+      // 非会員の場合は会員登録へ
+      if (!isLoggedIn) {
+        if (bookingType === 'MOBILE') {
+          setStep(5); // 出張予約非会員 → 会員登録
+        } else {
+          setStep(4); // 店舗予約非会員 → 会員登録
+        }
+        return;
+      }
+      
+      // 会員の場合は決済へ
       if (bookingType === 'MOBILE') {
-        setStep(isLoggedIn ? 5 : 6);
+        setStep(5); // 出張予約会員 → 決済
       } else {
-        setStep(isLoggedIn ? 4 : 5);
+        setStep(4); // 店舗予約会員 → 決済
       }
     };
 
     const handleBack = () => {
-      // 出張予約会員はステップ3(住所)、非会員はステップ4(会員登録)
-      // 店舗予約会員はステップ2(日時)、非会員はステップ3(会員登録)
+      // 出張予約は住所入力へ、店舗予約は日時選択へ
       if (bookingType === 'MOBILE') {
-        setStep(isLoggedIn ? 3 : 4);
+        setStep(3);
       } else {
-        setStep(isLoggedIn ? 2 : 3);
+        setStep(2);
       }
     };
 
@@ -544,6 +552,16 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
       <div className="space-y-4">
         <button onClick={handleBack} className="text-teal-600 text-sm">← 戻る</button>
         <h2 className="text-xl font-bold text-gray-900 mb-4">予約内容の確認</h2>
+        
+        {/* 非会員への注意メッセージ */}
+        {!isLoggedIn && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>この内容で予約するには会員登録が必要です。</strong><br />
+              次のステップで会員登録またはログインをお願いします。
+            </p>
+          </div>
+        )}
         
         <div className="bg-white p-4 rounded-lg border space-y-3">
           <div>
@@ -606,7 +624,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           onClick={handleConfirm}
           className="w-full py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700"
         >
-          次へ（決済画面）
+          {isLoggedIn ? '次へ（決済画面）' : '会員登録/ログインへ'}
         </button>
 
         {/* キャンセルポリシー */}
@@ -670,8 +688,12 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           const data = await response.json();
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
-          // 出張予約は確認画面(5)へ、店舗予約は確認画面(4)へ
-          setStep(bookingType === 'MOBILE' ? 5 : 4);
+          
+          // 会員登録成功後、isLoggedInを更新
+          setIsLoggedIn(true);
+          
+          // 出張予約はKYC(6)へ、店舗予約は決済(5)へ
+          setStep(bookingType === 'MOBILE' ? 6 : 5);
         } else {
           const error = await response.json();
           alert(error.error || '会員登録に失敗しました');
@@ -698,8 +720,12 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           const data = await response.json();
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
-          // ログイン成功後、会員フローに切り替え
-          window.location.reload(); // ページをリロードしてisLoggedInを更新
+          
+          // ログイン成功後、isLoggedInを更新して会員フローに切り替え
+          setIsLoggedIn(true);
+          
+          // 出張予約は決済画面(5)へ、店舗予約も決済画面(4)へ
+          setStep(bookingType === 'MOBILE' ? 5 : 4);
         } else {
           alert('ログインに失敗しました。メールアドレスとパスワードを確認してください。');
         }
@@ -709,8 +735,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     };
 
     const handleBack = () => {
-      // 出張予約は住所入力(3)へ、店舗予約は日時選択(2)へ
-      setStep(bookingType === 'MOBILE' ? 3 : 2);
+      // 確認画面へ戻る
+      setStep(bookingType === 'MOBILE' ? 4 : 3);
     };
 
     return (
@@ -830,8 +856,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         });
 
         if (response.ok) {
-          // KYC提出成功 → 確認画面へ
-          setStep(bookingType === 'MOBILE' ? 5 : 4);
+          // KYC提出成功 → 決済画面へ
+          setStep(7);
         } else {
           alert('本人確認情報の送信に失敗しました');
         }
@@ -843,7 +869,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
     const handleBack = () => {
       // 会員登録画面へ戻る
-      setStep(bookingType === 'MOBILE' ? 4 : 3);
+      setStep(5);
     };
 
     return (
@@ -1294,10 +1320,10 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   // 総ステップ数を動的に計算
   const getTotalSteps = () => {
     if (bookingType === 'MOBILE') {
-      // 出張予約: メニュー → 日時 → 住所 → [登録] → [KYC] → 確認 → 決済 → 完了
+      // 出張予約: メニュー → 日時 → 住所 → 確認 → [登録] → [KYC] → 決済 → 完了
       return isLoggedIn ? 6 : 8;
     } else {
-      // 店舗予約: メニュー → 日時 → [登録] → 確認 → 決済 → 完了
+      // 店舗予約: メニュー → 日時 → 確認 → [登録] → 決済 → 完了
       return isLoggedIn ? 5 : 6;
     }
   };
@@ -1319,9 +1345,9 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         labels[1] = 'メニュー選択';
         labels[2] = '日時選択';
         labels[3] = '住所入力';
-        labels[4] = '会員登録';
-        labels[5] = '本人確認（KYC）';
-        labels[6] = '予約確認';
+        labels[4] = '予約確認';
+        labels[5] = '会員登録';
+        labels[6] = '本人確認（KYC）';
         labels[7] = '決済';
         labels[8] = '完了';
       }
@@ -1337,8 +1363,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         // 店舗予約（非会員）
         labels[1] = 'メニュー選択';
         labels[2] = '日時選択';
-        labels[3] = '会員登録';
-        labels[4] = '予約確認';
+        labels[3] = '予約確認';
+        labels[4] = '会員登録';
         labels[5] = '決済';
         labels[6] = '完了';
       }
@@ -1407,25 +1433,25 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         {step === 1 && <MenuStep />}
         {step === 2 && <DateTimeStep />}
         {step === 3 && (
-          // 出張予約の場合は住所入力、店舗予約の場合は確認または登録
-          bookingType === 'MOBILE' ? <AddressStep /> : (isLoggedIn ? <ConfirmStep /> : <RegisterStep />)
+          // 出張予約の場合は住所入力、店舗予約の場合は確認画面
+          bookingType === 'MOBILE' ? <AddressStep /> : <ConfirmStep />
         )}
         {step === 4 && (
-          // 出張予約会員: 確認、出張予約非会員: 会員登録、店舗予約会員: 決済、店舗予約非会員: 確認
+          // 出張予約: 確認画面、店舗予約: 会員登録（非会員のみ）または決済（会員）
           bookingType === 'MOBILE' 
-            ? (isLoggedIn ? <ConfirmStep /> : <RegisterStep />)
-            : (isLoggedIn ? <PaymentStepWrapper /> : <ConfirmStep />)
+            ? <ConfirmStep />
+            : (isLoggedIn ? <PaymentStepWrapper /> : <RegisterStep />)
         )}
         {step === 5 && (
-          // 出張予約会員: 決済、出張予約非会員: KYC、店舗予約会員: 完了、店舗予約非会員: 決済
+          // 出張予約: 会員登録（非会員のみ）または決済（会員）、店舗予約: 決済（非会員）または完了（会員）
           bookingType === 'MOBILE'
-            ? (isLoggedIn ? <PaymentStepWrapper /> : <KYCStep />)
+            ? (isLoggedIn ? <PaymentStepWrapper /> : <RegisterStep />)
             : (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)
         )}
         {step === 6 && (
-          // 出張予約会員: 完了、出張予約非会員: 確認、店舗予約非会員: 完了
+          // 出張予約: KYC（非会員のみ）または完了（会員）、店舗予約: 完了（非会員）
           bookingType === 'MOBILE'
-            ? (isLoggedIn ? <CompleteStep /> : <ConfirmStep />)
+            ? (isLoggedIn ? <CompleteStep /> : <KYCStep />)
             : <CompleteStep />
         )}
         {step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <PaymentStepWrapper />}
