@@ -34,6 +34,35 @@ const BookingDetail: React.FC = () => {
   const [cancelling, setCancelling] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const handleDownloadReceipt = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/bookings/${bookingId}/receipt`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch receipt');
+      }
+      
+      const html = await res.text();
+      
+      // 新しいウィンドウで領収書を開く
+      const receiptWindow = window.open('', '_blank');
+      if (receiptWindow) {
+        receiptWindow.document.write(html);
+        receiptWindow.document.close();
+      } else {
+        alert('❌ ポップアップがブロックされました。ブラウザの設定を確認してください。');
+      }
+    } catch (error) {
+      console.error('Receipt download error:', error);
+      alert('❌ 領収書の取得に失敗しました');
+    }
+  };
+
   // Fetch booking data from API
   useEffect(() => {
     const fetchBooking = async () => {
@@ -243,7 +272,14 @@ const BookingDetail: React.FC = () => {
                      当日は予約時間の5分前までに現地へお越しください。
                   </div>
                   <div className="flex gap-3">
-                     <button className="px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-all shadow-sm">領収書</button>
+                     {booking.payment_status === 'COMPLETED' && (
+                       <button 
+                         onClick={handleDownloadReceipt}
+                         className="px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-all shadow-sm flex items-center gap-2"
+                       >
+                         <FileText size={14} /> 領収書
+                       </button>
+                     )}
                      {status !== BookingStatus.COMPLETED && status !== BookingStatus.CANCELLED && status !== BookingStatus.IN_SERVICE && (
                        <button 
                          onClick={() => setShowCancelDialog(true)}

@@ -1,0 +1,12 @@
+# ローカル開発環境用の環境変数
+# 本番環境では Cloudflare Pages の Environment Variables で設定してください
+
+# Resend API Key（メール送信）
+# 取得方法: https://resend.com/
+RESEND_API_KEY=re_your_resend_api_key_here
+
+# Stripe Secret Key（決済）
+# 取得方法: https://stripe.com/
+# テストモード: sk_test_...
+# 本番モード: sk_live_...
+STRIPE_SECRET=sk_test_your_stripe_secret_key_here

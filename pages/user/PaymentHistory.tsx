@@ -97,9 +97,37 @@ const PaymentHistory: React.FC = () => {
     return true;
   });
 
-  const handleDownloadReceipt = (paymentId: string) => {
-    // TODO: 領収書ダウンロード機能を実装
-    alert('🚧 領収書ダウンロード機能は準備中です');
+  const handleDownloadReceipt = async (paymentId: string) => {
+    try {
+      // payment IDから booking IDを抽出（pay-{bookingId}）
+      const bookingId = paymentId.replace('pay-', '');
+      const token = localStorage.getItem('auth_token');
+      
+      // 領収書HTMLを取得
+      const res = await fetch(`/api/bookings/${bookingId}/receipt`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch receipt');
+      }
+      
+      const html = await res.text();
+      
+      // 新しいウィンドウで領収書を開く
+      const receiptWindow = window.open('', '_blank');
+      if (receiptWindow) {
+        receiptWindow.document.write(html);
+        receiptWindow.document.close();
+      } else {
+        alert('❌ ポップアップがブロックされました。ブラウザの設定を確認してください。');
+      }
+    } catch (error) {
+      console.error('Receipt download error:', error);
+      alert('❌ 領収書の取得に失敗しました');
+    }
   };
 
   if (loading) {

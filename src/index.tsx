@@ -770,6 +770,239 @@ app.get('/api/user/payments', async (c) => {
   }
 })
 
+// 領収書生成API
+app.get('/api/bookings/:id/receipt', async (c) => {
+  const bookingId = c.req.param('id')
+  const authHeader = c.req.header('Authorization')
+  
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  
+  try {
+    const token = authHeader.replace('Bearer ', '')
+    const payload = JSON.parse(atob(token))
+    const userId = payload.userId
+    
+    if (!c.env.DB) {
+      // モックデータ（開発環境用）
+      const mockReceipt = generateReceiptHTML({
+        id: bookingId,
+        user_name: '山田 太郎',
+        service_name: '整体コース（60分）',
+        price: 8000,
+        scheduled_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        location: 'CARE CUBE 渋谷',
+      })
+      return c.html(mockReceipt)
+    }
+    
+    // 予約情報を取得
+    const booking = await c.env.DB.prepare(`
+      SELECT 
+        b.*,
+        u.name as user_name
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.id
+      WHERE b.id = ? AND b.user_id = ? AND b.payment_status = 'COMPLETED'
+    `).bind(bookingId, userId).first()
+    
+    if (!booking) {
+      return c.json({ error: 'Receipt not found' }, 404)
+    }
+    
+    // 領収書HTMLを生成
+    const receiptHTML = generateReceiptHTML(booking)
+    return c.html(receiptHTML)
+  } catch (e) {
+    console.error('Receipt generation error:', e)
+    return c.json({ error: 'Failed to generate receipt' }, 500)
+  }
+})
+
+// 領収書HTML生成関数
+function generateReceiptHTML(booking: any): string {
+  const issueDate = new Date(booking.created_at).toLocaleDateString('ja-JP')
+  const serviceDate = new Date(booking.scheduled_at).toLocaleDateString('ja-JP')
+  
+  return `
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>領収書 - ${booking.id}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: 'Hiragino Sans', 'Meiryo', sans-serif; 
+          padding: 40px; 
+          max-width: 800px; 
+          margin: 0 auto;
+          background: #f5f5f5;
+        }
+        .receipt {
+          background: white;
+          padding: 60px;
+          border: 2px solid #333;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 40px;
+          border-bottom: 3px double #333;
+          padding-bottom: 20px;
+        }
+        .title {
+          font-size: 36px;
+          font-weight: bold;
+          margin-bottom: 10px;
+          letter-spacing: 0.2em;
+        }
+        .company-info {
+          text-align: right;
+          margin-bottom: 40px;
+          font-size: 14px;
+          line-height: 1.8;
+        }
+        .customer-info {
+          margin-bottom: 40px;
+          font-size: 16px;
+        }
+        .customer-name {
+          font-size: 24px;
+          font-weight: bold;
+          margin-bottom: 10px;
+        }
+        .amount-section {
+          text-align: center;
+          margin: 40px 0;
+          padding: 30px;
+          background: #f9f9f9;
+          border: 2px solid #333;
+        }
+        .amount-label {
+          font-size: 18px;
+          margin-bottom: 10px;
+        }
+        .amount {
+          font-size: 48px;
+          font-weight: bold;
+          color: #333;
+        }
+        .details-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 30px 0;
+        }
+        .details-table th,
+        .details-table td {
+          padding: 15px;
+          border: 1px solid #ddd;
+          text-align: left;
+        }
+        .details-table th {
+          background: #f5f5f5;
+          font-weight: bold;
+        }
+        .notes {
+          margin-top: 40px;
+          font-size: 12px;
+          color: #666;
+          line-height: 1.8;
+        }
+        .footer {
+          margin-top: 60px;
+          text-align: center;
+          font-size: 12px;
+          color: #999;
+          border-top: 1px solid #ddd;
+          padding-top: 20px;
+        }
+        @media print {
+          body { padding: 0; background: white; }
+          .receipt { border: none; box-shadow: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="receipt">
+        <div class="header">
+          <div class="title">領 収 書</div>
+          <div style="font-size: 14px; color: #666; margin-top: 10px;">RECEIPT</div>
+        </div>
+        
+        <div class="company-info">
+          <strong style="font-size: 18px;">株式会社 HOGUSY</strong><br>
+          〒150-0002<br>
+          東京都渋谷区渋谷1-1-1<br>
+          TEL: 03-1234-5678<br>
+          登録番号: T1234567890123
+        </div>
+        
+        <div class="customer-info">
+          <div style="font-size: 14px; color: #666; margin-bottom: 5px;">発行日: ${issueDate}</div>
+          <div class="customer-name">${booking.user_name || 'お客様'} 様</div>
+        </div>
+        
+        <div class="amount-section">
+          <div class="amount-label">お支払金額（税込）</div>
+          <div class="amount">¥${booking.price.toLocaleString()}</div>
+        </div>
+        
+        <table class="details-table">
+          <tr>
+            <th style="width: 30%;">項目</th>
+            <th>詳細</th>
+          </tr>
+          <tr>
+            <td><strong>サービス内容</strong></td>
+            <td>${booking.service_name}</td>
+          </tr>
+          <tr>
+            <td><strong>予約ID</strong></td>
+            <td>${booking.id}</td>
+          </tr>
+          <tr>
+            <td><strong>サービス提供日</strong></td>
+            <td>${serviceDate}</td>
+          </tr>
+          <tr>
+            <td><strong>場所</strong></td>
+            <td>${booking.location || '—'}</td>
+          </tr>
+          <tr>
+            <td><strong>決済方法</strong></td>
+            <td>クレジットカード決済</td>
+          </tr>
+        </table>
+        
+        <div class="notes">
+          <strong>但し書き:</strong> 上記金額を正に領収いたしました。<br>
+          <br>
+          <strong>注意事項:</strong><br>
+          ・この領収書は再発行できません。大切に保管してください。<br>
+          ・適格請求書発行事業者の登録番号は上記の通りです。<br>
+          ・ご不明な点がございましたら、上記連絡先までお問い合わせください。
+        </div>
+        
+        <div class="footer">
+          © 2024 HOGUSY. All rights reserved.<br>
+          この領収書は電子的に生成されています。
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 20px; padding: 20px;">
+        <button onclick="window.print()" style="padding: 15px 40px; font-size: 16px; background: #14b8a6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
+          🖨️ 印刷する
+        </button>
+      </div>
+    </body>
+    </html>
+  `
+}
+
 // ============================================
 // Notification Routes (Resend)
 // ============================================
