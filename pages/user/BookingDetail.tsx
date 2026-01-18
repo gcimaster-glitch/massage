@@ -32,6 +32,7 @@ const BookingDetail: React.FC = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch booking data from API
   useEffect(() => {
@@ -94,15 +95,16 @@ const BookingDetail: React.FC = () => {
 
   const handleCancelBooking = async () => {
     if (!cancelReason.trim()) {
-      alert('キャンセル理由を入力してください');
+      setErrorMessage('✏️ キャンセル理由を入力してください');
       return;
     }
 
     try {
       setCancelling(true);
+      setErrorMessage(''); // エラーをクリア
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/bookings/${bookingId}`, {
-        method: 'DELETE',
+      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -113,14 +115,18 @@ const BookingDetail: React.FC = () => {
       if (res.ok) {
         setStatus(BookingStatus.CANCELLED);
         setShowCancelDialog(false);
-        alert('予約をキャンセルしました');
+        alert('✅ 予約をキャンセルしました');
+        // 予約一覧画面に戻る
+        setTimeout(() => {
+          navigate('/app/bookings');
+        }, 1000);
       } else {
         const data = await res.json();
-        alert(data.error || 'キャンセルに失敗しました');
+        setErrorMessage(data.error || '❌ キャンセルに失敗しました。もう一度お試しください。');
       }
     } catch (error) {
       console.error('Cancel error:', error);
-      alert('キャンセルに失敗しました');
+      setErrorMessage('🌐 ネットワークエラーが発生しました。インターネット接続を確認してください。');
     } finally {
       setCancelling(false);
     }
@@ -465,6 +471,13 @@ const BookingDetail: React.FC = () => {
               placeholder="キャンセル理由を入力してください（例：体調不良、予定変更など）"
               className="w-full h-32 p-6 border-2 border-gray-200 rounded-3xl font-bold text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:outline-none resize-none mb-6"
             />
+
+            {/* エラーメッセージ表示 */}
+            {errorMessage && (
+              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
+                <p className="text-red-600 font-bold text-sm">{errorMessage}</p>
+              </div>
+            )}
 
             <div className="flex gap-4">
               <button

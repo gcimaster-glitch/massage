@@ -336,23 +336,24 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
     const handleNext = () => {
       if (!selectedDate || !selectedTime) {
-        alert('日時を選択してください');
+        setErrorMessage('📅 日時を選択してください');
         return;
       }
+      setErrorMessage(''); // エラーをクリア
       
       // 過去時刻チェック
       const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
       const now = new Date();
       
       if (selectedDateTime <= now) {
-        alert('過去の日時は選択できません。未来の日時を選択してください。');
+        setErrorMessage('⏰ 過去の日時は選択できません。未来の日時を選択してください。');
         return;
       }
       
       // 営業時間チェック（10:00〜21:00）
       const hour = parseInt(selectedTime.split(':')[0]);
       if (hour < 10 || hour > 20) {
-        alert('営業時間は10:00〜21:00です。この時間帯で選択してください。');
+        setErrorMessage('🕐 営業時間は10:00〜21:00です。この時間帯で選択してください。');
         return;
       }
       
@@ -439,22 +440,23 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
       // 郵便番号の形式チェック（XXX-XXXX または XXXXXXX）
       const postalCodeRegex = /^[0-9]{3}-?[0-9]{4}$/;
       if (postalCode && !postalCodeRegex.test(postalCode)) {
-        alert('郵便番号は「123-4567」または「1234567」の形式で入力してください');
+        setErrorMessage('📮 郵便番号は「123-4567」または「1234567」の形式で入力してください');
         return;
       }
       
       // 住所の入力チェック
       if (!address || address.trim().length < 10) {
-        alert('住所を正確に入力してください（最低10文字以上）');
+        setErrorMessage('🏠 住所を正確に入力してください（最低10文字以上）');
         return;
       }
       
       // 空白のみの入力をチェック
       if (address.trim() === '') {
-        alert('有効な住所を入力してください');
+        setErrorMessage('🏠 有効な住所を入力してください');
         return;
       }
       
+      setErrorMessage(''); // エラーをクリア
       const fullAddress = `〒${postalCode} ${address}${building ? ' ' + building : ''}`;
       setBookingData(prev => ({ ...prev, userAddress: fullAddress }));
       
@@ -673,7 +675,20 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
     const handleRegister = async () => {
       if (!email || !password || !name) {
-        alert('すべての項目を入力してください');
+        setErrorMessage('✏️ すべての項目を入力してください');
+        return;
+      }
+
+      // パスワードの長さチェック
+      if (password.length < 8) {
+        setErrorMessage('🔒 パスワードは8文字以上で入力してください');
+        return;
+      }
+
+      // メールアドレスの形式チェック
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setErrorMessage('📧 有効なメールアドレスを入力してください');
         return;
       }
 
@@ -689,6 +704,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
           
+          setErrorMessage(''); // エラーをクリア
+          
           // 会員登録成功後、isLoggedInを更新
           setIsLoggedIn(true);
           
@@ -696,16 +713,16 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           setStep(bookingType === 'MOBILE' ? 6 : 5);
         } else {
           const error = await response.json();
-          alert(error.error || '会員登録に失敗しました');
+          setErrorMessage(error.error || '❌ 会員登録に失敗しました。入力内容をご確認ください。');
         }
       } catch (error) {
-        alert('エラーが発生しました');
+        setErrorMessage('🌐 ネットワークエラーが発生しました。インターネット接続を確認してください。');
       }
     };
 
     const handleLogin = async () => {
       if (!email || !password) {
-        alert('メールアドレスとパスワードを入力してください');
+        setErrorMessage('✏️ メールアドレスとパスワードを入力してください');
         return;
       }
 
@@ -721,16 +738,18 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
           
+          setErrorMessage(''); // エラーをクリア
+          
           // ログイン成功後、isLoggedInを更新して会員フローに切り替え
           setIsLoggedIn(true);
           
           // 出張予約は決済画面(5)へ、店舗予約も決済画面(4)へ
           setStep(bookingType === 'MOBILE' ? 5 : 4);
         } else {
-          alert('ログインに失敗しました。メールアドレスとパスワードを確認してください。');
+          setErrorMessage('❌ ログインに失敗しました。メールアドレスとパスワードを確認してください。');
         }
       } catch (error) {
-        alert('エラーが発生しました');
+        setErrorMessage('🌐 ネットワークエラーが発生しました。インターネット接続を確認してください。');
       }
     };
 
@@ -813,7 +832,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
       // ファイルサイズチェック（5MB以下）
       if (file.size > 5 * 1024 * 1024) {
-        alert('ファイルサイズは5MB以下にしてください');
+        setErrorMessage('📄 ファイルサイズは5MB以下にしてください');
         return;
       }
 
@@ -829,14 +848,14 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         reader.readAsDataURL(file);
       } catch (error) {
         console.error('アップロードエラー:', error);
-        alert('ファイルのアップロードに失敗しました');
+        setErrorMessage('📄 ファイルのアップロードに失敗しました。もう一度お試しください。');
         setUploading(false);
       }
     };
 
     const handleSubmitKYC = async () => {
       if (!uploadedFile) {
-        alert('本人確認書類をアップロードしてください');
+        setErrorMessage('📄 本人確認書類をアップロードしてください');
         return;
       }
 
@@ -856,14 +875,15 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         });
 
         if (response.ok) {
+          setErrorMessage(''); // エラーをクリア
           // KYC提出成功 → 決済画面へ
           setStep(7);
         } else {
-          alert('本人確認情報の送信に失敗しました');
+          setErrorMessage('❌ 本人確認情報の送信に失敗しました。もう一度お試しください。');
         }
       } catch (error) {
         console.error('KYC送信エラー:', error);
-        alert('エラーが発生しました');
+        setErrorMessage('🌐 ネットワークエラーが発生しました。インターネット接続を確認してください。');
       }
     };
 
