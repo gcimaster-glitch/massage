@@ -279,7 +279,7 @@ app.post('/api/bookings', async (c) => {
     booking.siteId,
     booking.officeId || null,
     booking.type,
-    'PENDING',
+    'PENDING_PAYMENT', // 決済待ち状態
     booking.serviceName,
     booking.duration,
     booking.scheduledStart,
@@ -311,6 +311,38 @@ app.patch('/api/bookings/:id/status', async (c) => {
   await c.env.DB.prepare(
     'UPDATE bookings SET status = ? WHERE id = ?'
   ).bind(status, id).run()
+  
+  return c.json({ success: true })
+})
+
+// 決済成功時：予約を確定
+app.post('/api/bookings/:id/confirm-payment', async (c) => {
+  const id = c.req.param('id')
+  const { paymentIntentId } = await c.req.json()
+  
+  await c.env.DB.prepare(`
+    UPDATE bookings 
+    SET status = 'CONFIRMED', payment_status = 'COMPLETED'
+    WHERE id = ? AND status = 'PENDING_PAYMENT'
+  `).bind(id).run()
+  
+  return c.json({ success: true })
+})
+
+// 決済失敗時：予約を削除
+app.delete('/api/bookings/:id/cancel-payment', async (c) => {
+  const id = c.req.param('id')
+  
+  // booking_items を先に削除（外部キー制約対応）
+  await c.env.DB.prepare(`
+    DELETE FROM booking_items WHERE booking_id = ?
+  `).bind(id).run()
+  
+  // 予約本体を削除
+  await c.env.DB.prepare(`
+    DELETE FROM bookings 
+    WHERE id = ? AND status = 'PENDING_PAYMENT'
+  `).bind(id).run()
   
   return c.json({ success: true })
 })

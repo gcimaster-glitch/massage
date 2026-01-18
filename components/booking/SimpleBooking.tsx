@@ -292,6 +292,23 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         alert('日時を選択してください');
         return;
       }
+      
+      // 過去時刻チェック
+      const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
+      const now = new Date();
+      
+      if (selectedDateTime <= now) {
+        alert('過去の日時は選択できません。未来の日時を選択してください。');
+        return;
+      }
+      
+      // 営業時間チェック（10:00〜21:00）
+      const hour = parseInt(selectedTime.split(':')[0]);
+      if (hour < 10 || hour > 20) {
+        alert('営業時間は10:00〜21:00です。この時間帯で選択してください。');
+        return;
+      }
+      
       setBookingData(prev => ({ ...prev, date: selectedDate, time: selectedTime }));
       
       // 出張予約の場合は住所入力へ
@@ -372,10 +389,25 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     const [building, setBuilding] = useState('');
 
     const handleNext = () => {
-      if (!address) {
-        alert('住所を入力してください');
+      // 郵便番号の形式チェック（XXX-XXXX または XXXXXXX）
+      const postalCodeRegex = /^[0-9]{3}-?[0-9]{4}$/;
+      if (postalCode && !postalCodeRegex.test(postalCode)) {
+        alert('郵便番号は「123-4567」または「1234567」の形式で入力してください');
         return;
       }
+      
+      // 住所の入力チェック
+      if (!address || address.trim().length < 10) {
+        alert('住所を正確に入力してください（最低10文字以上）');
+        return;
+      }
+      
+      // 空白のみの入力をチェック
+      if (address.trim() === '') {
+        alert('有効な住所を入力してください');
+        return;
+      }
+      
       const fullAddress = `〒${postalCode} ${address}${building ? ' ' + building : ''}`;
       setBookingData(prev => ({ ...prev, userAddress: fullAddress }));
       
@@ -770,8 +802,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           throw new Error('予約の作成に失敗しました');
         }
 
-        const { booking } = await bookingResponse.json();
-        setBookingId(booking.id);
+        const { id: bookingId } = await bookingResponse.json();
+        setBookingId(bookingId);
 
         // Step 2: Payment Intent を作成
         const intentResponse = await fetch('/api/payment/create-intent', {
@@ -779,7 +811,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             amount: bookingData.totalPrice,
-            booking_id: booking.id,
+            booking_id: bookingId,
             metadata: {
               therapist_id: bookingData.therapist.id,
               user_email: localStorage.getItem('user_email') || '',
@@ -788,6 +820,10 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         });
 
         if (!intentResponse.ok) {
+          // 決済準備失敗 → 予約を削除
+          await fetch(`/api/bookings/${bookingId}/cancel-payment`, {
+            method: 'DELETE',
+          });
           throw new Error('決済の準備に失敗しました');
         }
 
@@ -796,6 +832,10 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         // Step 3: Stripe で決済を確定
         const cardElement = elements.getElement(CardElement);
         if (!cardElement) {
+          // カード情報なし → 予約を削除
+          await fetch(`/api/bookings/${bookingId}/cancel-payment`, {
+            method: 'DELETE',
+          });
           throw new Error('カード情報が見つかりません');
         }
 
@@ -806,19 +846,22 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         });
 
         if (error) {
+          // 決済失敗 → 予約を削除
+          await fetch(`/api/bookings/${bookingId}/cancel-payment`, {
+            method: 'DELETE',
+          });
           setErrorMessage(error.message || '決済に失敗しました');
           setIsProcessing(false);
           return;
         }
 
         if (paymentIntent.status === 'succeeded') {
-          // Step 4: 決済確認APIを呼び出し
-          await fetch('/api/payment/confirm', {
+          // Step 4: 予約を確定
+          await fetch(`/api/bookings/${bookingId}/confirm-payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               paymentIntentId: paymentIntent.id,
-              bookingId: booking.id,
             }),
           });
 
@@ -833,6 +876,17 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         }
       } catch (error: any) {
         console.error('決済エラー:', error);
+        
+        // エラー発生時に予約IDがあれば削除
+        if (bookingId) {
+          try {
+            await fetch(`/api/bookings/${bookingId}/cancel-payment`, {
+              method: 'DELETE',
+            });
+          } catch (deleteError) {
+            console.error('予約削除エラー:', deleteError);
+          }
+        }
         
         // エラーメッセージをより詳細に
         let userMessage = '決済処理中にエラーが発生しました';
