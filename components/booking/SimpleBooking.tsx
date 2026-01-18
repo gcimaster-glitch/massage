@@ -53,22 +53,69 @@ interface SimpleBookingProps {
 
 const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 'ONSITE', site = null }) => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => {
+    // sessionStorageからステップを復元
+    const savedStep = sessionStorage.getItem('bookingStep');
+    return savedStep ? parseInt(savedStep, 10) : 1;
+  });
   const [isLoggedIn] = useState(() => !!localStorage.getItem('auth_token'));
   const [bookingId, setBookingId] = useState<string | null>(null);
   
-  const [bookingData, setBookingData] = useState<BookingData>({
-    therapist,
-    course: null,
-    options: [],
-    date: '',
-    time: '',
-    totalPrice: 0,
-    totalDuration: 0,
-    bookingType,
-    site,
-    userAddress: '',
+  const [bookingData, setBookingData] = useState<BookingData>(() => {
+    // sessionStorageからデータを復元
+    const savedData = sessionStorage.getItem('bookingData');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        return {
+          ...parsed,
+          therapist, // therapistは常に最新のものを使用
+          site, // siteも最新のものを使用
+          bookingType, // bookingTypeも最新のものを使用
+        };
+      } catch (e) {
+        console.error('Failed to parse saved booking data:', e);
+      }
+    }
+    return {
+      therapist,
+      course: null,
+      options: [],
+      date: '',
+      time: '',
+      totalPrice: 0,
+      totalDuration: 0,
+      bookingType,
+      site,
+      userAddress: '',
+    };
   });
+
+  // bookingDataが変更されたらsessionStorageに保存
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('bookingData', JSON.stringify(bookingData));
+    } catch (e) {
+      console.error('Failed to save booking data:', e);
+    }
+  }, [bookingData]);
+
+  // stepが変更されたらsessionStorageに保存
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('bookingStep', step.toString());
+    } catch (e) {
+      console.error('Failed to save booking step:', e);
+    }
+  }, [step]);
+
+  // 予約完了時にsessionStorageをクリア
+  useEffect(() => {
+    if (step === getTotalSteps()) {
+      sessionStorage.removeItem('bookingData');
+      sessionStorage.removeItem('bookingStep');
+    }
+  }, [step]);
 
   // Step 1: メニュー選択
   const MenuStep = () => {
@@ -604,6 +651,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+    const [showLogin, setShowLogin] = useState(false);
 
     const handleRegister = async () => {
       if (!email || !password || !name) {
@@ -625,7 +673,35 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           // 出張予約は確認画面(5)へ、店舗予約は確認画面(4)へ
           setStep(bookingType === 'MOBILE' ? 5 : 4);
         } else {
-          alert('会員登録に失敗しました');
+          const error = await response.json();
+          alert(error.error || '会員登録に失敗しました');
+        }
+      } catch (error) {
+        alert('エラーが発生しました');
+      }
+    };
+
+    const handleLogin = async () => {
+      if (!email || !password) {
+        alert('メールアドレスとパスワードを入力してください');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('auth_token', data.token);
+          localStorage.setItem('user_email', email);
+          // ログイン成功後、会員フローに切り替え
+          window.location.reload(); // ページをリロードしてisLoggedInを更新
+        } else {
+          alert('ログインに失敗しました。メールアドレスとパスワードを確認してください。');
         }
       } catch (error) {
         alert('エラーが発生しました');
@@ -640,19 +716,23 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     return (
       <div className="space-y-4">
         <button onClick={handleBack} className="text-teal-600 text-sm">← 戻る</button>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">会員登録</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
+          {showLogin ? 'ログイン' : '会員登録'}
+        </h2>
         
         <div className="bg-white p-4 rounded-lg border space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">お名前</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
-              placeholder="山田 太郎"
-            />
-          </div>
+          {!showLogin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">お名前</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg"
+                placeholder="山田 太郎"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">メールアドレス</label>
             <input
@@ -676,10 +756,167 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         </div>
 
         <button
-          onClick={handleRegister}
+          onClick={showLogin ? handleLogin : handleRegister}
           className="w-full py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700"
         >
-          登録して次へ
+          {showLogin ? 'ログインして次へ' : '登録して次へ'}
+        </button>
+
+        <div className="text-center">
+          <button
+            onClick={() => setShowLogin(!showLogin)}
+            className="text-sm text-teal-600 hover:underline"
+          >
+            {showLogin ? '新規会員登録はこちら' : 'すでにアカウントをお持ちの方はこちら'}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // KYCステップ（本人確認）- 出張予約の非会員のみ
+  const KYCStep = () => {
+    const [idType, setIdType] = useState<'license' | 'passport' | 'myNumber'>('license');
+    const [idNumber, setIdNumber] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // ファイルサイズチェック（5MB以下）
+      if (file.size > 5 * 1024 * 1024) {
+        alert('ファイルサイズは5MB以下にしてください');
+        return;
+      }
+
+      setUploading(true);
+      try {
+        // 本番環境ではR2にアップロード
+        // 今回は簡易実装としてBase64エンコード
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setUploadedFile(reader.result as string);
+          setUploading(false);
+        };
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('アップロードエラー:', error);
+        alert('ファイルのアップロードに失敗しました');
+        setUploading(false);
+      }
+    };
+
+    const handleSubmitKYC = async () => {
+      if (!uploadedFile) {
+        alert('本人確認書類をアップロードしてください');
+        return;
+      }
+
+      try {
+        // KYC情報をサーバーに送信
+        const response = await fetch('/api/auth/kyc', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+          body: JSON.stringify({
+            id_type: idType,
+            id_number: idNumber,
+            document_data: uploadedFile, // 本番環境ではR2のURLを送信
+          }),
+        });
+
+        if (response.ok) {
+          // KYC提出成功 → 確認画面へ
+          setStep(bookingType === 'MOBILE' ? 5 : 4);
+        } else {
+          alert('本人確認情報の送信に失敗しました');
+        }
+      } catch (error) {
+        console.error('KYC送信エラー:', error);
+        alert('エラーが発生しました');
+      }
+    };
+
+    const handleBack = () => {
+      // 会員登録画面へ戻る
+      setStep(bookingType === 'MOBILE' ? 4 : 3);
+    };
+
+    return (
+      <div className="space-y-4">
+        <button onClick={handleBack} className="text-teal-600 text-sm">← 戻る</button>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">本人確認（KYC）</h2>
+        
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+          <p className="text-sm text-yellow-800">
+            <strong>出張サービスのご利用には本人確認が必要です。</strong><br />
+            運転免許証、パスポート、マイナンバーカードのいずれかをアップロードしてください。
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg border space-y-4">
+          <div>
+            <label className="block text-sm font-semibold mb-2">本人確認書類の種類</label>
+            <select
+              value={idType}
+              onChange={(e) => setIdType(e.target.value as any)}
+              className="w-full px-4 py-2 border rounded-lg"
+            >
+              <option value="license">運転免許証</option>
+              <option value="passport">パスポート</option>
+              <option value="myNumber">マイナンバーカード</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">書類番号（任意）</label>
+            <input
+              type="text"
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value)}
+              placeholder="免許証番号など"
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              本人確認書類の画像 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+            {uploading && <p className="text-sm text-gray-500 mt-2">アップロード中...</p>}
+            {uploadedFile && (
+              <div className="mt-2">
+                <p className="text-sm text-green-600">✓ アップロード完了</p>
+                <img src={uploadedFile} alt="Uploaded document" className="mt-2 max-w-xs rounded-lg border" />
+              </div>
+            )}
+          </div>
+
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs text-gray-600">
+              ・ ファイル形式：JPEG, PNG<br />
+              ・ ファイルサイズ：5MB以下<br />
+              ・ 書類全体が鮮明に写っていることを確認してください
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSubmitKYC}
+          disabled={!uploadedFile}
+          className="w-full py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          提出して次へ
         </button>
       </div>
     );
@@ -1057,8 +1294,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   // 総ステップ数を動的に計算
   const getTotalSteps = () => {
     if (bookingType === 'MOBILE') {
-      // 出張予約: メニュー → 日時 → 住所 → [登録] → 確認 → 決済 → 完了
-      return isLoggedIn ? 6 : 7;
+      // 出張予約: メニュー → 日時 → 住所 → [登録] → [KYC] → 確認 → 決済 → 完了
+      return isLoggedIn ? 6 : 8;
     } else {
       // 店舗予約: メニュー → 日時 → [登録] → 確認 → 決済 → 完了
       return isLoggedIn ? 5 : 6;
@@ -1083,9 +1320,10 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         labels[2] = '日時選択';
         labels[3] = '住所入力';
         labels[4] = '会員登録';
-        labels[5] = '予約確認';
-        labels[6] = '決済';
-        labels[7] = '完了';
+        labels[5] = '本人確認（KYC）';
+        labels[6] = '予約確認';
+        labels[7] = '決済';
+        labels[8] = '完了';
       }
     } else {
       if (isLoggedIn) {
@@ -1179,18 +1417,19 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
             : (isLoggedIn ? <PaymentStepWrapper /> : <ConfirmStep />)
         )}
         {step === 5 && (
-          // 出張予約会員: 決済、出張予約非会員: 確認、店舗予約会員: 完了、店舗予約非会員: 決済
+          // 出張予約会員: 決済、出張予約非会員: KYC、店舗予約会員: 完了、店舗予約非会員: 決済
           bookingType === 'MOBILE'
-            ? (isLoggedIn ? <PaymentStepWrapper /> : <ConfirmStep />)
+            ? (isLoggedIn ? <PaymentStepWrapper /> : <KYCStep />)
             : (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)
         )}
         {step === 6 && (
-          // 出張予約会員: 完了、出張予約非会員: 決済、店舗予約非会員: 完了
+          // 出張予約会員: 完了、出張予約非会員: 確認、店舗予約非会員: 完了
           bookingType === 'MOBILE'
-            ? (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)
+            ? (isLoggedIn ? <CompleteStep /> : <ConfirmStep />)
             : <CompleteStep />
         )}
-        {step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <CompleteStep />}
+        {step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <PaymentStepWrapper />}
+        {step === 8 && bookingType === 'MOBILE' && !isLoggedIn && <CompleteStep />}
       </div>
     </div>
   );

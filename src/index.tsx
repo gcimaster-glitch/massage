@@ -227,6 +227,43 @@ app.get('/api/auth/me', async (c) => {
   }
 })
 
+// KYC（本人確認）情報の登録
+app.post('/api/auth/kyc', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  
+  try {
+    const token = authHeader.replace('Bearer ', '')
+    const payload = JSON.parse(atob(token))
+    
+    const { id_type, id_number, document_data } = await c.req.json()
+    
+    if (!document_data) {
+      return c.json({ error: 'Document data is required' }, 400)
+    }
+    
+    // 本番環境では、document_dataはR2のURLまたはBase64エンコードされた画像
+    // ここでは簡易実装として、kyc_statusを更新
+    
+    await c.env.DB.prepare(`
+      UPDATE users 
+      SET kyc_status = 'PENDING'
+      WHERE id = ?
+    `).bind(payload.userId).run()
+    
+    // TODO: 本番環境では、KYC書類をR2にアップロードし、審査キューに追加
+    // await c.env.R2.put(`kyc/${payload.userId}/${Date.now()}.jpg`, document_data)
+    
+    return c.json({ success: true, kyc_status: 'PENDING' })
+  } catch (e) {
+    console.error('KYC submission error:', e)
+    return c.json({ error: 'KYC submission failed' }, 500)
+  }
+})
+
 // ============================================
 // Booking Routes
 // ============================================
@@ -343,6 +380,31 @@ app.delete('/api/bookings/:id/cancel-payment', async (c) => {
     DELETE FROM bookings 
     WHERE id = ? AND status = 'PENDING_PAYMENT'
   `).bind(id).run()
+  
+  return c.json({ success: true })
+})
+
+// ユーザーによる予約キャンセル（確定後の予約をキャンセル）
+app.patch('/api/bookings/:id/cancel', async (c) => {
+  const id = c.req.param('id')
+  const { reason } = await c.req.json()
+  
+  // 予約をキャンセル状態に更新
+  await c.env.DB.prepare(`
+    UPDATE bookings 
+    SET status = 'CANCELLED', 
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND status IN ('PENDING', 'CONFIRMED')
+  `).bind(id).run()
+  
+  // キャンセル理由をメッセージとして記録（オプション）
+  if (reason) {
+    const msgId = `msg-${Date.now()}`
+    await c.env.DB.prepare(`
+      INSERT INTO messages (id, booking_id, sender_id, content, type)
+      VALUES (?, ?, 'system', ?, 'CANCELLATION')
+    `).bind(msgId, id, reason).run()
+  }
   
   return c.json({ success: true })
 })
