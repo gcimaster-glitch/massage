@@ -264,6 +264,129 @@ app.post('/api/auth/kyc', async (c) => {
   }
 })
 
+// KYC審査一覧取得（管理者用）
+app.get('/api/admin/kyc-applications', async (c) => {
+  try {
+    const { env } = c;
+    
+    if (!env.DB) {
+      return c.json({ applications: [] });
+    }
+    
+    // kyc_status = 'PENDING' のユーザーを取得
+    const result = await env.DB.prepare(`
+      SELECT id, email, name, phone, kyc_status, created_at
+      FROM users
+      WHERE kyc_status = 'PENDING'
+      ORDER BY created_at DESC
+    `).all();
+    
+    return c.json({ applications: result.results || [] });
+  } catch (e) {
+    console.error('KYC applications fetch error:', e);
+    return c.json({ error: 'Failed to fetch KYC applications' }, 500);
+  }
+});
+
+// KYC審査（承認/却下）
+app.patch('/api/admin/kyc/:userId', async (c) => {
+  try {
+    const { env } = c;
+    const userId = c.req.param('userId');
+    const { status, reason } = await c.req.json(); // status: 'VERIFIED' | 'REJECTED', reason: string
+    
+    if (!env.DB) {
+      return c.json({ error: 'Database not available' }, 500);
+    }
+    
+    if (!['VERIFIED', 'REJECTED'].includes(status)) {
+      return c.json({ error: 'Invalid status' }, 400);
+    }
+    
+    // kyc_statusを更新
+    await env.DB.prepare(`
+      UPDATE users 
+      SET kyc_status = ?
+      WHERE id = ?
+    `).bind(status, userId).run();
+    
+    // メール通知を送信
+    try {
+      const user = await env.DB.prepare(`
+        SELECT email, name FROM users WHERE id = ?
+      `).bind(userId).first();
+      
+      if (user && user.email) {
+        const isApproved = status === 'VERIFIED';
+        const emailHtml = isApproved ? `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #10b981;">✅ KYC審査が承認されました</h2>
+            <p>こんにちは、${user.name}さん</p>
+            <p>本人確認（KYC）の審査が完了し、承認されました。</p>
+            
+            <div style="background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+              <h3 style="margin-top: 0;">審査結果</h3>
+              <p><strong>ステータス:</strong> ✅ 承認</p>
+              <p>これで出張サービスのご予約が可能になりました。</p>
+            </div>
+            
+            <p>引き続きHOGUSYをご利用ください。</p>
+            
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+            <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+              このメールは自動送信されています。<br>
+              © 2024 HOGUSY. All rights reserved.
+            </p>
+          </div>
+        ` : `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #ef4444;">❌ KYC審査について</h2>
+            <p>こんにちは、${user.name}さん</p>
+            <p>本人確認（KYC）の審査結果をお知らせします。</p>
+            
+            <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444;">
+              <h3 style="margin-top: 0;">審査結果</h3>
+              <p><strong>ステータス:</strong> ❌ 却下</p>
+              ${reason ? `<p><strong>理由:</strong> ${reason}</p>` : ''}
+            </div>
+            
+            <p>再度本人確認書類を提出いただく場合は、マイページからお手続きください。</p>
+            <p style="color: #6b7280; font-size: 14px;">ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+            
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+            <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+              このメールは自動送信されています。<br>
+              © 2024 HOGUSY. All rights reserved.
+            </p>
+          </div>
+        `;
+        
+        // メール送信API呼び出し（非同期・エラーは無視）
+        fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'HOGUSY <noreply@hogusy.com>',
+            to: user.email,
+            subject: isApproved ? '【HOGUSY】KYC審査が承認されました' : '【HOGUSY】KYC審査について',
+            html: emailHtml,
+          }),
+        }).catch(err => console.error('Email send error:', err));
+      }
+    } catch (e) {
+      console.error('Failed to send KYC result email:', e);
+    }
+    
+    return c.json({ success: true, status });
+  } catch (e) {
+    console.error('KYC approval error:', e);
+    return c.json({ error: 'Failed to update KYC status' }, 500);
+  }
+});
+
 // ============================================
 // Booking Routes
 // ============================================
@@ -357,11 +480,67 @@ app.post('/api/bookings/:id/confirm-payment', async (c) => {
   const id = c.req.param('id')
   const { paymentIntentId } = await c.req.json()
   
+  // 予約ステータスを更新
   await c.env.DB.prepare(`
     UPDATE bookings 
     SET status = 'CONFIRMED', payment_status = 'COMPLETED'
     WHERE id = ? AND status = 'PENDING_PAYMENT'
   `).bind(id).run()
+  
+  // 予約情報を取得してメール送信
+  try {
+    const booking = await c.env.DB.prepare(`
+      SELECT b.*, u.email as user_email, u.name as user_name
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.id
+      WHERE b.id = ?
+    `).bind(id).first()
+    
+    if (booking && booking.user_email) {
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #14b8a6;">🎉 予約が確定しました</h2>
+          <p>こんにちは、${booking.user_name}さん</p>
+          <p>ご予約ありがとうございます。予約が確定しました。</p>
+          
+          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0;">予約詳細</h3>
+            <p><strong>予約ID:</strong> ${booking.id}</p>
+            <p><strong>サービス:</strong> ${booking.service_name}</p>
+            <p><strong>日時:</strong> ${new Date(booking.scheduled_at).toLocaleString('ja-JP')}</p>
+            <p><strong>場所:</strong> ${booking.location}</p>
+            <p><strong>金額:</strong> ¥${booking.price.toLocaleString()}</p>
+          </div>
+          
+          <p>当日はご予約時間の5分前までに現地へお越しください。</p>
+          <p style="color: #6b7280; font-size: 14px;">ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+          
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+            このメールは自動送信されています。<br>
+            © 2024 HOGUSY. All rights reserved.
+          </p>
+        </div>
+      `
+      
+      // メール送信API呼び出し（非同期・エラーは無視）
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'HOGUSY <noreply@hogusy.com>',
+          to: booking.user_email,
+          subject: '【HOGUSY】予約が確定しました',
+          html: emailHtml,
+        }),
+      }).catch(err => console.error('Email send error:', err))
+    }
+  } catch (e) {
+    console.error('Failed to send confirmation email:', e)
+  }
   
   return c.json({ success: true })
 })
@@ -404,6 +583,60 @@ app.patch('/api/bookings/:id/cancel', async (c) => {
       INSERT INTO messages (id, booking_id, sender_id, content, type)
       VALUES (?, ?, 'system', ?, 'CANCELLATION')
     `).bind(msgId, id, reason).run()
+  }
+  
+  // キャンセル通知メールを送信
+  try {
+    const booking = await c.env.DB.prepare(`
+      SELECT b.*, u.email as user_email, u.name as user_name
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.id
+      WHERE b.id = ?
+    `).bind(id).first()
+    
+    if (booking && booking.user_email) {
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #ef4444;">予約がキャンセルされました</h2>
+          <p>こんにちは、${booking.user_name}さん</p>
+          <p>以下の予約がキャンセルされました。</p>
+          
+          <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444;">
+            <h3 style="margin-top: 0;">キャンセルされた予約</h3>
+            <p><strong>予約ID:</strong> ${booking.id}</p>
+            <p><strong>サービス:</strong> ${booking.service_name}</p>
+            <p><strong>日時:</strong> ${new Date(booking.scheduled_at).toLocaleString('ja-JP')}</p>
+            ${reason ? `<p><strong>キャンセル理由:</strong> ${reason}</p>` : ''}
+          </div>
+          
+          <p>またのご利用をお待ちしております。</p>
+          <p style="color: #6b7280; font-size: 14px;">ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+          
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+            このメールは自動送信されています。<br>
+            © 2024 HOGUSY. All rights reserved.
+          </p>
+        </div>
+      `
+      
+      // メール送信API呼び出し（非同期・エラーは無視）
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'HOGUSY <noreply@hogusy.com>',
+          to: booking.user_email,
+          subject: '【HOGUSY】予約がキャンセルされました',
+          html: emailHtml,
+        }),
+      }).catch(err => console.error('Email send error:', err))
+    }
+  } catch (e) {
+    console.error('Failed to send cancellation email:', e)
   }
   
   return c.json({ success: true })
@@ -472,6 +705,69 @@ app.post('/api/payments/create-session', async (c) => {
 app.get('/api/payments/connect-onboarding', async (c) => {
   // TODO: Stripe Connect アカウント作成とオンボーディングURL生成
   return c.json({ url: 'https://connect.stripe.com/setup/...' })
+})
+
+// ユーザーの支払い履歴取得
+app.get('/api/user/payments', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  
+  try {
+    const token = authHeader.replace('Bearer ', '')
+    const payload = JSON.parse(atob(token))
+    const userId = payload.userId
+    
+    if (!c.env.DB) {
+      // モックデータ（開発環境用）
+      return c.json({
+        payments: [
+          {
+            id: 'pay-1',
+            booking_id: 'b-101',
+            amount: 8000,
+            status: 'COMPLETED',
+            payment_method: 'カード決済',
+            service_name: '整体コース（60分）',
+            scheduled_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          },
+        ],
+      })
+    }
+    
+    // 予約とその支払い情報を取得
+    const result = await c.env.DB.prepare(`
+      SELECT 
+        b.id as booking_id,
+        b.service_name,
+        b.price as amount,
+        b.payment_status as status,
+        b.scheduled_at,
+        b.created_at
+      FROM bookings b
+      WHERE b.user_id = ? AND b.payment_status IS NOT NULL
+      ORDER BY b.created_at DESC
+    `).bind(userId).all()
+    
+    const payments = (result.results || []).map((row: any) => ({
+      id: `pay-${row.booking_id}`,
+      booking_id: row.booking_id,
+      amount: row.amount,
+      status: row.status === 'COMPLETED' ? 'COMPLETED' : row.status === 'PENDING' ? 'PENDING' : 'FAILED',
+      payment_method: 'カード決済',
+      service_name: row.service_name,
+      scheduled_at: row.scheduled_at,
+      created_at: row.created_at,
+    }))
+    
+    return c.json({ payments })
+  } catch (e) {
+    console.error('Payment history fetch error:', e)
+    return c.json({ error: 'Failed to fetch payment history' }, 500)
+  }
 })
 
 // ============================================
