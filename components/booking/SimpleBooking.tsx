@@ -739,14 +739,18 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
       }
 
       try {
+        console.log('📤 会員登録APIを呼び出します...');
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password, name, role: 'USER' }),
         });
 
+        console.log('📥 APIレスポンス:', response.status, response.statusText);
+
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ 会員登録成功！');
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
           
@@ -759,9 +763,17 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           setStep(bookingType === 'MOBILE' ? 6 : 5);
         } else {
           const error = await response.json();
-          setErrorMessage(error.error || '❌ 会員登録に失敗しました。入力内容をご確認ください。');
+          console.error('❌ 会員登録エラー:', error);
+          
+          // 409エラー（メールアドレス重複）の特別処理
+          if (response.status === 409) {
+            setErrorMessage('📧 このメールアドレスは既に登録されています。ログインしてください。');
+          } else {
+            setErrorMessage(error.error || '❌ 会員登録に失敗しました。入力内容をご確認ください。');
+          }
         }
       } catch (error) {
+        console.error('🌐 ネットワークエラー:', error);
         setErrorMessage('🌐 ネットワークエラーが発生しました。インターネット接続を確認してください。');
       }
     };
@@ -815,6 +827,29 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         <h2 className="text-xl font-bold text-gray-900 mb-4">
           {showLogin ? 'ログイン' : '会員登録'}
         </h2>
+        
+        {/* エラーメッセージ表示 */}
+        {errorMessage && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-bold text-red-800">{errorMessage}</p>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage('')}
+                  className="mt-2 text-xs text-red-600 underline hover:text-red-800"
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="bg-white p-4 rounded-lg border space-y-3">
           {!showLogin && (
