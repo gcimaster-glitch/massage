@@ -102,15 +102,22 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   // =============================================
   
   useEffect(() => {
+    console.log('🔍 SimpleBookingV2: useEffect for user info triggered');
+    
     const fetchUserInfo = async () => {
+      console.log('🔍 Checking localStorage for auth_token...');
       const token = localStorage.getItem('auth_token');
+      
       if (!token) {
-        console.log('❌ No auth token found - continuing as guest');
+        console.log('❌ No auth token found in localStorage - continuing as guest');
+        console.log('📦 localStorage contents:', Object.keys(localStorage));
         return;
       }
       
+      console.log('✅ Auth token found:', token.substring(0, 20) + '...');
+      
       try {
-        console.log('✅ Auth token found - fetching user info');
+        console.log('📡 Fetching user info from /api/auth/me...');
         const response = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -118,25 +125,43 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
           }
         });
         
+        console.log('📡 Response status:', response.status, response.statusText);
+        
         if (!response.ok) {
-          console.warn('⚠️ Failed to fetch user info - continuing as guest', response.status);
+          const errorText = await response.text();
+          console.warn('⚠️ Failed to fetch user info:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText
+          });
           return;
         }
         
         const data = await response.json();
-        console.log('✅ User info fetched:', data);
+        console.log('✅ User info response:', data);
         
         // Auto-fill customer info from the 'user' object in response
         const userData = data.user || data;
-        setBookingData(prev => ({
-          ...prev,
+        console.log('👤 Extracted user data:', userData);
+        
+        const newBookingData = {
           customerName: userData.name || '',
           customerEmail: userData.email || '',
           customerPhone: userData.phone || ''
+        };
+        
+        console.log('📝 Setting booking data with:', newBookingData);
+        
+        setBookingData(prev => ({
+          ...prev,
+          ...newBookingData
         }));
+        
+        console.log('✅ Booking data updated successfully');
         
       } catch (error) {
         console.error('❌ Error fetching user info:', error);
+        console.error('Error details:', error instanceof Error ? error.message : error);
         // Continue as guest on error
       }
     };
@@ -866,6 +891,15 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   const renderStep3CustomerInfo = () => {
     const token = localStorage.getItem('auth_token');
     const isLoggedIn = !!token && bookingData.customerName && bookingData.customerEmail;
+    
+    console.log('🎨 Rendering Step 3 - Customer Info');
+    console.log('🔑 Token exists:', !!token);
+    console.log('📋 Booking data:', {
+      customerName: bookingData.customerName,
+      customerEmail: bookingData.customerEmail,
+      customerPhone: bookingData.customerPhone
+    });
+    console.log('👤 Is logged in:', isLoggedIn);
     
     return (
       <div className="space-y-6">
