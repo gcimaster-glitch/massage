@@ -75,6 +75,59 @@ const BookingCompleteV2: React.FC = () => {
                 </span>
               </div>
               
+              {/* セラピスト情報 */}
+              {booking.therapist_name && (
+                <div className="py-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    {booking.therapist_avatar && (
+                      <img 
+                        src={booking.therapist_avatar} 
+                        alt={booking.therapist_name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    )}
+                    <div>
+                      <span className="text-gray-600 font-medium text-sm block">担当セラピスト</span>
+                      <span className="font-bold text-gray-800 text-lg">{booking.therapist_name}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* 施術場所情報 */}
+              {booking.type === 'ONSITE' && booking.site_name && (
+                <div className="py-3 border-b border-gray-100">
+                  <span className="text-gray-600 font-medium text-sm block mb-2">施術場所</span>
+                  <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-teal-600 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-gray-800">{booking.site_name}</p>
+                      {booking.site_address && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {booking.site_prefecture}{booking.site_city}{booking.site_address}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* 施術タイプ */}
+              {booking.type && (
+                <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                  <span className="text-gray-600 font-medium">施術タイプ</span>
+                  <span className="font-semibold text-gray-800">
+                    {booking.type === 'ONSITE' ? '店舗施術' : 
+                     booking.type === 'MOBILE' ? '出張施術' : 
+                     booking.type === 'HOTEL' ? 'ホテル施術' : 
+                     booking.type === 'HOME' ? '自宅施術' : 
+                     booking.type === 'OFFICE' ? 'オフィス施術' : booking.type}
+                  </span>
+                </div>
+              )}
+              
               <div className="flex justify-between items-center py-3 border-b border-gray-100">
                 <span className="text-gray-600 font-medium">サービス</span>
                 <span className="font-semibold text-gray-800">{booking.service_name}</span>

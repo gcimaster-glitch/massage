@@ -138,12 +138,28 @@ app.post('/guest', async (c) => {
 // ============================================
 // ゲスト予約詳細取得（認証不要）
 // ============================================
+// ゲスト予約詳細取得（認証不要）
+// ============================================
 app.get('/guest/:bookingId', async (c) => {
   const { DB } = c.env;
   const bookingId = c.req.param('bookingId');
   
   try {
-    const booking = await DB.prepare('SELECT * FROM bookings WHERE id = ?').bind(bookingId).first();
+    // 予約情報をセラピスト情報と一緒に取得
+    const booking = await DB.prepare(`
+      SELECT 
+        b.*,
+        u.name as therapist_name,
+        u.avatar_url as therapist_avatar,
+        s.name as site_name,
+        s.address as site_address,
+        s.prefecture as site_prefecture,
+        s.city as site_city
+      FROM bookings b
+      LEFT JOIN users u ON b.therapist_id = u.id
+      LEFT JOIN sites s ON b.site_id = s.id
+      WHERE b.id = ?
+    `).bind(bookingId).first();
     
     if (!booking) {
       return c.json({ error: '予約が見つかりません' }, 404);
