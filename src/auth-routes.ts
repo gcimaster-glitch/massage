@@ -606,7 +606,14 @@ authApp.get('/me', async (c) => {
     }
 
     const token = authHeader.substring(7)
-    const decoded = verifyJWT(token, c.env.JWT_SECRET)
+    
+    let decoded
+    try {
+      decoded = verifyJWT(token, c.env.JWT_SECRET)
+    } catch (jwtError) {
+      console.error('JWT verification failed:', jwtError)
+      return c.json({ error: '無効なトークンです' }, 401)
+    }
     
     if (!decoded) {
       return c.json({ error: '無効なトークンです' }, 401)
