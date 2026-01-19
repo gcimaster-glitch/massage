@@ -151,6 +151,8 @@ app.get('/guest/:bookingId', async (c) => {
   const bookingId = c.req.param('bookingId');
   
   try {
+    console.log('🔍 Fetching guest booking:', bookingId);
+    
     // 予約情報をセラピスト情報と一緒に取得
     const booking = await DB.prepare(`
       SELECT 
@@ -167,6 +169,8 @@ app.get('/guest/:bookingId', async (c) => {
       WHERE b.id = ?
     `).bind(bookingId).first();
     
+    console.log('📦 Booking found:', booking ? 'YES' : 'NO');
+    
     if (!booking) {
       return c.json({ error: '予約が見つかりません' }, 404);
     }
@@ -174,7 +178,12 @@ app.get('/guest/:bookingId', async (c) => {
     return c.json({ success: true, booking });
   } catch (error: any) {
     console.error('❌ Error fetching guest booking:', error);
-    return c.json({ error: '予約情報の取得に失敗しました' }, 500);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    return c.json({ 
+      error: '予約情報の取得に失敗しました',
+      details: error.message 
+    }, 500);
   }
 });
 
