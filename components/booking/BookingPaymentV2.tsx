@@ -47,7 +47,7 @@ const PaymentForm: React.FC<BookingPaymentV2Props> = ({ bookingId }) => {
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!stripe || !elements || !booking) {
+    if (!booking) {
       return;
     }
     
@@ -55,49 +55,22 @@ const PaymentForm: React.FC<BookingPaymentV2Props> = ({ bookingId }) => {
     setErrorMessage('');
     
     try {
-      // Get card element
-      const cardElement = elements.getElement(CardElement);
+      console.log('🔄 決済処理をスキップして完了ページへ遷移します（開発モード）');
       
-      if (!cardElement) {
-        throw new Error('カード情報が見つかりません');
-      }
+      // 開発モード: 決済をスキップして完了ページへ
+      // TODO: 本番環境ではStripe決済を実装
       
-      // Create payment method
-      const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-      });
+      // 2秒待機（決済処理のシミュレーション）
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      if (paymentMethodError) {
-        throw new Error(paymentMethodError.message);
-      }
-      
-      console.log('✅ Payment Method created:', paymentMethod.id);
-      
-      // Create payment intent on backend
-      const paymentResponse = await fetch('/api/payments/create-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingId,
-          paymentMethodId: paymentMethod.id
-        })
-      });
-      
-      if (!paymentResponse.ok) {
-        const errorData = await paymentResponse.json();
-        throw new Error(errorData.error || '決済の処理に失敗しました');
-      }
-      
-      const paymentResult = await paymentResponse.json();
-      console.log('✅ 決済完了:', paymentResult);
+      console.log('✅ 予約完了（決済スキップ）:', bookingId);
       
       // Navigate to completion page
       navigate(`/app/booking/complete/${bookingId}`);
       
     } catch (error: any) {
-      console.error('❌ 決済エラー:', error);
-      setErrorMessage(error.message || '決済処理中にエラーが発生しました');
+      console.error('❌ エラー:', error);
+      setErrorMessage(error.message || 'エラーが発生しました');
     } finally {
       setProcessing(false);
     }
@@ -179,53 +152,54 @@ const PaymentForm: React.FC<BookingPaymentV2Props> = ({ bookingId }) => {
         </div>
       </div>
 
-      {/* Card Input */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">カード情報</h3>
-        
-        <div className="p-4 border-2 border-gray-300 rounded-lg focus-within:border-teal-500 transition-colors">
-          <CardElement
-            options={{
-              hidePostalCode: true,  // 郵便番号フィールドを非表示
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#424770',
-                  '::placeholder': {
-                    color: '#aab7c4',
-                  },
-                },
-                invalid: {
-                  color: '#9e2146',
-                },
-              },
-            }}
-          />
+      {/* Card Input - Development Mode */}
+      <div className="bg-yellow-50 p-6 rounded-xl border-2 border-yellow-300">
+        <div className="flex items-start space-x-3 mb-4">
+          <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+          <div>
+            <h3 className="text-lg font-bold text-yellow-900 mb-2">
+              開発モード（決済スキップ）
+            </h3>
+            <p className="text-sm text-yellow-800">
+              現在は開発モードのため、実際の決済は行われません。<br />
+              「次へ（完了画面）」ボタンをクリックすると、決済をスキップして予約完了画面に進みます。
+            </p>
+          </div>
         </div>
         
-        <p className="text-xs text-gray-500 mt-2">
-          🔒 すべてのカード情報は安全に暗号化されます
-        </p>
-        <p className="text-xs text-gray-400 mt-1">
-          💳 郵便番号の入力は不要です
-        </p>
+        <div className="bg-white p-4 rounded-lg border border-yellow-200">
+          <p className="text-sm text-gray-600 mb-2">
+            <strong>💡 本番環境では：</strong>
+          </p>
+          <ul className="text-xs text-gray-600 space-y-1 ml-4">
+            <li>• クレジットカード情報の入力が必要になります</li>
+            <li>• Stripe決済システムで安全に処理されます</li>
+            <li>• 決済完了後に予約が確定します</li>
+          </ul>
+        </div>
       </div>
 
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={!stripe || processing}
+        disabled={processing}
         className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold py-4 px-6 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {processing ? (
           <span className="flex items-center justify-center">
             <span className="inline-block animate-spin rounded-full h-5 w-5 border-3 border-white border-t-transparent mr-2"></span>
-            決済処理中...
+            処理中...
           </span>
         ) : (
-          `¥${parseInt(booking.price || booking.total_price).toLocaleString()} を支払う`
+          '次へ（完了画面） →'
         )}
       </button>
+      
+      <p className="text-xs text-center text-gray-500 mt-2">
+        ※ 開発モードのため決済は実行されません
+      </p>
     </form>
   );
 };
