@@ -99,24 +99,19 @@ const PaymentHistory: React.FC = () => {
 
   const handleDownloadReceipt = async (paymentId: string) => {
     try {
-      // payment IDから booking IDを抽出（pay-{bookingId}）
-      const bookingId = paymentId.replace('pay-', '');
       const token = localStorage.getItem('auth_token');
       
-      // 領収書HTMLを取得
-      const res = await fetch(`/api/bookings/${bookingId}/receipt`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      // 領収書HTMLを新しいウィンドウで開く
+      const receiptWindow = window.open(`/api/receipts/${paymentId}`, '_blank');
       
-      if (!res.ok) {
-        throw new Error('Failed to fetch receipt');
+      if (!receiptWindow) {
+        alert('ポップアップがブロックされました。ブラウザの設定を確認してください。');
       }
-      
-      const html = await res.text();
-      
-      // 新しいウィンドウで領収書を開く
+    } catch (error) {
+      console.error('領収書ダウンロードエラー:', error);
+      alert('領収書のダウンロードに失敗しました。');
+    }
+  };
       const receiptWindow = window.open('', '_blank');
       if (receiptWindow) {
         receiptWindow.document.write(html);

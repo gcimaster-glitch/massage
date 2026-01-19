@@ -498,29 +498,101 @@ app.post('/api/bookings/:id/confirm-payment', async (c) => {
     
     if (booking && booking.user_email) {
       const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #14b8a6;">🎉 予約が確定しました</h2>
-          <p>こんにちは、${booking.user_name}さん</p>
-          <p>ご予約ありがとうございます。予約が確定しました。</p>
-          
-          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0;">予約詳細</h3>
-            <p><strong>予約ID:</strong> ${booking.id}</p>
-            <p><strong>サービス:</strong> ${booking.service_name}</p>
-            <p><strong>日時:</strong> ${new Date(booking.scheduled_at).toLocaleString('ja-JP')}</p>
-            <p><strong>場所:</strong> ${booking.location}</p>
-            <p><strong>金額:</strong> ¥${booking.price.toLocaleString()}</p>
-          </div>
-          
-          <p>当日はご予約時間の5分前までに現地へお越しください。</p>
-          <p style="color: #6b7280; font-size: 14px;">ご不明な点がございましたら、お気軽にお問い合わせください。</p>
-          
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            このメールは自動送信されています。<br>
-            © 2024 HOGUSY. All rights reserved.
-          </p>
-        </div>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>予約確定 - HOGUSY</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0fdfa;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdfa; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); padding: 40px 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">🌿 HOGUSY</h1>
+                            <p style="margin: 10px 0 0 0; color: #ccfbf1; font-size: 14px;">Premium Wellness & Spa Service</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Success Message -->
+                    <tr>
+                        <td style="padding: 40px 30px 20px 30px; text-align: center;">
+                            <div style="display: inline-block; background-color: #d1fae5; border-radius: 50%; width: 80px; height: 80px; line-height: 80px; margin-bottom: 20px;">
+                                <span style="font-size: 40px;">✅</span>
+                            </div>
+                            <h2 style="margin: 0 0 10px 0; color: #0d9488; font-size: 24px; font-weight: bold;">ご予約が確定しました！</h2>
+                            <p style="margin: 0; color: #6b7280; font-size: 16px;">こんにちは、${booking.user_name}さん</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Booking Details -->
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <div style="background-color: #f0fdfa; border-left: 4px solid #0d9488; padding: 20px; border-radius: 8px;">
+                                <h3 style="margin: 0 0 15px 0; color: #0f766e; font-size: 18px; font-weight: bold;">📋 予約詳細</h3>
+                                <table width="100%" cellpadding="8" cellspacing="0">
+                                    <tr>
+                                        <td style="color: #6b7280; font-size: 14px; font-weight: bold;">予約ID:</td>
+                                        <td style="color: #111827; font-size: 14px; text-align: right;">${booking.id}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #6b7280; font-size: 14px; font-weight: bold;">サービス:</td>
+                                        <td style="color: #111827; font-size: 14px; text-align: right;">${booking.service_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #6b7280; font-size: 14px; font-weight: bold;">日時:</td>
+                                        <td style="color: #111827; font-size: 14px; text-align: right;">${new Date(booking.scheduled_at).toLocaleString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #6b7280; font-size: 14px; font-weight: bold;">場所:</td>
+                                        <td style="color: #111827; font-size: 14px; text-align: right;">${booking.location}</td>
+                                    </tr>
+                                    <tr style="border-top: 2px solid #ccfbf1;">
+                                        <td style="color: #0d9488; font-size: 16px; font-weight: bold; padding-top: 15px;">お支払い金額:</td>
+                                        <td style="color: #0d9488; font-size: 20px; font-weight: bold; text-align: right; padding-top: 15px;">¥${booking.price.toLocaleString()}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Important Notice -->
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <div style="background-color: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 15px;">
+                                <p style="margin: 0; color: #92400e; font-size: 14px;">
+                                    <strong>📌 当日のご案内</strong><br>
+                                    ご予約時間の<strong>5分前</strong>までに現地へお越しください。
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">ご不明な点がございましたら、お気軽にお問い合わせください</p>
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                                📧 support@hogusy.com | 📞 03-1234-5678
+                            </p>
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                                <p style="margin: 0; color: #9ca3af; font-size: 11px;">
+                                    このメールは自動送信されています。<br>
+                                    © 2024 HOGUSY株式会社. All rights reserved.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
       `
       
       // メール送信API呼び出し（非同期・エラーは無視）
@@ -705,6 +777,135 @@ app.post('/api/payments/create-session', async (c) => {
 app.get('/api/payments/connect-onboarding', async (c) => {
   // TODO: Stripe Connect アカウント作成とオンボーディングURL生成
   return c.json({ url: 'https://connect.stripe.com/setup/...' })
+})
+
+// 領収書HTML生成API
+app.get('/api/receipts/:paymentId', async (c) => {
+  const paymentId = c.req.param('paymentId')
+  const authHeader = c.req.header('Authorization')
+  
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  
+  try {
+    // 支払い情報を取得（実際のDBから取得する場合）
+    // const payment = await c.env.DB.prepare(...).first()
+    
+    // モックデータ（開発用）
+    const payment = {
+      id: paymentId,
+      amount: 8000,
+      payment_method: 'card',
+      service_name: '60分リラクゼーションマッサージ + アロマオイル',
+      booking_id: 'B-2024-001',
+      scheduled_at: '2024-01-20 14:00',
+      created_at: new Date().toISOString(),
+      customer_name: '山田 太郎',
+      therapist_name: '田中 有紀'
+    }
+    
+    // 領収書HTMLテンプレート
+    const receiptHTML = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>領収書 - HOGUSY</title>
+    <style>
+        @page { size: A4; margin: 20mm; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+        .header { text-align: center; border-bottom: 3px solid #0d9488; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #0d9488; font-size: 32px; margin: 0; }
+        .header p { color: #6b7280; font-size: 14px; margin: 5px 0; }
+        .receipt-info { background: #f0fdfa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .receipt-info table { width: 100%; border-collapse: collapse; }
+        .receipt-info td { padding: 8px 0; }
+        .receipt-info td:first-child { font-weight: bold; color: #0d9488; width: 150px; }
+        .amount-section { background: #0d9488; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0; }
+        .amount-section .label { font-size: 14px; margin-bottom: 10px; }
+        .amount-section .amount { font-size: 48px; font-weight: bold; }
+        .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .details-table th, .details-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        .details-table th { background: #f9fafb; color: #374151; font-weight: bold; }
+        .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 2px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+        @media print { body { padding: 0; } .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌿 HOGUSY</h1>
+        <p>Premium Wellness & Spa Service</p>
+        <p style="margin-top: 20px; font-size: 20px; font-weight: bold; color: #333;">領収書</p>
+    </div>
+    
+    <div class="receipt-info">
+        <table>
+            <tr>
+                <td>領収書番号:</td>
+                <td>${payment.id}</td>
+            </tr>
+            <tr>
+                <td>発行日:</td>
+                <td>${new Date(payment.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+            </tr>
+            <tr>
+                <td>お客様名:</td>
+                <td>${payment.customer_name}</td>
+            </tr>
+            <tr>
+                <td>予約番号:</td>
+                <td>${payment.booking_id}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="amount-section">
+        <div class="label">お支払い金額（税込）</div>
+        <div class="amount">¥${payment.amount.toLocaleString()}</div>
+    </div>
+    
+    <table class="details-table">
+        <thead>
+            <tr>
+                <th>サービス内容</th>
+                <th>担当セラピスト</th>
+                <th>日時</th>
+                <th style="text-align: right;">金額</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>${payment.service_name}</td>
+                <td>${payment.therapist_name}</td>
+                <td>${payment.scheduled_at}</td>
+                <td style="text-align: right;">¥${payment.amount.toLocaleString()}</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p><strong>HOGUSY株式会社</strong></p>
+        <p>〒150-0001 東京都渋谷区神宮前1-1-1</p>
+        <p>TEL: 03-1234-5678 | Email: support@hogusy.com</p>
+        <p style="margin-top: 15px;">この領収書は電子領収書として発行されています。</p>
+    </div>
+    
+    <div class="no-print" style="text-align: center; margin-top: 30px;">
+        <button onclick="window.print()" style="background: #0d9488; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer;">
+            印刷する
+        </button>
+    </div>
+</body>
+</html>
+    `
+    
+    return c.html(receiptHTML)
+  } catch (error) {
+    console.error('Receipt generation error:', error)
+    return c.json({ error: 'Failed to generate receipt' }, 500)
+  }
 })
 
 // ユーザーの支払い履歴取得

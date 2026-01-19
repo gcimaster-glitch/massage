@@ -214,8 +214,47 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-900 mb-4">メニュー選択</h2>
-        <div className="bg-teal-50 p-3 rounded-lg mb-4">
-          <p className="text-sm font-medium text-teal-900">担当: {therapist.name}</p>
+        
+        {/* セラピスト情報カード */}
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-4 mb-4">
+          <div className="flex items-center space-x-4">
+            {/* セラピストアバター */}
+            <div className="flex-shrink-0">
+              {therapist.avatar_url ? (
+                <img
+                  src={therapist.avatar_url}
+                  alt={therapist.name}
+                  className="w-16 h-16 rounded-full object-cover border-2 border-teal-400 shadow-md"
+                  onError={(e) => {
+                    // 画像読み込みエラー時はデフォルトアイコンを表示
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div className={`w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center ${therapist.avatar_url ? 'hidden' : ''}`}>
+                <i className="fas fa-user text-white text-2xl"></i>
+              </div>
+            </div>
+            
+            {/* セラピスト情報 */}
+            <div className="flex-1">
+              <p className="text-xs text-teal-600 font-semibold uppercase tracking-wider mb-1">担当セラピスト</p>
+              <p className="text-lg font-bold text-teal-900">{therapist.name}</p>
+              <p className="text-xs text-teal-700 mt-1">
+                <i className="fas fa-check-circle text-teal-500 mr-1"></i>
+                プロフェッショナル
+              </p>
+            </div>
+            
+            {/* ステータスバッジ */}
+            <div className="flex-shrink-0">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-teal-600 text-white">
+                <i className="fas fa-star text-yellow-300 mr-1"></i>
+                予約可能
+              </span>
+            </div>
+          </div>
         </div>
         
         {/* ログイン案内 */}
