@@ -160,9 +160,7 @@ app.get('/guest/:bookingId', async (c) => {
         u.name as therapist_name,
         u.avatar_url as therapist_avatar,
         s.name as site_name,
-        s.address as site_address,
-        s.prefecture as site_prefecture,
-        s.city as site_city
+        s.address as site_address
       FROM bookings b
       LEFT JOIN users u ON b.therapist_id = u.id
       LEFT JOIN sites s ON b.site_id = s.id

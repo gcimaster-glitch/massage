@@ -106,7 +106,7 @@ const BookingCompleteV2: React.FC = () => {
                       <p className="font-semibold text-gray-800">{booking.site_name}</p>
                       {booking.site_address && (
                         <p className="text-sm text-gray-600 mt-1">
-                          {booking.site_prefecture}{booking.site_city}{booking.site_address}
+                          {booking.site_address}
                         </p>
                       )}
                     </div>
