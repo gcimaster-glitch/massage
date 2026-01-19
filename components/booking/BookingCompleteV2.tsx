@@ -76,11 +76,6 @@ const BookingCompleteV2: React.FC = () => {
               </div>
               
               <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                <span className="text-gray-600 font-medium">担当セラピスト</span>
-                <span className="font-semibold text-gray-800">{booking.therapist_name}</span>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-gray-100">
                 <span className="text-gray-600 font-medium">サービス</span>
                 <span className="font-semibold text-gray-800">{booking.service_name}</span>
               </div>
@@ -88,7 +83,7 @@ const BookingCompleteV2: React.FC = () => {
               <div className="flex justify-between items-center py-3 border-b border-gray-100">
                 <span className="text-gray-600 font-medium">日時</span>
                 <span className="font-semibold text-gray-800">
-                  {new Date(booking.scheduled_at).toLocaleString('ja-JP', {
+                  {new Date(booking.scheduled_start || booking.scheduled_at).toLocaleString('ja-JP', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',

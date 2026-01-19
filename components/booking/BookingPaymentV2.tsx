@@ -161,7 +161,7 @@ const PaymentForm: React.FC<BookingPaymentV2Props> = ({ bookingId }) => {
           <div className="flex justify-between pb-2 border-b">
             <span className="text-gray-600">日時</span>
             <span className="font-semibold">
-              {new Date(booking.scheduled_at).toLocaleString('ja-JP')}
+              {new Date(booking.scheduled_start || booking.scheduled_at).toLocaleString('ja-JP')}
             </span>
           </div>
           
@@ -186,6 +186,7 @@ const PaymentForm: React.FC<BookingPaymentV2Props> = ({ bookingId }) => {
         <div className="p-4 border-2 border-gray-300 rounded-lg focus-within:border-teal-500 transition-colors">
           <CardElement
             options={{
+              hidePostalCode: true,  // 郵便番号フィールドを非表示
               style: {
                 base: {
                   fontSize: '16px',
@@ -204,6 +205,9 @@ const PaymentForm: React.FC<BookingPaymentV2Props> = ({ bookingId }) => {
         
         <p className="text-xs text-gray-500 mt-2">
           🔒 すべてのカード情報は安全に暗号化されます
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          💳 郵便番号の入力は不要です
         </p>
       </div>
 
