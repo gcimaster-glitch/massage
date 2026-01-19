@@ -800,9 +800,22 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ ログイン成功！トークン:', data.token ? '取得済み' : '取得失敗');
+          console.log('✅ ログイン成功！レスポンス:', data);
+          console.log('🔑 トークン:', data.token);
+          console.log('📧 Email:', data.email);
+          
+          if (!data.token) {
+            console.error('❌ トークンが返されていません！');
+            setErrorMessage('ログインに成功しましたが、認証情報の取得に失敗しました。');
+            return;
+          }
+          
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
+          console.log('💾 LocalStorageに保存:', {
+            auth_token: localStorage.getItem('auth_token'),
+            user_email: localStorage.getItem('user_email')
+          });
           
           setErrorMessage(''); // エラーをクリア
           
@@ -1157,11 +1170,18 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
         const scheduledAt = `${bookingData.date}T${bookingData.time}:00`;
         
+        const authToken = localStorage.getItem('auth_token');
+        console.log('🔐 予約作成時の認証トークン:', authToken ? '存在する（長さ: ' + authToken.length + '）' : '存在しない');
+        
+        if (!authToken) {
+          throw new Error('認証トークンが見つかりません。再度ログインしてください。');
+        }
+        
         const bookingResponse = await fetch('/api/bookings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+            'Authorization': `Bearer ${authToken}`,
           },
           body: JSON.stringify({
             therapist_id: bookingData.therapist.id,
@@ -1177,11 +1197,16 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           }),
         });
 
+        console.log('📤 予約作成APIレスポンス:', bookingResponse.status, bookingResponse.statusText);
+
         if (!bookingResponse.ok) {
+          const errorData = await bookingResponse.json().catch(() => ({}));
+          console.error('❌ 予約作成失敗:', errorData);
           throw new Error('予約の作成に失敗しました');
         }
 
         const { id: bookingId } = await bookingResponse.json();
+        console.log('✅ 予約作成成功！予約ID:', bookingId);
         setBookingId(bookingId);
 
         // Step 2: Payment Intent を作成
