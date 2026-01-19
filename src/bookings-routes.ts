@@ -221,13 +221,34 @@ app.post('/', async (c) => {
     
     // バリデーション
     if (!therapist_id || !type || !scheduled_at || !duration || !price) {
+      console.error('❌ Validation failed:', {
+        therapist_id,
+        type,
+        scheduled_at,
+        duration,
+        price
+      });
       return c.json({ error: '必須項目が不足しています' }, 400);
     }
+    
+    console.log('✅ Creating booking with data:', {
+      therapist_id,
+      finalTherapistName,
+      type,
+      scheduled_at,
+      duration,
+      price,
+      service_name,
+      userId,
+      site_id,
+      itemsCount: items?.length || 0
+    });
     
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
     // 予約を作成
+    console.log('📝 Inserting booking into database...');
     const insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, therapist_id, therapist_name, office_id, site_id, room_id,
@@ -235,21 +256,27 @@ app.post('/', async (c) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
     `;
     
-    await DB.prepare(insertBookingQuery).bind(
-      bookingId,
-      userId,
-      therapist_id,
-      finalTherapistName,
-      office_id || null,
-      site_id || null,
-      room_id || null,
-      type,
-      service_name || '施術',
-      duration,
-      price,
-      location || null,
-      scheduled_at
-    ).run();
+    try {
+      await DB.prepare(insertBookingQuery).bind(
+        bookingId,
+        userId,
+        therapist_id,
+        finalTherapistName,
+        office_id || null,
+        site_id || null,
+        room_id || null,
+        type,
+        service_name || '施術',
+        duration,
+        price,
+        location || null,
+        scheduled_at
+      ).run();
+      console.log('✅ Booking inserted successfully');
+    } catch (dbError: any) {
+      console.error('❌ Database insert failed:', dbError);
+      throw new Error(`Database insert failed: ${dbError.message}`);
+    }
     
     // 予約アイテムを追加
     if (items && items.length > 0) {
@@ -281,8 +308,17 @@ app.post('/', async (c) => {
       booking
     }, 201);
   } catch (error: any) {
-    console.error('Error creating booking:', error);
-    return c.json({ error: '予約の作成に失敗しました' }, 500);
+    console.error('❌ Error creating booking:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
+    return c.json({ 
+      error: '予約の作成に失敗しました',
+      details: error.message || 'Unknown error',
+      errorType: error.constructor.name
+    }, 500);
   }
 });
 
