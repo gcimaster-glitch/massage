@@ -60,6 +60,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   });
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('auth_token'));
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   
   const [bookingData, setBookingData] = useState<BookingData>(() => {
     // sessionStorageからデータを復元
