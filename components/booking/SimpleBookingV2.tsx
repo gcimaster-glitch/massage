@@ -609,62 +609,151 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   };
 
   const renderStep2DateTime = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const maxDate = new Date();
-    maxDate.setMonth(maxDate.getMonth() + 2);
-    const maxDateStr = maxDate.toISOString().split('T')[0];
+    // カレンダー用の日付生成（今日から2ヶ月先まで）
+    const generateCalendarDates = () => {
+      const dates = [];
+      const today = new Date();
+      
+      for (let i = 0; i < 60; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        dates.push(date);
+      }
+      
+      return dates;
+    };
+    
+    const calendarDates = generateCalendarDates();
+    
+    // 時間スロット（30分刻み、10:00〜21:00）
+    const timeSlots = [
+      '10:00', '10:30', '11:00', '11:30',
+      '12:00', '12:30', '13:00', '13:30',
+      '14:00', '14:30', '15:00', '15:30',
+      '16:00', '16:30', '17:00', '17:30',
+      '18:00', '18:30', '19:00', '19:30',
+      '20:00', '20:30', '21:00'
+    ];
+    
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const formatDateDisplay = (date: Date) => {
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      const weekday = weekdays[date.getDay()];
+      return `${month}/${day}(${weekday})`;
+    };
+    
+    const isToday = (date: Date) => {
+      const today = new Date();
+      return date.toDateString() === today.toDateString();
+    };
     
     return (
       <div className="space-y-6">
+        {/* Date Selection */}
         <div className="bg-white p-6 rounded-xl border border-gray-200">
-          <h3 className="text-xl font-bold text-gray-800 mb-6">日時を選択してください</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">
+            📅 予約日を選択
+          </h3>
           
-          <div className="space-y-4">
-            {/* Date */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                📅 予約日
-              </label>
-              <input
-                type="date"
-                value={bookingData.date}
-                onChange={handleDateChange}
-                min={today}
-                max={maxDateStr}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-              />
-            </div>
-
-            {/* Time */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                ⏰ 予約時間
-              </label>
-              <input
-                type="time"
-                value={bookingData.time}
-                onChange={handleTimeChange}
-                min="10:00"
-                max="21:00"
-                step="1800"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                ⏰ 営業時間: 10:00〜21:00
-              </p>
-            </div>
+          <div className="grid grid-cols-4 md:grid-cols-7 gap-2">
+            {calendarDates.slice(0, 14).map((date) => {
+              const dateStr = formatDate(date);
+              const isSelected = bookingData.date === dateStr;
+              
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => handleDateChange({ target: { value: dateStr } } as any)}
+                  className={`
+                    p-3 rounded-lg text-center transition-all
+                    ${isSelected
+                      ? 'bg-gradient-to-br from-teal-600 to-blue-600 text-white shadow-lg scale-105'
+                      : isToday(date)
+                      ? 'bg-teal-50 text-teal-700 border-2 border-teal-300 hover:bg-teal-100'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  <div className="text-xs font-medium">
+                    {formatDateDisplay(date)}
+                  </div>
+                  {isToday(date) && (
+                    <div className="text-[10px] text-teal-600 font-bold mt-1">
+                      今日
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
+        {/* Time Selection */}
+        {bookingData.date && (
+          <div className="bg-white p-6 rounded-xl border border-gray-200">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">
+              ⏰ 予約時間を選択
+            </h3>
+            
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+              {timeSlots.map((time) => {
+                const isSelected = bookingData.time === time;
+                
+                return (
+                  <button
+                    key={time}
+                    onClick={() => handleTimeChange({ target: { value: time } } as any)}
+                    className={`
+                      py-3 px-4 rounded-lg text-center font-semibold transition-all
+                      ${isSelected
+                        ? 'bg-gradient-to-br from-teal-600 to-blue-600 text-white shadow-lg scale-105'
+                        : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-teal-50 hover:border-teal-300'
+                      }
+                    `}
+                  >
+                    {time}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <p className="text-xs text-gray-500 mt-4 text-center">
+              ⏰ 営業時間: 10:00〜21:00（30分刻み）
+            </p>
+          </div>
+        )}
+
         {/* Summary */}
         {bookingData.date && bookingData.time && (
-          <div className="bg-teal-50 p-5 rounded-xl border border-teal-200">
-            <h4 className="font-semibold text-gray-800 mb-3">選択内容</h4>
-            <div className="space-y-2 text-sm">
-              <p><strong>日時:</strong> {bookingData.date} {bookingData.time}</p>
-              <p><strong>コース:</strong> {bookingData.course?.name}</p>
-              <p><strong>所要時間:</strong> {bookingData.totalDuration}分</p>
-              <p><strong>料金:</strong> ¥{bookingData.totalPrice.toLocaleString()}</p>
+          <div className="bg-gradient-to-r from-teal-50 to-blue-50 p-5 rounded-xl border-2 border-teal-200">
+            <h4 className="font-bold text-gray-800 mb-3 text-lg">✓ 選択内容</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center py-2 border-b border-teal-200">
+                <span className="text-gray-600">日時</span>
+                <span className="font-bold text-gray-800">
+                  {new Date(bookingData.date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' })} {bookingData.time}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-teal-200">
+                <span className="text-gray-600">コース</span>
+                <span className="font-bold text-gray-800">{bookingData.course?.name}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-teal-200">
+                <span className="text-gray-600">所要時間</span>
+                <span className="font-bold text-gray-800">{bookingData.totalDuration}分</span>
+              </div>
+              <div className="flex justify-between items-center py-2 bg-white rounded-lg px-3">
+                <span className="text-lg font-bold text-gray-800">料金</span>
+                <span className="text-2xl font-bold text-teal-600">¥{bookingData.totalPrice.toLocaleString()}</span>
+              </div>
             </div>
           </div>
         )}
@@ -675,13 +764,14 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
             onClick={goBack}
             className="flex-1 bg-gray-200 text-gray-700 font-bold py-4 px-6 rounded-lg hover:bg-gray-300 transition-colors"
           >
-            戻る
+            ← 戻る
           </button>
           <button
             onClick={handleNextFromDateTime}
-            className="flex-1 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold py-4 px-6 rounded-lg hover:shadow-lg transition-all"
+            disabled={!bookingData.date || !bookingData.time}
+            className="flex-1 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold py-4 px-6 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            次へ（お客様情報）
+            次へ（お客様情報） →
           </button>
         </div>
       </div>
