@@ -65,6 +65,9 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   bookingType = 'ONSITE', 
   site = null 
 }) => {
+  console.log('🚀🚀🚀 [SimpleBookingV2] Component MOUNTED/RENDERING');
+  console.log('📊 Props:', { therapistId: therapist.id, bookingType, siteId: site?.id });
+  
   const navigate = useNavigate();
   
   // =============================================
@@ -105,21 +108,33 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     console.log('🔍 SimpleBookingV2: useEffect for user info triggered');
     
     const fetchUserInfo = async () => {
-      console.log('🔍 Checking localStorage for auth_token...');
+      console.log('🔍🔍🔍 [SimpleBookingV2] Starting fetchUserInfo...');
+      console.log('📦 localStorage contents:', {
+        auth_token: localStorage.getItem('auth_token') ? 'EXISTS' : 'MISSING',
+        currentUser: localStorage.getItem('currentUser') ? 'EXISTS' : 'MISSING',
+        allKeys: Object.keys(localStorage)
+      });
+      
       const token = localStorage.getItem('auth_token');
       
       if (!token) {
         console.log('❌ No auth token found in localStorage - continuing as guest');
-        console.log('📦 localStorage keys:', Object.keys(localStorage));
         return;
       }
       
-      console.log('✅ Auth token found:', token.substring(0, 20) + '...');
+      console.log('✅✅✅ Auth token found! Length:', token.length, 'First 30 chars:', token.substring(0, 30) + '...');
       
-      // First, try to decode JWT to get user info directly
+      // Decode JWT to get user info
       try {
-        console.log('🔓 Attempting to decode JWT token...');
-        const base64Url = token.split('.')[1];
+        console.log('🔓 Starting JWT decode process...');
+        const parts = token.split('.');
+        console.log('JWT parts count:', parts.length);
+        
+        if (parts.length !== 3) {
+          throw new Error('Invalid JWT format');
+        }
+        
+        const base64Url = parts[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(
           atob(base64)
@@ -129,28 +144,45 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         );
         const payload = JSON.parse(jsonPayload);
         
-        console.log('🔓 JWT payload decoded:', payload);
+        console.log('🔓🔓🔓 JWT payload successfully decoded:', {
+          userId: payload.userId,
+          userName: payload.userName,
+          email: payload.email,
+          role: payload.role,
+          hasUserName: !!payload.userName,
+          hasEmail: !!payload.email
+        });
         
-        // Check if we have user info in JWT
+        // Extract user info from JWT
         if (payload.userName || payload.email) {
-          console.log('✅ Found user info in JWT, using it directly');
+          console.log('✅ Found user info in JWT, preparing auto-fill...');
           const jwtUserData = {
             customerName: payload.userName || payload.name || '',
             customerEmail: payload.email || '',
-            customerPhone: '' // JWT doesn't contain phone typically
+            customerPhone: '' // JWT doesn't contain phone
           };
           
-          console.log('📝 Setting booking data from JWT:', jwtUserData);
+          console.log('📝📝📝 Calling setBookingData with:', jwtUserData);
           
-          setBookingData(prev => ({
-            ...prev,
-            ...jwtUserData
-          }));
+          setBookingData(prev => {
+            const updated = {
+              ...prev,
+              ...jwtUserData
+            };
+            console.log('📝 bookingData updated from:', prev, 'to:', updated);
+            return updated;
+          });
           
-          console.log('✅ JWT-based auto-fill completed');
+          console.log('✅✅✅ JWT-based auto-fill COMPLETED!');
+        } else {
+          console.warn('⚠️ JWT decoded but no userName or email found');
         }
       } catch (jwtError) {
-        console.warn('⚠️ Failed to decode JWT:', jwtError);
+        console.error('❌❌❌ Failed to decode JWT:', jwtError);
+        console.error('Error details:', {
+          message: jwtError.message,
+          stack: jwtError.stack
+        });
       }
       
       // Then, try to fetch from API to get phone number
