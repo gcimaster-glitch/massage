@@ -161,7 +161,7 @@ const BookingCompleteV2: React.FC = () => {
                 phone: booking?.user_phone || '',
                 bookingId: bookingId || ''
               });
-              navigate(`/auth/register/user?${params.toString()}`);
+              navigate(`/auth/signup/user?${params.toString()}`);
             }}
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-6 rounded-lg hover:shadow-lg transition-all"
           >
