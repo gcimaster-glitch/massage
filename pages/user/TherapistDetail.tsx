@@ -345,7 +345,7 @@ const TherapistDetail: React.FC = () => {
                                          return (
                                             <td key={di} className="py-4 px-2">
                                                <button 
-                                                 onClick={() => isAvailable && navigate(`/app/booking/new?therapistId=${displayTherapist.id}`)}
+                                                 onClick={() => isAvailable && navigate(`/app/booking/from-therapist/${displayTherapist.id}`)}
                                                  className={`w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all font-black ${
                                                  isAvailable ? 'text-teal-600 hover:bg-teal-500 hover:text-white hover:shadow-lg scale-110' : 
                                                  isBusy ? 'text-red-500 bg-red-50 cursor-not-allowed border-2 border-red-200' : 
@@ -418,7 +418,7 @@ const TherapistDetail: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-8">
                                <p className="text-4xl font-black text-gray-900 tracking-tighter font-outfit">¥{c.price.toLocaleString()}</p>
-                               <button onClick={() => navigate(`/app/booking/new?therapistId=${displayTherapist.id}&service=${c.id}`)} className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl hover:bg-teal-600 transition-all group-hover:rotate-[-5deg]">
+                               <button onClick={() => navigate(`/app/booking/from-therapist/${displayTherapist.id}`)} className="bg-gray-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl hover:bg-teal-600 transition-all group-hover:rotate-[-5deg]">
                                   <ArrowRight size={28} />
                                </button>
                             </div>
@@ -512,7 +512,7 @@ const TherapistDetail: React.FC = () => {
                            <div><p className="text-xs font-black text-emerald-800 uppercase">本日 予約可能枠あり</p><p className="text-[11px] text-emerald-600 font-bold mt-1.5 leading-relaxed">18:30 / 20:00 / 21:30 〜</p></div>
                         </div>
                      </div>
-                     <button onClick={() => navigate(`/app/booking/new?therapistId=${displayTherapist.id}`)} className="w-full bg-gray-900 text-white py-10 rounded-[48px] font-black text-2xl hover:bg-teal-600 transition-all shadow-[0_30px_90px_rgba(0,0,0,0.3)] flex items-center justify-center gap-4 active:scale-[0.97] group relative overflow-hidden">
+                     <button onClick={() => navigate(`/app/booking/from-therapist/${displayTherapist.id}`)} className="w-full bg-gray-900 text-white py-10 rounded-[48px] font-black text-2xl hover:bg-teal-600 transition-all shadow-[0_30px_90px_rgba(0,0,0,0.3)] flex items-center justify-center gap-4 active:scale-[0.97] group relative overflow-hidden">
                         <span className="relative z-10">今すぐ予約へ</span><ArrowRight size={32} className="relative z-10 group-hover:translate-x-2 transition-transform" />
                      </button>
                      <div className="flex items-center justify-center gap-6">
