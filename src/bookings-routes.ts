@@ -76,28 +76,29 @@ app.post('/guest', async (c) => {
         id, user_id, user_name, user_email, user_phone, user_address, postal_code,
         therapist_id, therapist_name, site_id,
         type, status, service_name, duration, price, scheduled_start, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
     
     // サービス名を生成（最初のコースの名前）
     const service_name = items && items.length > 0 ? items[0].name : '施術';
     
     await DB.prepare(insertBookingQuery).bind(
-      bookingId,
-      null, // user_id (ゲスト予約なので NULL)
-      customer_name,
-      customer_email,
-      customer_phone,
-      customer_address || null,
-      postal_code || null,
-      therapist_id,
-      therapist_name,
-      site_id || null,
-      booking_type,
-      service_name,
-      total_duration,
-      total_price,
-      scheduled_at
+      bookingId,              // 1: id
+      null,                   // 2: user_id (ゲスト予約なので NULL)
+      customer_name,          // 3: user_name
+      customer_email,         // 4: user_email
+      customer_phone,         // 5: user_phone
+      customer_address || null, // 6: user_address
+      postal_code || null,    // 7: postal_code
+      therapist_id,           // 8: therapist_id
+      therapist_name,         // 9: therapist_name
+      site_id || null,        // 10: site_id
+      booking_type,           // 11: type
+      'PENDING_PAYMENT',      // 12: status
+      service_name,           // 13: service_name
+      total_duration,         // 14: duration
+      total_price,            // 15: price
+      scheduled_at            // 16: scheduled_start
     ).run();
     
     // 予約アイテムを追加
