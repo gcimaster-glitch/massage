@@ -714,7 +714,13 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     const [showLogin, setShowLogin] = useState(false);
 
     const handleRegister = async () => {
+      console.log('🔍 会員登録ボタンがクリックされました');
+      console.log('📧 Email:', email);
+      console.log('👤 Name:', name);
+      console.log('🔒 Password length:', password.length);
+      
       if (!email || !password || !name) {
+        console.error('❌ 入力項目が不足しています');
         setErrorMessage('✏️ すべての項目を入力してください');
         return;
       }
@@ -761,7 +767,12 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     };
 
     const handleLogin = async () => {
+      console.log('🔍 ログインボタンがクリックされました');
+      console.log('📧 Email:', email);
+      console.log('🔒 Password length:', password.length);
+      
       if (!email || !password) {
+        console.error('❌ 入力項目が不足しています');
         setErrorMessage('✏️ メールアドレスとパスワードを入力してください');
         return;
       }
