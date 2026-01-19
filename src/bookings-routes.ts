@@ -75,7 +75,7 @@ app.post('/guest', async (c) => {
       INSERT INTO bookings (
         id, user_id, user_name, user_email, user_phone, user_address, postal_code,
         therapist_id, therapist_name, site_id,
-        type, status, service_name, duration, price, scheduled_at, created_at
+        type, status, service_name, duration, price, scheduled_start, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
     
