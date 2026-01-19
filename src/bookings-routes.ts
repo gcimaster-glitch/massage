@@ -35,7 +35,125 @@ const requireAuth = async (c: any, next: any) => {
   await next();
 };
 
-// すべてのルートに認証必須
+// ============================================
+// ゲスト予約作成（認証不要）
+// ============================================
+app.post('/guest', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const body = await c.req.json();
+    const {
+      therapist_id,
+      site_id,
+      booking_type,
+      scheduled_at,
+      total_price,
+      total_duration,
+      customer_name,
+      customer_email,
+      customer_phone,
+      customer_address,
+      postal_code,
+      items // { type: 'COURSE' | 'OPTION', course_id, option_id, name, price, duration }[]
+    } = body;
+    
+    // バリデーション
+    if (!therapist_id || !booking_type || !scheduled_at || !customer_name || !customer_email || !customer_phone) {
+      return c.json({ error: '必須項目が不足しています' }, 400);
+    }
+    
+    // セラピスト名を取得
+    const therapistQuery = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(therapist_id).first<{ name: string }>();
+    const therapist_name = therapistQuery?.name || 'セラピスト';
+    
+    // 予約IDを生成
+    const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // 予約を作成（user_id は NULL、ゲスト予約）
+    const insertBookingQuery = `
+      INSERT INTO bookings (
+        id, user_id, user_name, user_email, user_phone, user_address, postal_code,
+        therapist_id, therapist_name, site_id,
+        type, status, service_name, duration, price, scheduled_at, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', ?, ?, ?, ?, datetime('now'))
+    `;
+    
+    // サービス名を生成（最初のコースの名前）
+    const service_name = items && items.length > 0 ? items[0].name : '施術';
+    
+    await DB.prepare(insertBookingQuery).bind(
+      bookingId,
+      null, // user_id (ゲスト予約なので NULL)
+      customer_name,
+      customer_email,
+      customer_phone,
+      customer_address || null,
+      postal_code || null,
+      therapist_id,
+      therapist_name,
+      site_id || null,
+      booking_type,
+      service_name,
+      total_duration,
+      total_price,
+      scheduled_at
+    ).run();
+    
+    // 予約アイテムを追加
+    if (items && items.length > 0) {
+      for (const item of items) {
+        const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const insertItemQuery = `
+          INSERT INTO booking_items (
+            id, booking_id, item_type, item_id, item_name, price, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        `;
+        
+        await DB.prepare(insertItemQuery).bind(
+          itemId,
+          bookingId,
+          item.type,
+          item.type === 'COURSE' ? item.course_id : item.option_id,
+          item.name,
+          item.price
+        ).run();
+      }
+    }
+    
+    return c.json({ 
+      success: true,
+      bookingId,
+      message: 'ゲスト予約が作成されました。決済を完了してください。'
+    }, 201);
+  } catch (error: any) {
+    console.error('❌ Error creating guest booking:', error);
+    return c.json({ error: '予約の作成に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// ゲスト予約詳細取得（認証不要）
+// ============================================
+app.get('/guest/:bookingId', async (c) => {
+  const { DB } = c.env;
+  const bookingId = c.req.param('bookingId');
+  
+  try {
+    const booking = await DB.prepare('SELECT * FROM bookings WHERE id = ?').bind(bookingId).first();
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404);
+    }
+    
+    return c.json({ success: true, booking });
+  } catch (error: any) {
+    console.error('❌ Error fetching guest booking:', error);
+    return c.json({ error: '予約情報の取得に失敗しました' }, 500);
+  }
+});
+
+// すべてのルートに認証必須（ただし /guest は除外済み）
 app.use('/*', requireAuth);
 
 // ============================================

@@ -56,6 +56,9 @@ import SupportCenter from './pages/shared/SupportCenter';
 
 // --- Booking Flow Components ---
 import SimpleBookingWrapper from './components/booking/SimpleBookingWrapper';
+import SimpleBookingWrapperV2 from './components/booking/SimpleBookingWrapperV2';
+import BookingPaymentV2 from './components/booking/BookingPaymentV2';
+import BookingCompleteV2 from './components/booking/BookingCompleteV2';
 
 // --- Therapist ---
 import TherapistDashboard from './pages/therapist/Dashboard';
@@ -241,15 +244,20 @@ const App: React.FC = () => {
         <Route path="/app/therapist/:therapistId" element={<TherapistDetail />} />
         
         {/* User App - Auth required pages */}
+        {/* New Simple Booking Flow V2 (Guest-friendly) */}
+        <Route path="/app/booking/v2/:therapistId" element={<SimpleBookingWrapperV2 />} />
+        <Route path="/app/booking/payment/:bookingId" element={<BookingPaymentV2 />} />
+        <Route path="/app/booking/complete/:bookingId" element={<BookingCompleteV2 />} />
+        
         {/* New Simple Booking Flow */}
         <Route path="/app/booking/:therapistId" element={<SimpleBookingWrapper />} />
         <Route path="/booking/:therapistId" element={<SimpleBookingWrapper />} />
         
-        {/* Legacy routes - redirect to simple flow */}
-        <Route path="/app/booking/direct/:therapistId" element={<SimpleBookingWrapper />} />
-        <Route path="/booking/direct/:therapistId" element={<SimpleBookingWrapper />} />
-        <Route path="/app/booking/from-therapist/:therapistId" element={<SimpleBookingWrapper />} />
-        <Route path="/booking/from-therapist/:therapistId" element={<SimpleBookingWrapper />} />
+        {/* Legacy routes - redirect to simple flow v2 */}
+        <Route path="/app/booking/direct/:therapistId" element={<SimpleBookingWrapperV2 />} />
+        <Route path="/booking/direct/:therapistId" element={<SimpleBookingWrapperV2 />} />
+        <Route path="/app/booking/from-therapist/:therapistId" element={<SimpleBookingWrapperV2 />} />
+        <Route path="/booking/from-therapist/:therapistId" element={<SimpleBookingWrapperV2 />} />
         
         {/* Disabled routes - redirect to home */}
         <Route 
