@@ -112,18 +112,6 @@ const PaymentHistory: React.FC = () => {
       alert('領収書のダウンロードに失敗しました。');
     }
   };
-      const receiptWindow = window.open('', '_blank');
-      if (receiptWindow) {
-        receiptWindow.document.write(html);
-        receiptWindow.document.close();
-      } else {
-        alert('❌ ポップアップがブロックされました。ブラウザの設定を確認してください。');
-      }
-    } catch (error) {
-      console.error('Receipt download error:', error);
-      alert('❌ 領収書の取得に失敗しました');
-    }
-  };
 
   if (loading) {
     return (
