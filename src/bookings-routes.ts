@@ -63,6 +63,10 @@ app.post('/guest', async (c) => {
       return c.json({ error: '必須項目が不足しています' }, 400);
     }
     
+    // セラピスト名を取得
+    const therapist = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(therapist_id).first();
+    const therapist_name = therapist ? (therapist as any).name : 'セラピスト';
+    
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
@@ -70,9 +74,9 @@ app.post('/guest', async (c) => {
     const insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, user_name, user_email, user_phone, user_address, postal_code,
-        therapist_id, site_id,
+        therapist_id, therapist_name, site_id,
         type, status, service_name, duration, price, scheduled_start, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', ?, ?, ?, ?, datetime('now'))
     `;
     
     // サービス名を生成（最初のコースの名前）
@@ -87,6 +91,7 @@ app.post('/guest', async (c) => {
       customer_address || null,
       postal_code || null,
       therapist_id,
+      therapist_name,
       site_id || null,
       booking_type,
       service_name,
