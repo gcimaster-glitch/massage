@@ -440,7 +440,6 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       // Create booking
       const bookingPayload: any = {
         therapist_id: therapist.id,
-        site_id: bookingType === 'ONSITE' ? (site?.id || null) : null,
         type: bookingType,
         scheduled_at: `${bookingData.date}T${bookingData.time}:00`,
         duration: bookingData.totalDuration,
@@ -448,7 +447,12 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         service_name: bookingData.course?.name || '施術',
       };
       
-      // Add customer info for guest bookings
+      // Add site_id for ONSITE bookings
+      if (bookingType === 'ONSITE' && site?.id) {
+        bookingPayload.site_id = site.id;
+      }
+      
+      // Add customer info for GUEST bookings only
       if (!isLoggedIn) {
         bookingPayload.customer_name = bookingData.customerName;
         bookingPayload.customer_email = bookingData.customerEmail;
@@ -458,33 +462,25 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         bookingPayload.booking_type = bookingType;
       }
       
-      // Add address for mobile bookings
+      // Add address for MOBILE bookings
       if (bookingType === 'MOBILE') {
         bookingPayload.customer_address = bookingData.userAddress;
         bookingPayload.postal_code = bookingData.postalCode;
       }
       
-      // Add items
+      // Add items (consistent format for both logged-in and guest)
       bookingPayload.items = [
         {
-          type: 'COURSE',
           item_type: 'COURSE',
-          course_id: bookingData.course?.id,
           item_id: bookingData.course?.id,
-          name: bookingData.course?.name,
           item_name: bookingData.course?.name,
           price: bookingData.course?.base_price,
-          duration: bookingData.course?.duration
         },
         ...bookingData.options.map(opt => ({
-          type: 'OPTION',
           item_type: 'OPTION',
-          option_id: opt.id,
           item_id: opt.id,
-          name: opt.name,
           item_name: opt.name,
           price: opt.base_price,
-          duration: opt.duration
         }))
       ];
       
@@ -505,13 +501,34 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       });
       
       if (!bookingResponse.ok) {
-        const errorData = await bookingResponse.json();
+        let errorData;
+        try {
+          errorData = await bookingResponse.json();
+        } catch (e) {
+          const errorText = await bookingResponse.text();
+          console.error('❌ APIエラー（JSONパース失敗）:', {
+            status: bookingResponse.status,
+            statusText: bookingResponse.statusText,
+            rawResponse: errorText
+          });
+          throw new Error(`予約の作成に失敗しました (${bookingResponse.status}): ${errorText}`);
+        }
+        
         console.error('❌ APIエラー:', {
           status: bookingResponse.status,
           statusText: bookingResponse.statusText,
-          error: errorData
+          error: errorData,
+          details: errorData.details || 'No details',
+          endpoint: endpoint,
+          isLoggedIn: isLoggedIn
         });
-        throw new Error(errorData.error || `予約の作成に失敗しました (${bookingResponse.status})`);
+        
+        // Show more specific error message
+        const errorMessage = errorData.details 
+          ? `${errorData.error || '予約の作成に失敗しました'}: ${errorData.details}`
+          : errorData.error || `予約の作成に失敗しました (${bookingResponse.status})`;
+        
+        throw new Error(errorMessage);
       }
       
       const bookingResult = await bookingResponse.json();
