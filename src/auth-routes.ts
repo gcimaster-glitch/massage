@@ -21,6 +21,7 @@ import {
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string
+  RESEND_API_KEY: string
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
   YAHOO_CLIENT_ID: string
@@ -344,16 +345,89 @@ authApp.post('/register', async (c) => {
         .bind(userId, verificationToken)
         .run()
 
-      // TODO: Send verification email via Resend
-      // For now, we'll return success with verification link
+      // Send verification email via Resend
       const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
+      
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'HOGUSY <noreply@hogusy.com>',
+            to: [email],
+            subject: '【HOGUSY】メールアドレスの認証をお願いします',
+            html: `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8">
+                <style>
+                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 20px; }
+                  .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+                  .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); padding: 40px 20px; text-align: center; }
+                  .header h1 { color: white; margin: 0; font-size: 32px; font-weight: bold; }
+                  .content { padding: 40px 30px; }
+                  .content h2 { color: #14b8a6; margin-top: 0; font-size: 24px; }
+                  .content p { margin: 16px 0; color: #555; font-size: 16px; }
+                  .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 18px; margin: 24px 0; box-shadow: 0 4px 12px rgba(20,184,166,0.3); }
+                  .button:hover { box-shadow: 0 6px 16px rgba(20,184,166,0.4); }
+                  .footer { background: #f8f8f8; padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #e0e0e0; }
+                  .info-box { background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 24px 0; border-radius: 8px; }
+                  .warning { color: #dc2626; font-weight: bold; margin: 20px 0; }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <div class="header">
+                    <h1>🌿 HOGUSY</h1>
+                  </div>
+                  <div class="content">
+                    <h2>ようこそ、${name || 'お客様'}さん！</h2>
+                    <p>HOGUSY へのご登録ありがとうございます。</p>
+                    <p>以下のボタンをクリックして、メールアドレスの認証を完了してください：</p>
+                    
+                    <div style="text-align: center;">
+                      <a href="${verificationUrl}" class="button">メールアドレスを認証する</a>
+                    </div>
+                    
+                    <div class="info-box">
+                      <p style="margin: 0;"><strong>📧 認証リンクについて</strong></p>
+                      <p style="margin: 8px 0 0 0; font-size: 14px;">このリンクは24時間有効です。期限切れの場合は、再度登録手続きを行ってください。</p>
+                    </div>
+                    
+                    <p class="warning">⚠️ このメールに心当たりがない場合は、無視していただいて問題ありません。</p>
+                    
+                    <p style="margin-top: 32px; font-size: 14px; color: #888;">
+                      ボタンが機能しない場合は、以下のURLをコピーしてブラウザに貼り付けてください：<br>
+                      <span style="color: #14b8a6; word-break: break-all;">${verificationUrl}</span>
+                    </p>
+                  </div>
+                  <div class="footer">
+                    <p><strong>HOGUSY</strong> - あなたの心と体をリフレッシュ</p>
+                    <p style="font-size: 12px; color: #aaa; margin-top: 16px;">
+                      このメールは自動送信されています。返信はできません。<br>
+                      お問い合わせは <a href="https://hogusy.com/support" style="color: #14b8a6;">サポートセンター</a> までお願いします。
+                    </p>
+                  </div>
+                </div>
+              </body>
+              </html>
+            `
+          })
+        });
+      } catch (emailError) {
+        console.error('Email sending error:', emailError);
+        // メール送信失敗してもユーザー登録は成功とする
+      }
 
       return c.json({
         success: true,
         message: '仮登録が完了しました。ご登録のメールアドレスに確認メールを送信しました。',
         userId: userId,
         email: email,
-        verificationUrl: verificationUrl, // In production, this should only be sent via email
       })
     } catch (dbError) {
       console.error('Database error during registration:', dbError)
