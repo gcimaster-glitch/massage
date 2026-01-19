@@ -1049,9 +1049,22 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50 py-8 px-4">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-          予約フロー
-        </h1>
+        {/* Header with back button */}
+        <div className="flex items-center justify-between mb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-600 hover:text-teal-600 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">戻る</span>
+          </button>
+          <h1 className="text-3xl font-bold text-gray-800">
+            予約フロー
+          </h1>
+          <div className="w-20"></div> {/* Spacer for centering */}
+        </div>
         
         {renderStepIndicator()}
         {renderErrorMessage()}
