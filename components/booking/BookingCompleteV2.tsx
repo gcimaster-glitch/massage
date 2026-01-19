@@ -153,7 +153,16 @@ const BookingCompleteV2: React.FC = () => {
             </li>
           </ul>
           <button
-            onClick={() => navigate('/auth/register/user')}
+            onClick={() => {
+              // 予約情報を引き継いで会員登録ページへ
+              const params = new URLSearchParams({
+                name: booking?.user_name || '',
+                email: booking?.user_email || '',
+                phone: booking?.user_phone || '',
+                bookingId: bookingId || ''
+              });
+              navigate(`/auth/register/user?${params.toString()}`);
+            }}
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-6 rounded-lg hover:shadow-lg transition-all"
           >
             会員登録する（無料）

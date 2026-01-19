@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, User, Mail, Lock, ChevronRight, CheckCircle, Sparkles, Zap, Smartphone, Heart, AlertCircle, Loader2
 } from 'lucide-react';
 
 const SignupUser: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,15 +17,38 @@ const SignupUser: React.FC = () => {
     email: '',
     password: '',
   });
+  const [fromBooking, setFromBooking] = useState(false);
+  const [bookingId, setBookingId] = useState('');
 
-  // Check if already logged in
+  // Check if already logged in and load booking data
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       // Already logged in, redirect to dashboard
       navigate('/app');
+      return;
     }
-  }, [navigate]);
+
+    // 予約情報からのパラメータを取得
+    const nameParam = searchParams.get('name');
+    const emailParam = searchParams.get('email');
+    const phoneParam = searchParams.get('phone');
+    const bookingIdParam = searchParams.get('bookingId');
+
+    if (bookingIdParam) {
+      setFromBooking(true);
+      setBookingId(bookingIdParam);
+    }
+
+    if (nameParam || emailParam || phoneParam) {
+      setFormData(prev => ({
+        ...prev,
+        name: nameParam || prev.name,
+        email: emailParam || prev.email,
+        phone: phoneParam || prev.phone,
+      }));
+    }
+  }, [navigate, searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -115,6 +139,22 @@ const SignupUser: React.FC = () => {
         <div className="text-center mb-12 mt-6">
           <h1 className="text-5xl font-black text-gray-900 mb-3 tracking-tighter">無料会員登録</h1>
           <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.4em]">Become a member and reboot your body</p>
+          
+          {fromBooking && (
+            <div className="mt-6 p-4 bg-teal-50 border-2 border-teal-200 rounded-[24px] text-left">
+              <div className="flex items-start gap-3">
+                <CheckCircle size={20} className="text-teal-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-teal-900">
+                    予約ID: <span className="font-mono text-xs">{bookingId}</span>
+                  </p>
+                  <p className="text-xs font-bold text-teal-700 mt-1">
+                    予約情報を引き継ぎました。会員登録を完了すると予約履歴を管理できます。
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Google Sign-Up */}
