@@ -429,6 +429,9 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   // =============================================
   
   const handleConfirmBooking = async () => {
+    console.log('🚀 handleConfirmBooking: 開始');
+    console.log('📍 Current bookingData:', bookingData);
+    
     setLoading(true);
     setErrorMessage('');
     
@@ -436,6 +439,12 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       // Check if user is logged in
       const token = localStorage.getItem('auth_token');
       const isLoggedIn = !!token;
+      
+      console.log('🔐 認証チェック:', {
+        hasToken: !!token,
+        isLoggedIn,
+        tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
+      });
       
       // Create booking
       const bookingPayload: any = {
@@ -447,9 +456,12 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         service_name: bookingData.course?.name || '施術',
       };
       
+      console.log('📦 基本ペイロード作成:', bookingPayload);
+      
       // Add site_id for ONSITE bookings
       if (bookingType === 'ONSITE' && site?.id) {
         bookingPayload.site_id = site.id;
+        console.log('🏢 site_id追加:', site.id);
       }
       
       // Add customer info for GUEST bookings only
@@ -484,7 +496,7 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         }))
       ];
       
-      console.log('📤 予約作成リクエスト:', bookingPayload);
+      console.log('📤 最終ペイロード:', JSON.stringify(bookingPayload, null, 2));
       console.log('🔐 ログイン状態:', isLoggedIn ? 'ログイン済み' : 'ゲスト');
       
       // Use appropriate endpoint based on login status
@@ -494,10 +506,23 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         ...(isLoggedIn ? { 'Authorization': `Bearer ${token}` } : {})
       };
       
+      console.log('🌐 リクエスト送信:', {
+        endpoint,
+        method: 'POST',
+        hasAuth: isLoggedIn,
+        payloadSize: JSON.stringify(bookingPayload).length
+      });
+      
       const bookingResponse = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(bookingPayload)
+      });
+      
+      console.log('📡 レスポンス受信:', {
+        status: bookingResponse.status,
+        statusText: bookingResponse.statusText,
+        ok: bookingResponse.ok
       });
       
       if (!bookingResponse.ok) {
@@ -531,21 +556,31 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         throw new Error(errorMessage);
       }
       
+      console.log('✅ レスポンスOK - JSONパース中...');
       const bookingResult = await bookingResponse.json();
       console.log('✅ 予約作成成功:', bookingResult);
       
       // Redirect to payment
       const bookingId = bookingResult.bookingId || bookingResult.booking?.id;
+      console.log('🎫 予約ID:', bookingId);
+      
       if (bookingId) {
+        console.log('🔀 リダイレクト:', `/app/booking/payment/${bookingId}`);
         navigate(`/app/booking/payment/${bookingId}`);
       } else {
+        console.error('❌ 予約IDが見つかりません:', bookingResult);
         throw new Error('予約IDが取得できませんでした');
       }
       
     } catch (error: any) {
-      console.error('❌ 予約作成エラー:', error);
+      console.error('❌❌❌ 予約作成エラー（catch）:', error);
+      console.error('エラースタック:', error.stack);
+      console.error('エラータイプ:', typeof error);
+      console.error('エラーメッセージ:', error.message);
+      
       setErrorMessage(error.message || '予約の作成に失敗しました。もう一度お試しください。');
     } finally {
+      console.log('🏁 handleConfirmBooking: 終了（finally）');
       setLoading(false);
     }
   };
