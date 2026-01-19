@@ -128,7 +128,15 @@ app.post('/guest', async (c) => {
     }, 201);
   } catch (error: any) {
     console.error('❌ Error creating guest booking:', error);
-    return c.json({ error: '予約の作成に失敗しました' }, 500);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
+    return c.json({ 
+      error: '予約の作成に失敗しました',
+      details: error.message 
+    }, 500);
   }
 });
 

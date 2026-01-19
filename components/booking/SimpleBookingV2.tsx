@@ -363,7 +363,12 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       
       if (!bookingResponse.ok) {
         const errorData = await bookingResponse.json();
-        throw new Error(errorData.error || '予約の作成に失敗しました');
+        console.error('❌ APIエラー:', {
+          status: bookingResponse.status,
+          statusText: bookingResponse.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || `予約の作成に失敗しました (${bookingResponse.status})`);
       }
       
       const bookingResult = await bookingResponse.json();
