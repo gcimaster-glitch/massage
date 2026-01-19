@@ -231,7 +231,7 @@ app.post('/', async (c) => {
     const insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, therapist_id, therapist_name, office_id, site_id, room_id,
-        type, status, service_name, duration, price, location, scheduled_at, created_at
+        type, status, service_name, duration, price, location, scheduled_start, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
     `;
     
@@ -277,6 +277,7 @@ app.post('/', async (c) => {
     
     return c.json({ 
       success: true,
+      bookingId,  // Add bookingId to response
       booking
     }, 201);
   } catch (error: any) {

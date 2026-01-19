@@ -322,42 +322,74 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     setErrorMessage('');
     
     try {
+      // Check if user is logged in
+      const token = localStorage.getItem('auth_token');
+      const isLoggedIn = !!token;
+      
       // Create booking
-      const bookingPayload = {
+      const bookingPayload: any = {
         therapist_id: therapist.id,
         site_id: bookingType === 'ONSITE' ? (site?.id || null) : null,
-        booking_type: bookingType,
+        type: bookingType,
         scheduled_at: `${bookingData.date}T${bookingData.time}:00`,
-        total_price: bookingData.totalPrice,
-        total_duration: bookingData.totalDuration,
-        customer_name: bookingData.customerName,
-        customer_email: bookingData.customerEmail,
-        customer_phone: bookingData.customerPhone,
-        customer_address: bookingType === 'MOBILE' ? bookingData.userAddress : null,
-        postal_code: bookingType === 'MOBILE' ? bookingData.postalCode : null,
-        items: [
-          {
-            type: 'COURSE',
-            course_id: bookingData.course?.id,
-            name: bookingData.course?.name,
-            price: bookingData.course?.base_price,
-            duration: bookingData.course?.duration
-          },
-          ...bookingData.options.map(opt => ({
-            type: 'OPTION',
-            option_id: opt.id,
-            name: opt.name,
-            price: opt.base_price,
-            duration: opt.duration
-          }))
-        ]
+        duration: bookingData.totalDuration,
+        price: bookingData.totalPrice,
+        service_name: bookingData.course?.name || '施術',
       };
       
-      console.log('📤 予約作成リクエスト:', bookingPayload);
+      // Add customer info for guest bookings
+      if (!isLoggedIn) {
+        bookingPayload.customer_name = bookingData.customerName;
+        bookingPayload.customer_email = bookingData.customerEmail;
+        bookingPayload.customer_phone = bookingData.customerPhone;
+        bookingPayload.total_price = bookingData.totalPrice;
+        bookingPayload.total_duration = bookingData.totalDuration;
+        bookingPayload.booking_type = bookingType;
+      }
       
-      const bookingResponse = await fetch('/api/bookings/guest', {
+      // Add address for mobile bookings
+      if (bookingType === 'MOBILE') {
+        bookingPayload.customer_address = bookingData.userAddress;
+        bookingPayload.postal_code = bookingData.postalCode;
+      }
+      
+      // Add items
+      bookingPayload.items = [
+        {
+          type: 'COURSE',
+          item_type: 'COURSE',
+          course_id: bookingData.course?.id,
+          item_id: bookingData.course?.id,
+          name: bookingData.course?.name,
+          item_name: bookingData.course?.name,
+          price: bookingData.course?.base_price,
+          duration: bookingData.course?.duration
+        },
+        ...bookingData.options.map(opt => ({
+          type: 'OPTION',
+          item_type: 'OPTION',
+          option_id: opt.id,
+          item_id: opt.id,
+          name: opt.name,
+          item_name: opt.name,
+          price: opt.base_price,
+          duration: opt.duration
+        }))
+      ];
+      
+      console.log('📤 予約作成リクエスト:', bookingPayload);
+      console.log('🔐 ログイン状態:', isLoggedIn ? 'ログイン済み' : 'ゲスト');
+      
+      // Use appropriate endpoint based on login status
+      const endpoint = isLoggedIn ? '/api/bookings' : '/api/bookings/guest';
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...(isLoggedIn ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+      
+      const bookingResponse = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(bookingPayload)
       });
       
@@ -375,8 +407,9 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       console.log('✅ 予約作成成功:', bookingResult);
       
       // Redirect to payment
-      if (bookingResult.bookingId) {
-        navigate(`/app/booking/payment/${bookingResult.bookingId}`);
+      const bookingId = bookingResult.bookingId || bookingResult.booking?.id;
+      if (bookingId) {
+        navigate(`/app/booking/payment/${bookingId}`);
       } else {
         throw new Error('予約IDが取得できませんでした');
       }
