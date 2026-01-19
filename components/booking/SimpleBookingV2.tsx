@@ -98,6 +98,52 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   });
 
   // =============================================
+  // Fetch User Info if Logged In
+  // =============================================
+  
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('❌ No auth token found - continuing as guest');
+        return;
+      }
+      
+      try {
+        console.log('✅ Auth token found - fetching user info');
+        const response = await fetch('/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          console.warn('⚠️ Failed to fetch user info - continuing as guest');
+          return;
+        }
+        
+        const userData = await response.json();
+        console.log('✅ User info fetched:', userData);
+        
+        // Auto-fill customer info
+        setBookingData(prev => ({
+          ...prev,
+          customerName: userData.name || '',
+          customerEmail: userData.email || '',
+          customerPhone: userData.phone || ''
+        }));
+        
+      } catch (error) {
+        console.error('❌ Error fetching user info:', error);
+        // Continue as guest on error
+      }
+    };
+    
+    fetchUserInfo();
+  }, []); // Run once on mount
+  
+  // =============================================
   // Fetch Menu Data
   // =============================================
   
@@ -817,10 +863,26 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   };
 
   const renderStep3CustomerInfo = () => {
+    const token = localStorage.getItem('auth_token');
+    const isLoggedIn = !!token && bookingData.customerName && bookingData.customerEmail;
+    
     return (
       <div className="space-y-6">
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <h3 className="text-xl font-bold text-gray-800 mb-6">お客様情報を入力してください</h3>
+          
+          {/* Logged-in User Notice */}
+          {isLoggedIn && (
+            <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded mb-6">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">✅</span>
+                <div>
+                  <p className="text-teal-800 font-semibold">ログイン済みユーザー</p>
+                  <p className="text-teal-700 text-sm">アカウント情報が自動入力されています。必要に応じて修正できます。</p>
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="space-y-4">
             {/* Name */}
