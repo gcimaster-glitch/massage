@@ -750,7 +750,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ 会員登録成功！');
+          console.log('✅ 会員登録成功！トークン:', data.token ? '取得済み' : '取得失敗');
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
           
@@ -760,7 +760,9 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           setIsLoggedIn(true);
           
           // 出張予約はKYC(6)へ、店舗予約は決済(5)へ
-          setStep(bookingType === 'MOBILE' ? 6 : 5);
+          const nextStep = bookingType === 'MOBILE' ? 6 : 5;
+          console.log('➡️ 次のステップへ:', nextStep, 'bookingType:', bookingType, 'isLoggedIn: true');
+          setStep(nextStep);
         } else {
           const error = await response.json();
           console.error('❌ 会員登録エラー:', error);
@@ -798,6 +800,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
 
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ ログイン成功！トークン:', data.token ? '取得済み' : '取得失敗');
           localStorage.setItem('auth_token', data.token);
           localStorage.setItem('user_email', email);
           
@@ -807,7 +810,9 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           setIsLoggedIn(true);
           
           // 出張予約は決済画面(5)へ、店舗予約も決済画面(4)へ
-          setStep(bookingType === 'MOBILE' ? 5 : 4);
+          const nextStep = bookingType === 'MOBILE' ? 5 : 4;
+          console.log('➡️ 次のステップへ:', nextStep, 'bookingType:', bookingType, 'isLoggedIn: true');
+          setStep(nextStep);
         } else {
           setErrorMessage('❌ ログインに失敗しました。メールアドレスとパスワードを確認してください。');
         }
@@ -1110,6 +1115,11 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     const elements = useElements();
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+
+    console.log('🎨 PaymentStepContent レンダリング');
+    console.log('📦 bookingData:', bookingData);
+    console.log('💳 Stripe:', stripe ? 'loaded' : 'not loaded');
+    console.log('🔧 Elements:', elements ? 'loaded' : 'not loaded');
 
     const handlePayment = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -1542,12 +1552,20 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           // 出張予約の場合は住所入力、店舗予約の場合は確認画面
           bookingType === 'MOBILE' ? <AddressStep /> : <ConfirmStep />
         )}
-        {step === 4 && (
+        {step === 4 && (() => {
+          console.log('📍 ステップ4表示判定:', { bookingType, isLoggedIn });
           // 出張予約: 確認画面、店舗予約: 会員登録（非会員のみ）または決済（会員）
-          bookingType === 'MOBILE' 
-            ? <ConfirmStep />
-            : (isLoggedIn ? <PaymentStepWrapper /> : <RegisterStep />)
-        )}
+          if (bookingType === 'MOBILE') {
+            console.log('→ 出張予約: 確認画面表示');
+            return <ConfirmStep />;
+          } else if (isLoggedIn) {
+            console.log('→ 店舗予約 + ログイン済み: 決済画面表示');
+            return <PaymentStepWrapper />;
+          } else {
+            console.log('→ 店舗予約 + 未ログイン: 会員登録画面表示');
+            return <RegisterStep />;
+          }
+        })()}
         {step === 5 && (
           // 出張予約: 会員登録（非会員のみ）または決済（会員）、店舗予約: 決済（非会員）または完了（会員）
           bookingType === 'MOBILE'
