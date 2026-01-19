@@ -110,14 +110,52 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       
       if (!token) {
         console.log('❌ No auth token found in localStorage - continuing as guest');
-        console.log('📦 localStorage contents:', Object.keys(localStorage));
+        console.log('📦 localStorage keys:', Object.keys(localStorage));
         return;
       }
       
       console.log('✅ Auth token found:', token.substring(0, 20) + '...');
       
+      // First, try to decode JWT to get user info directly
       try {
-        console.log('📡 Fetching user info from /api/auth/me...');
+        console.log('🔓 Attempting to decode JWT token...');
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
+        
+        console.log('🔓 JWT payload decoded:', payload);
+        
+        // Check if we have user info in JWT
+        if (payload.userName || payload.email) {
+          console.log('✅ Found user info in JWT, using it directly');
+          const jwtUserData = {
+            customerName: payload.userName || payload.name || '',
+            customerEmail: payload.email || '',
+            customerPhone: '' // JWT doesn't contain phone typically
+          };
+          
+          console.log('📝 Setting booking data from JWT:', jwtUserData);
+          
+          setBookingData(prev => ({
+            ...prev,
+            ...jwtUserData
+          }));
+          
+          console.log('✅ JWT-based auto-fill completed');
+        }
+      } catch (jwtError) {
+        console.warn('⚠️ Failed to decode JWT:', jwtError);
+      }
+      
+      // Then, try to fetch from API to get phone number
+      try {
+        console.log('📡 Fetching full user info from /api/auth/me...');
         const response = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -125,11 +163,11 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
           }
         });
         
-        console.log('📡 Response status:', response.status, response.statusText);
+        console.log('📡 API Response status:', response.status, response.statusText);
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.warn('⚠️ Failed to fetch user info:', {
+          console.warn('⚠️ API fetch failed, using JWT data only:', {
             status: response.status,
             statusText: response.statusText,
             body: errorText
@@ -138,31 +176,32 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         }
         
         const data = await response.json();
-        console.log('✅ User info response:', data);
+        console.log('✅ API User info response:', data);
         
         // Auto-fill customer info from the 'user' object in response
         const userData = data.user || data;
-        console.log('👤 Extracted user data:', userData);
+        console.log('👤 Extracted user data from API:', userData);
         
-        const newBookingData = {
+        const apiUserData = {
           customerName: userData.name || '',
           customerEmail: userData.email || '',
           customerPhone: userData.phone || ''
         };
         
-        console.log('📝 Setting booking data with:', newBookingData);
+        console.log('📝 Updating booking data with API data:', apiUserData);
         
         setBookingData(prev => ({
           ...prev,
-          ...newBookingData
+          ...apiUserData
         }));
         
-        console.log('✅ Booking data updated successfully');
+        console.log('✅ API-based auto-fill completed successfully');
         
       } catch (error) {
-        console.error('❌ Error fetching user info:', error);
+        console.error('❌ Error fetching user info from API:', error);
         console.error('Error details:', error instanceof Error ? error.message : error);
-        // Continue as guest on error
+        console.log('ℹ️ Continuing with JWT data (if available)');
+        // Continue with JWT data if API fails
       }
     };
     
