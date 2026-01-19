@@ -50,11 +50,13 @@ const SimpleBookingWrapper: React.FC = () => {
         console.log('🔍 データキー:', Object.keys(therapistData || {}));
         
         // APIレスポンスの構造を確認して適切にマッピング
-        // モックデータとDB結合データの両方に対応
+        // { therapist: {...} } の構造に対応
+        const rawTherapist = therapistData.therapist || therapistData;
+        
         const therapistInfo = {
-          id: therapistData.user_id || therapistData.id || therapistId,
-          name: therapistData.name || therapistData.therapist_name || therapistData.display_name || '担当セラピスト',
-          avatar_url: therapistData.avatar_url || therapistData.therapist_avatar || therapistData.imageUrl || null,
+          id: rawTherapist.user_id || rawTherapist.id || therapistId,
+          name: rawTherapist.name || rawTherapist.therapist_name || rawTherapist.display_name || '担当セラピスト',
+          avatar_url: rawTherapist.avatar_url || rawTherapist.therapist_avatar || rawTherapist.imageUrl || null,
         };
         
         console.log('✅ 設定されたセラピスト情報:', therapistInfo);
