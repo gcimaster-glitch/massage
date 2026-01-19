@@ -111,7 +111,7 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       
       try {
         console.log('✅ Auth token found - fetching user info');
-        const response = await fetch('/api/users/me', {
+        const response = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -119,14 +119,15 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         });
         
         if (!response.ok) {
-          console.warn('⚠️ Failed to fetch user info - continuing as guest');
+          console.warn('⚠️ Failed to fetch user info - continuing as guest', response.status);
           return;
         }
         
-        const userData = await response.json();
-        console.log('✅ User info fetched:', userData);
+        const data = await response.json();
+        console.log('✅ User info fetched:', data);
         
-        // Auto-fill customer info
+        // Auto-fill customer info from the 'user' object in response
+        const userData = data.user || data;
         setBookingData(prev => ({
           ...prev,
           customerName: userData.name || '',
