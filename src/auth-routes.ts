@@ -327,6 +327,11 @@ authApp.post('/register', async (c) => {
           const hashArray = Array.from(new Uint8Array(hashBuffer))
           const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
+          console.log(`🔍 Attempting to update user: ${existingUserId}`)
+          console.log(`  - name: ${name}`)
+          console.log(`  - phone: ${phone || '(empty)'}`)
+          console.log(`  - passwordHash length: ${passwordHash.length}`)
+
           // Update user with new password and info
           const updateResult = await c.env.DB.prepare(
             `UPDATE users 
@@ -586,7 +591,10 @@ authApp.get('/verify-email', async (c) => {
       .bind(token)
       .run()
 
-    return c.redirect('/auth/login?verified=true&message=メール認証が完了しました。ログインしてご利用ください。')
+    console.log(`✅ Email verified successfully for user: ${userId}`)
+
+    // Redirect to homepage with success message
+    return c.redirect('/?verified=true')
   } catch (e) {
     console.error('Email verification error:', e)
     return c.redirect('/?error=verification_failed')
