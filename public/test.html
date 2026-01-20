@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOGUSY テストページ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-4xl mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">🔧 HOGUSY 動作確認ページ</h1>
+        
+        <!-- ログインテスト -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-bold mb-4">1. ログインテスト</h2>
+            <div class="space-y-3">
+                <input type="email" id="email" value="keiri@inre.co.jp" 
+                       class="w-full border p-2 rounded" placeholder="メールアドレス">
+                <input type="password" id="password" value="Hogusy2024!" 
+                       class="w-full border p-2 rounded" placeholder="パスワード">
+                <button onclick="testLogin()" 
+                        class="bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700">
+                    ログイン
+                </button>
+                <div id="loginResult" class="mt-3"></div>
+            </div>
+        </div>
+        
+        <!-- セラピスト一覧 -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-bold mb-4">2. セラピスト一覧</h2>
+            <button onclick="loadTherapists()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                セラピストを読み込む
+            </button>
+            <div id="therapistList" class="mt-4 space-y-3"></div>
+        </div>
+        
+        <!-- 予約テスト -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-bold mb-4">3. 予約作成テスト</h2>
+            <p class="text-gray-600">ログイン後、セラピストを選択してテスト</p>
+            <div id="bookingTest"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('auth_token');
+        
+        // ログインテスト
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const result = document.getElementById('loginResult');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('auth_token', data.token);
+                    result.innerHTML = `
+                        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                            ✅ ログイン成功！<br>
+                            ユーザー: ${data.user.name}<br>
+                            ロール: ${data.user.role}
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            ❌ ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        ❌ エラー: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // セラピスト一覧
+        async function loadTherapists() {
+            const list = document.getElementById('therapistList');
+            list.innerHTML = '<p class="text-gray-500">読み込み中...</p>';
+            
+            try {
+                const response = await fetch('/api/therapists?limit=5');
+                const data = await response.json();
+                
+                if (data.therapists && data.therapists.length > 0) {
+                    list.innerHTML = `
+                        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-3">
+                            ✅ ${data.total}名のセラピストを取得
+                        </div>
+                        ${data.therapists.map(t => `
+                            <div class="border p-3 rounded">
+                                <p class="font-bold">${t.name}</p>
+                                <p class="text-sm text-gray-600">⭐ ${t.rating} (${t.review_count}件)</p>
+                                <p class="text-sm">${t.bio}</p>
+                                <a href="/therapists/${t.id}" class="text-blue-600 text-sm">詳細を見る →</a>
+                            </div>
+                        `).join('')}
+                    `;
+                } else {
+                    list.innerHTML = `
+                        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                            ⚠️ セラピストが見つかりません
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                list.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        ❌ エラー: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // 起動時にトークンチェック
+        if (authToken) {
+            document.getElementById('loginResult').innerHTML = `
+                <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+                    ℹ️ ログイン済み（トークンあり）
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
