@@ -62,6 +62,8 @@ import BookingCompleteV2 from './components/booking/BookingCompleteV2';
 
 // --- Therapist ---
 import TherapistDashboard from './pages/therapist/Dashboard';
+import TherapistBookingList from './pages/therapist/BookingList';
+import TherapistBookingDetail from './pages/therapist/BookingDetail';
 import TherapistCalendar from './pages/therapist/Calendar';
 import TherapistEarnings from './pages/therapist/Earnings';
 import TherapistSafety from './pages/therapist/Safety';
@@ -299,6 +301,8 @@ const App: React.FC = () => {
 
         {/* Therapist App */}
         <Route path="/t" element={<RequireAuth allowedRoles={[Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><TherapistDashboard /></RequireAuth>} />
+        <Route path="/t/bookings" element={<RequireAuth allowedRoles={[Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><TherapistBookingList /></RequireAuth>} />
+        <Route path="/t/bookings/:id" element={<RequireAuth allowedRoles={[Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><TherapistBookingDetail /></RequireAuth>} />
         <Route path="/t/calendar" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistCalendar /></RequireAuth>} />
         <Route path="/t/earnings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistEarnings /></RequireAuth>} />
         <Route path="/t/safety" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSafety /></RequireAuth>} />
