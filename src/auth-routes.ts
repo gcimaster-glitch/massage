@@ -552,6 +552,7 @@ authApp.post('/register', async (c) => {
 // ============================================
 authApp.get('/verify-email', async (c) => {
   const token = c.req.query('token')
+  const redirectTo = c.req.query('redirect') || '/app/dashboard' // 予約途中だった場合はredirect指定
 
   if (!token) {
     return c.redirect('/?error=invalid_verification_token')
@@ -577,6 +578,19 @@ authApp.get('/verify-email', async (c) => {
 
     const userId = (results[0] as any).user_id
 
+    // Get user info for auto-login
+    const { results: userResults } = await c.env.DB.prepare(
+      'SELECT id, email, name, role, avatar_url FROM users WHERE id = ?'
+    )
+      .bind(userId)
+      .all()
+
+    if (userResults.length === 0) {
+      return c.redirect('/?error=user_not_found')
+    }
+
+    const user = userResults[0] as any
+
     // Update user as verified
     await c.env.DB.prepare(
       'UPDATE users SET email_verified = 1 WHERE id = ?'
@@ -593,8 +607,35 @@ authApp.get('/verify-email', async (c) => {
 
     console.log(`✅ Email verified successfully for user: ${userId}`)
 
-    // Redirect to homepage with success message
-    return c.redirect('/?verified=true')
+    // Create session for auto-login
+    const sessionId = generateSessionId()
+    const sessionToken = generateSessionToken()
+
+    await c.env.DB.prepare(
+      `INSERT INTO auth_sessions (id, user_id, token, expires_at)
+       VALUES (?, ?, ?, datetime('now', '+30 days'))`
+    )
+      .bind(sessionId, user.id, sessionToken)
+      .run()
+
+    // Create JWT token
+    const jwt = createJWT(
+      {
+        userId: user.id,
+        email: user.email,
+        userName: user.name,
+        role: user.role,
+        sessionId: sessionId,
+      },
+      c.env.JWT_SECRET,
+      30
+    )
+
+    console.log(`✅ Auto-login session created for user: ${userId}`)
+
+    // Redirect to dashboard with JWT token in URL
+    // フロントエンドでURLからトークンを取得してlocalStorageに保存
+    return c.redirect(`${redirectTo}?verified=true&token=${jwt}&message=${encodeURIComponent('メール認証が完了しました！')}`)
   } catch (e) {
     console.error('Email verification error:', e)
     return c.redirect('/?error=verification_failed')
