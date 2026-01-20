@@ -975,8 +975,9 @@ authApp.post('/admin/delete-users', async (c) => {
         // 5. セラピスト編集ログを削除（therapist_profilesの前に）
         try {
           // 本番環境では therapist_profiles.id = user_id
+          // therapist_edit_logs.therapist_id = therapist_profiles.id (= user_id)
           await c.env.DB.prepare(
-            'DELETE FROM therapist_edit_logs WHERE profile_id = ?'
+            'DELETE FROM therapist_edit_logs WHERE therapist_id = ?'
           ).bind(userId).run()
         } catch (e) {
           console.log('  ⚠️ therapist_edit_logs削除スキップ:', e)
