@@ -131,14 +131,14 @@ const SiteMapSearch: React.FC = () => {
   useEffect(() => {
     if (userLocation && sites.length > 0) {
       let filtered = sites
-        .filter(site => site.lat && site.lng) // 座標データがある施設のみ
+        .filter(site => site.latitude && site.longitude) // 座標データがある施設のみ
         .map(site => ({
           ...site,
           distance: calculateDistance(
             userLocation.lat,
             userLocation.lng,
-            site.lat,
-            site.lng
+            site.latitude,
+            site.longitude
           )
         }));
 
@@ -314,7 +314,7 @@ const SiteMapSearch: React.FC = () => {
       };
 
       const marker = new window.google.maps.Marker({
-        position: { lat: site.lat, lng: site.lng },
+        position: { lat: site.latitude, lng: site.longitude },
         map: map,
         title: site.name,
         icon: {
@@ -331,7 +331,7 @@ const SiteMapSearch: React.FC = () => {
       marker.addListener('click', () => {
         setSelectedSite(site);
         setShowTherapists(false);
-        map.panTo({ lat: site.lat, lng: site.lng });
+        map.panTo({ lat: site.latitude, lng: site.longitude });
       });
 
       markersRef.current.push(marker);
@@ -624,8 +624,8 @@ const SiteMapSearch: React.FC = () => {
                   onClick={() => {
                     setSelectedSite(site);
                     // マップを施設の位置に移動
-                    if (googleMapRef.current && site.lat && site.lng) {
-                      googleMapRef.current.panTo({ lat: site.lat, lng: site.lng });
+                    if (googleMapRef.current && site.latitude && site.longitude) {
+                      googleMapRef.current.panTo({ lat: site.latitude, lng: site.longitude });
                       googleMapRef.current.setZoom(16);
                     }
                   }}

@@ -76,16 +76,30 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
               </button>
             ))}
             <div className="h-4 w-px bg-gray-100"></div>
-            {/* デスクトップ用ユーザーメニュー */}
-            <UserMenu 
-              currentUser={currentUser}
-              onLogout={() => {
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('token');
-                navigate('/auth/login');
-              }}
-              variant="light"
-            />
+            {/* ユーザー専用のログイン・サインアップ */}
+            {currentUser ? (
+              <button 
+                onClick={() => navigate(getHomePath(currentUser.role))}
+                className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all flex items-center gap-2"
+              >
+                <LayoutDashboard size={14} /> マイページ
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={() => navigate('/login')}
+                  className="text-gray-400 hover:text-gray-900 text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  ログイン
+                </button>
+                <button 
+                  onClick={() => navigate('/signup')}
+                  className="bg-teal-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg"
+                >
+                  新規登録
+                </button>
+              </>
+            )}
           </nav>
 
           <button className="lg:hidden p-2 md:p-3 bg-gray-50 rounded-lg md:rounded-xl text-gray-900" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="メニューを開く">
@@ -116,12 +130,12 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                     }} 
                     className="bg-gray-900 text-white py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl flex items-center justify-center gap-3"
                   >
-                    <LayoutDashboard size={24} /> My Portal
+                    <LayoutDashboard size={24} /> マイページ
                   </button>
                 ) : (
                   <>
-                    <button onClick={() => { navigate('/auth/login'); setMobileMenuOpen(false); }} className="bg-gray-100 py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl">ログイン</button>
-                    <button onClick={() => { navigate('/auth/register-select'); setMobileMenuOpen(false); }} className="bg-teal-600 text-white py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl shadow-xl">パートナー加盟</button>
+                    <button onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} className="bg-gray-100 py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl">ログイン</button>
+                    <button onClick={() => { navigate('/signup'); setMobileMenuOpen(false); }} className="bg-teal-600 text-white py-5 md:py-6 rounded-2xl md:rounded-[28px] font-black text-lg md:text-xl shadow-xl">新規登録</button>
                   </>
                 )}
               </div>
@@ -136,7 +150,7 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
       <footer className="bg-gray-950 text-white py-24 mt-20">
         <div className="max-w-7xl mx-auto px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-20">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
             <div className="col-span-1 md:col-span-2 space-y-10">
               <div className="flex items-center gap-3">
                  <div className="w-12 h-12 bg-teal-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl">H</div>
@@ -155,6 +169,16 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                 <li><Link to="/strategy" className="text-gray-400 hover:text-white transition-colors">事業戦略</Link></li>
                 <li><Link to="/recruit" className="text-gray-400 hover:text-white transition-colors">採用・パートナー募集</Link></li>
                 <li><Link to="/news" className="text-gray-400 hover:text-white transition-colors">お知らせ</Link></li>
+              </ul>
+            </div>
+
+            <div className="space-y-8">
+              <h3 className="font-black text-[11px] uppercase tracking-[0.4em] text-orange-600">事業者の方へ</h3>
+              <ul className="space-y-4 text-sm font-black">
+                <li><Link to="/therapist/login" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"><UserCheck size={14} />セラピストログイン</Link></li>
+                <li><Link to="/therapist/join" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"><UserPlus size={14} />セラピスト登録</Link></li>
+                <li><Link to="/o/login" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"><Building2 size={14} />オフィスログイン</Link></li>
+                <li><Link to="/h/login" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"><Home size={14} />拠点ホストログイン</Link></li>
               </ul>
             </div>
 
