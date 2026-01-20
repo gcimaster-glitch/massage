@@ -43,6 +43,13 @@ app.post('/guest', async (c) => {
   
   try {
     const body = await c.req.json();
+    
+    // 🔍 受信した全データをログ出力
+    console.log('========================================');
+    console.log('📥 GUEST BOOKING REQUEST - FULL BODY:');
+    console.log(JSON.stringify(body, null, 2));
+    console.log('========================================');
+    
     const {
       therapist_id,
       site_id,
@@ -58,8 +65,25 @@ app.post('/guest', async (c) => {
       items // { type: 'COURSE' | 'OPTION', course_id, option_id, name, price, duration }[]
     } = body;
     
+    // 🔍 各パラメータの型と値をログ出力
+    console.log('📋 Parsed parameters:');
+    console.log(`  therapist_id: ${typeof therapist_id} = ${therapist_id}`);
+    console.log(`  site_id: ${typeof site_id} = ${site_id}`);
+    console.log(`  booking_type: ${typeof booking_type} = ${booking_type}`);
+    console.log(`  scheduled_at: ${typeof scheduled_at} = ${scheduled_at}`);
+    console.log(`  total_price: ${typeof total_price} = ${total_price}`);
+    console.log(`  total_duration: ${typeof total_duration} = ${total_duration}`);
+    console.log(`  customer_name: ${typeof customer_name} = ${customer_name}`);
+    console.log(`  customer_email: ${typeof customer_email} = ${customer_email}`);
+    console.log(`  customer_phone: ${typeof customer_phone} = ${customer_phone}`);
+    console.log(`  customer_address: ${typeof customer_address} = ${customer_address}`);
+    console.log(`  postal_code: ${typeof postal_code} = ${postal_code}`);
+    console.log(`  items: ${typeof items} = ${JSON.stringify(items)}`);
+    console.log('========================================');
+    
     // バリデーション
     if (!therapist_id || !booking_type || !scheduled_at || !customer_name || !customer_email || !customer_phone) {
+      console.error('❌ Validation failed - missing required fields');
       return c.json({ error: '必須項目が不足しています' }, 400);
     }
     
@@ -70,63 +94,99 @@ app.post('/guest', async (c) => {
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    // サービス名を生成（最初のコースの名前）
+    // バインド値
     const service_name = items && items.length > 0 ? items[0].name : '施術';
     
-    // バインド値
-    const bindValues = [
-      bookingId,              // 1: id
-      null,                   // 2: user_id (ゲスト予約なので NULL)
-      customer_name,          // 3: user_name
-      customer_email,         // 4: user_email
-      customer_phone,         // 5: user_phone
-      customer_address || null, // 6: user_address
-      postal_code || null,    // 7: postal_code
-      therapist_id,           // 8: therapist_id
-      therapist_name,         // 9: therapist_name
-      site_id || null,        // 10: site_id
-      booking_type,           // 11: type
-      'PENDING_PAYMENT',      // 12: status
-      service_name,           // 13: service_name
-      total_duration,         // 14: duration
-      total_price,            // 15: price
-      scheduled_at            // 16: scheduled_at/scheduled_start
-    ];
+    // 🔍 環境判別: bookingsテーブルのスキーマを確認
+    const schemaCheck = await DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='bookings'"
+    ).first<{ sql: string }>();
+    
+    const hasUserColumns = schemaCheck?.sql?.includes('user_name');
+    const hasScheduledStart = schemaCheck?.sql?.includes('scheduled_start');
+    
+    console.log('🔍 Environment detection:');
+    console.log(`  hasUserColumns: ${hasUserColumns}`);
+    console.log(`  hasScheduledStart: ${hasScheduledStart}`);
+    
+    let insertBookingQuery: string;
+    let bindValues: any[];
+    
+    if (hasUserColumns) {
+      // 本番環境: user_name, user_email, user_phone, scheduled_start を使用
+      console.log('✅ Using PRODUCTION schema (with user columns and scheduled_start)');
+      insertBookingQuery = `
+        INSERT INTO bookings (
+          id, user_id, user_name, user_email, user_phone, user_address, postal_code,
+          therapist_id, therapist_name, site_id,
+          type, status, service_name, duration, price, scheduled_start, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `;
+      bindValues = [
+        bookingId,
+        null, // user_id
+        customer_name,
+        customer_email,
+        customer_phone,
+        customer_address || null,
+        postal_code || null,
+        therapist_id,
+        therapist_name,
+        site_id || null,
+        booking_type,
+        'PENDING_PAYMENT',
+        service_name,
+        total_duration,
+        total_price,
+        scheduled_at
+      ];
+    } else {
+      // ローカル環境: user_id, therapist_id, scheduled_at のみ使用
+      console.log('✅ Using LOCAL schema (without user columns, with scheduled_at)');
+      
+      // ゲスト用の共通ユーザーID（ローカル環境ではuser_idがNOT NULL）
+      const guestUserId = 'guest-user';
+      console.log(`  Using guest user_id: ${guestUserId}`);
+      
+      insertBookingQuery = `
+        INSERT INTO bookings (
+          id, user_id, therapist_id, therapist_name, office_id, site_id,
+          type, status, service_name, duration, price, scheduled_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `;
+      
+      // ローカル環境用のtherapist_id変換
+      const profileResult = await DB.prepare(
+        'SELECT id FROM therapist_profiles WHERE user_id = ?'
+      ).bind(therapist_id).first<{ id: string }>();
+      
+      const finalTherapistId = profileResult?.id || therapist_id;
+      console.log(`  therapist_id: ${therapist_id} -> ${finalTherapistId}`);
+      
+      bindValues = [
+        bookingId,
+        guestUserId, // ゲスト用の一時ユーザーID
+        finalTherapistId,
+        therapist_name,
+        null, // office_id
+        site_id || null,
+        booking_type,
+        'PENDING', // ローカル環境では PENDING_PAYMENT が使えない
+        service_name,
+        total_duration,
+        total_price,
+        scheduled_at
+      ];
+    }
     
     console.log('📋 Guest booking bind values:', bindValues.map((v, i) => `[${i}] ${typeof v}: ${v}`));
-    
-    // 予約を作成（user_id は NULL、ゲスト予約）
-    // 環境判別: scheduled_at (ローカル) vs scheduled_start (本番)
-    let insertBookingQuery = `
-      INSERT INTO bookings (
-        id, user_id, user_name, user_email, user_phone, user_address, postal_code,
-        therapist_id, therapist_name, site_id,
-        type, status, service_name, duration, price, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `;
     
     try {
       await DB.prepare(insertBookingQuery).bind(...bindValues).run();
       console.log('✅ Guest booking inserted successfully');
     } catch (dbError: any) {
-      console.error('❌ Guest booking insert failed (trying scheduled_at):', dbError);
-      
-      // scheduled_atで失敗した場合、scheduled_startで再試行
-      if (dbError.message?.includes('scheduled_at')) {
-        console.log('🔄 Retrying with scheduled_start column...');
-        insertBookingQuery = `
-          INSERT INTO bookings (
-            id, user_id, user_name, user_email, user_phone, user_address, postal_code,
-            therapist_id, therapist_name, site_id,
-            type, status, service_name, duration, price, scheduled_start, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-        `;
-        
-        await DB.prepare(insertBookingQuery).bind(...bindValues).run();
-        console.log('✅ Guest booking inserted successfully with scheduled_start');
-      } else {
-        throw dbError;
-      }
+      console.error('❌ Guest booking insert failed:', dbError);
+      throw dbError;
     }
     
     // 予約アイテムを追加
