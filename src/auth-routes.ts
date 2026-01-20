@@ -332,25 +332,17 @@ authApp.post('/register', async (c) => {
             .bind(existingUserId).run()
           console.log(`✅ Step 2 complete: ${step2.meta.changes} rows deleted`)
           
-          console.log(`🗑️ Step 3: Deleting booking_items (sub-records)`)
-          // 3. Delete booking_items first (references bookings)
-          const step3 = await c.env.DB.prepare('DELETE FROM booking_items WHERE booking_id IN (SELECT id FROM bookings WHERE user_id = ?)')
+          // Skip bookings deletion due to complex FK constraints
+          // bookings.user_id allows NULL, so we can safely leave them
+          console.log(`⚠️ Skipping bookings deletion (FK constraints with therapist_profiles)`)
+          
+          console.log(`🗑️ Step 3: Deleting user ${existingUserId}`)
+          // 3. Delete user
+          const step3 = await c.env.DB.prepare('DELETE FROM users WHERE id = ?')
             .bind(existingUserId).run()
           console.log(`✅ Step 3 complete: ${step3.meta.changes} rows deleted`)
           
-          console.log(`🗑️ Step 4: Deleting bookings for user ${existingUserId}`)
-          // 4. Delete bookings
-          const step4 = await c.env.DB.prepare('DELETE FROM bookings WHERE user_id = ?')
-            .bind(existingUserId).run()
-          console.log(`✅ Step 4 complete: ${step4.meta.changes} rows deleted`)
-          
-          console.log(`🗑️ Step 5: Deleting user ${existingUserId}`)
-          // 5. Delete user
-          const step5 = await c.env.DB.prepare('DELETE FROM users WHERE id = ?')
-            .bind(existingUserId).run()
-          console.log(`✅ Step 5 complete: ${step5.meta.changes} rows deleted`)
-          
-          console.log(`✅ ✅ ✅ Existing user completely deleted: ${existingUserId}`)
+          console.log(`✅ ✅ ✅ Existing user deleted (bookings preserved): ${existingUserId}`)
         } catch (deleteError: any) {
           console.error('❌ ❌ ❌ Failed to delete existing user:', deleteError)
           console.error('Error details:', {
