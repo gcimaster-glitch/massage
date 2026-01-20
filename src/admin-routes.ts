@@ -198,19 +198,35 @@ app.delete('/users', async (c) => {
     // therapist_profilesにはidカラムが存在せず、user_idがPKである
     // この外部キー制約は壊れているため、therapist_edit_logsは手動で削除不可
     console.log('⚠️ Skipping therapist_edit_logs (broken foreign key constraint)')
-    
-    // NOTE: therapist_profiles削除時にCASCADE削除される可能性がある
-    // もし削除されない場合は、therapist_edit_logsが残留する
 
-    // 2. therapist_profiles
+    // 2. therapist_profiles も削除できない（therapist_edit_logsが参照している）
+    // セラピストユーザーの場合は削除不可として処理
     try {
-      const therapistProfilesDeleteResult = await DB.prepare(
-        `DELETE FROM therapist_profiles WHERE user_id IN (${userIdPlaceholders})`
-      ).bind(...userIds).run()
-      console.log('✅ Deleted therapist_profiles:', therapistProfilesDeleteResult.meta.changes)
-      totalDeleted += therapistProfilesDeleteResult.meta.changes || 0
+      const therapistCheckResult = await DB.prepare(
+        `SELECT user_id FROM therapist_profiles WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).all()
+
+      if (therapistCheckResult.results.length > 0) {
+        const therapistUserIds = therapistCheckResult.results.map((r: any) => r.user_id)
+        console.error('❌ Cannot delete therapist users due to broken FK constraint:', therapistUserIds)
+        
+        // セラピストユーザー以外を削除対象にする
+        const nonTherapistUserIds = userIds.filter(id => !therapistUserIds.includes(id))
+        
+        if (nonTherapistUserIds.length === 0) {
+          return c.json({
+            error: 'Cannot delete therapist users',
+            message: 'Therapist users cannot be deleted due to database constraint issues. Only regular users can be deleted.',
+            therapistUsers: therapistUserIds
+          }, 400)
+        }
+        
+        // 以降は非セラピストユーザーのみを対象にする
+        console.log('✅ Proceeding with non-therapist users only:', nonTherapistUserIds)
+        userIds.splice(0, userIds.length, ...nonTherapistUserIds)
+      }
     } catch (error: any) {
-      console.error('⚠️ Failed to delete therapist_profiles:', error.message)
+      console.error('⚠️ Failed to check therapist_profiles:', error.message)
     }
 
     // 3. email_verifications
