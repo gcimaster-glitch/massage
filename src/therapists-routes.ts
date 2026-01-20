@@ -32,8 +32,9 @@ app.get('/', async (c) => {
   const offset = (page - 1) * limit;
   
   try {
-    // WHERE句の構築（APPROVED状態のみ表示）
-    const conditions: string[] = ["tp.status = 'APPROVED'"];
+    // WHERE句の構築（有効なセラピストのみ表示）
+    // 本番環境: is_active = 1, ローカル環境: status = 'APPROVED'
+    const conditions: string[] = ["(tp.is_active = 1 OR tp.status = 'APPROVED')"];
     const params: any[] = [];
     
     if (search) {
