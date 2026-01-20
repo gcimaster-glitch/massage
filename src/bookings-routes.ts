@@ -280,6 +280,15 @@ app.post('/guest', async (c) => {
     // 予約アイテムを追加
     if (items_fixed && items_fixed.length > 0) {
       for (const item of items_fixed) {
+        // item_idを決定（COURSE: course_id, OPTION: option_id）
+        const actualItemId = item.type === 'COURSE' ? item.course_id : item.option_id;
+        
+        // item_idがnullの場合はスキップ
+        if (!actualItemId) {
+          console.warn(`⚠️ Skipping item with null item_id: ${JSON.stringify(item)}`);
+          continue;
+        }
+        
         const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const insertItemQuery = `
           INSERT INTO booking_items (
@@ -291,8 +300,8 @@ app.post('/guest', async (c) => {
           itemId,
           bookingId,
           item.type,
-          item.type === 'COURSE' ? item.course_id : item.option_id,
-          item.name,
+          actualItemId,
+          item.name || '施術',
           item.price || 0
         ).run();
       }
