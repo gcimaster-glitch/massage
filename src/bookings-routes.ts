@@ -234,6 +234,14 @@ app.post('/', requireAuth, async (c) => {
       itemsCount: items?.length || 0
     });
     
+    // セラピスト名を取得
+    const therapistResult = await DB.prepare(
+      'SELECT name FROM users WHERE id = ?'
+    ).bind(therapist_id).first<{ name: string }>();
+    
+    const therapistName = therapistResult?.name || 'セラピスト';
+    console.log('👤 Therapist name:', therapistName);
+    
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
@@ -242,6 +250,7 @@ app.post('/', requireAuth, async (c) => {
       bookingId,
       userId,
       therapist_id,
+      therapistName,
       office_id || null,
       site_id || null,
       type,
@@ -257,9 +266,9 @@ app.post('/', requireAuth, async (c) => {
     console.log('📝 Inserting booking into database...');
     const insertBookingQuery = `
       INSERT INTO bookings (
-        id, user_id, therapist_id, office_id, site_id,
-        type, status, service_name, duration, price, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
+        id, user_id, therapist_id, therapist_name, office_id, site_id,
+        type, status, service_name, duration, price, scheduled_start, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
     `;
     
     try {
