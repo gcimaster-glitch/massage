@@ -80,11 +80,9 @@ app.get('/', async (c) => {
         tp.experience_years,
         tp.rating,
         tp.review_count,
-        tp.approved_areas,
-        o.name as office_name
+        tp.approved_areas
       FROM therapist_profiles tp
       JOIN users u ON tp.user_id = u.id
-      LEFT JOIN offices o ON tp.office_id = o.id
       WHERE ${whereClause}
       ORDER BY tp.rating DESC, tp.review_count DESC
       LIMIT ? OFFSET ?
@@ -120,11 +118,9 @@ app.get('/:id', async (c) => {
         tp.user_id as id,
         u.name,
         u.avatar_url,
-        u.email,
-        o.name as office_name
+        u.email
       FROM therapist_profiles tp
       JOIN users u ON tp.user_id = u.id
-      LEFT JOIN offices o ON tp.office_id = o.id
       WHERE tp.user_id = ?
     `;
     
