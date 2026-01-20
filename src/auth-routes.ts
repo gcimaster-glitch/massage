@@ -328,11 +328,18 @@ authApp.post('/register', async (c) => {
           const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
           // Update user with new password and info
-          await c.env.DB.prepare(
+          const updateResult = await c.env.DB.prepare(
             `UPDATE users 
-             SET password_hash = ?, name = ?, phone = ?, email_verified = 0
+             SET password_hash = ?, name = ?, phone = ?
              WHERE id = ?`
           ).bind(passwordHash, name, phone || '', existingUserId).run()
+          
+          console.log('✅ User update result:', updateResult)
+          
+          // Reset email verification separately
+          await c.env.DB.prepare(
+            `UPDATE users SET email_verified = 0 WHERE id = ?`
+          ).bind(existingUserId).run()
           
           // Delete old email verifications
           await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
