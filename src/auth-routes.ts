@@ -330,7 +330,7 @@ authApp.post('/register', async (c) => {
           // Update user with new password and info
           await c.env.DB.prepare(
             `UPDATE users 
-             SET password_hash = ?, name = ?, phone = ?, email_verified = 0, updated_at = datetime('now')
+             SET password_hash = ?, name = ?, phone = ?, email_verified = 0
              WHERE id = ?`
           ).bind(passwordHash, name, phone || '', existingUserId).run()
           
