@@ -42,11 +42,46 @@ app.post('/guest', async (c) => {
   const { DB } = c.env;
   
   try {
-    const body = await c.req.json();
+    const rawBody = await c.req.json();
     
     // 🔍 受信した全データをログ出力
     console.log('========================================');
-    console.log('📥 GUEST BOOKING REQUEST - FULL BODY:');
+    console.log('📥 GUEST BOOKING REQUEST - RAW BODY:');
+    console.log(JSON.stringify(rawBody, null, 2));
+    console.log('========================================');
+    
+    // 🛡️ undefined/null値を完全に除去して安全な値に変換
+    const cleanValue = (val: any, defaultValue: any = null) => {
+      if (val === undefined || val === null || val === 'undefined' || val === 'null') {
+        return defaultValue;
+      }
+      return val;
+    };
+    
+    // 全フィールドを安全な値に変換
+    const body = {
+      therapist_id: cleanValue(rawBody.therapist_id),
+      site_id: cleanValue(rawBody.site_id, null),
+      booking_type: cleanValue(rawBody.booking_type, 'ONSITE'),
+      scheduled_at: cleanValue(rawBody.scheduled_at),
+      total_price: cleanValue(rawBody.total_price, 0),
+      total_duration: cleanValue(rawBody.total_duration, 60),
+      customer_name: cleanValue(rawBody.customer_name),
+      customer_email: cleanValue(rawBody.customer_email),
+      customer_phone: cleanValue(rawBody.customer_phone),
+      customer_address: cleanValue(rawBody.customer_address, null),
+      postal_code: cleanValue(rawBody.postal_code, null),
+      items: Array.isArray(rawBody.items) ? rawBody.items.map((item: any) => ({
+        type: cleanValue(item.type, 'COURSE'),
+        course_id: cleanValue(item.course_id),
+        option_id: cleanValue(item.option_id),
+        name: cleanValue(item.name, '施術'),
+        price: cleanValue(item.price, 0),
+        duration: cleanValue(item.duration, 0)
+      })) : []
+    };
+    
+    console.log('🔧 CLEANED BODY:');
     console.log(JSON.stringify(body, null, 2));
     console.log('========================================');
     
