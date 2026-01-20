@@ -6,6 +6,9 @@ import Login from './pages/auth/Login';
 import UnifiedLogin from './pages/auth/UnifiedLogin';
 import UnifiedRegister from './pages/auth/UnifiedRegister';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import TherapistLP from './pages/partner/TherapistLP';
+import HostLP from './pages/partner/HostLP';
+import OfficeLP from './pages/partner/OfficeLP';
 import LoginUser from './pages/auth/LoginUser';
 import LoginTherapist from './pages/auth/LoginTherapist';
 import LoginOffice from './pages/auth/LoginOffice';
@@ -231,6 +234,11 @@ const App: React.FC = () => {
         <Route path="/auth/register" element={<UnifiedRegister />} />
         <Route path="/auth/register/user" element={<UnifiedRegister />} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        
+        {/* Partner Landing Pages */}
+        <Route path="/therapist-lp" element={<TherapistLP />} />
+        <Route path="/host-lp" element={<HostLP />} />
+        <Route path="/office-lp" element={<OfficeLP />} />
         
         {/* Legacy Auth Routes (kept for compatibility) */}
         <Route path="/auth/login/user" element={<LoginUser onLogin={handleLogin} />} />

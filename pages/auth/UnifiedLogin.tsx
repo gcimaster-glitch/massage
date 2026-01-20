@@ -24,22 +24,6 @@ const userTypes: UserTypeOption[] = [
     bgColor: 'bg-teal-50'
   },
   {
-    type: 'THERAPIST',
-    label: 'セラピスト',
-    description: '施術を提供する方',
-    icon: <Briefcase size={24} />,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50'
-  },
-  {
-    type: 'HOST',
-    label: '施設運営者',
-    description: '施設を運営する方',
-    icon: <Building2 size={24} />,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50'
-  },
-  {
     type: 'ADMIN',
     label: '管理者',
     description: 'システム管理者',
@@ -127,26 +111,26 @@ const UnifiedLogin: React.FC = () => {
                   <User size={16} className="text-teal-600" />
                 </div>
                 <div>
-                  <p className="font-black text-gray-900">お客様</p>
-                  <p className="text-sm text-gray-600">簡単予約・オンライン決済</p>
+                  <p className="font-black text-gray-900">簡単予約</p>
+                  <p className="text-sm text-gray-600">お好みのセラピストをすぐに予約</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Briefcase size={16} className="text-blue-600" />
+                <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0 mt-1">
+                  <User size={16} className="text-teal-600" />
                 </div>
                 <div>
-                  <p className="font-black text-gray-900">セラピスト</p>
-                  <p className="text-sm text-gray-600">予約管理・顧客管理</p>
+                  <p className="font-black text-gray-900">オンライン決済</p>
+                  <p className="text-sm text-gray-600">安全・簡単なキャッシュレス決済</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Building2 size={16} className="text-purple-600" />
+                <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0 mt-1">
+                  <User size={16} className="text-teal-600" />
                 </div>
                 <div>
-                  <p className="font-black text-gray-900">施設運営者</p>
-                  <p className="text-sm text-gray-600">施設管理・売上管理</p>
+                  <p className="font-black text-gray-900">予約管理</p>
+                  <p className="text-sm text-gray-600">マイページで予約を一括管理</p>
                 </div>
               </li>
             </ul>
@@ -277,19 +261,36 @@ const UnifiedLogin: React.FC = () => {
               <p className="text-center text-sm text-gray-500 font-bold">
                 アカウントをお持ちでない方
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <button
                   onClick={() => navigate('/auth/register/user')}
-                  className="px-6 py-3 bg-gray-50 hover:bg-gray-100 text-gray-900 rounded-2xl font-bold text-sm transition-all"
+                  className="w-full px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-sm transition-all"
                 >
-                  お客様登録
+                  新規会員登録（お客様）
                 </button>
-                <button
-                  onClick={() => navigate('/auth/register-select')}
-                  className="px-6 py-3 bg-gray-50 hover:bg-gray-100 text-gray-900 rounded-2xl font-bold text-sm transition-all"
-                >
-                  パートナー登録
-                </button>
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 font-bold mb-2">パートナーの方</p>
+                  <div className="flex gap-2 text-xs">
+                    <button
+                      onClick={() => navigate('/therapist-lp')}
+                      className="flex-1 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all"
+                    >
+                      セラピスト
+                    </button>
+                    <button
+                      onClick={() => navigate('/host-lp')}
+                      className="flex-1 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all"
+                    >
+                      拠点ホスト
+                    </button>
+                    <button
+                      onClick={() => navigate('/office-lp')}
+                      className="flex-1 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all"
+                    >
+                      オフィス
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
