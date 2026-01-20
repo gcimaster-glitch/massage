@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, LogOut, Settings, UserCircle } from 'lucide-react'
+import { User, LogOut, Settings, UserCircle, LayoutDashboard } from 'lucide-react'
 import { userStorage, User as StorageUser } from '../services/storage'
 
 interface User {
@@ -225,12 +225,12 @@ const UserMenu: React.FC<UserMenuProps> = ({
             <button
               onClick={() => {
                 setIsOpen(false)
-                navigate('/app/profile')
+                navigate('/app')
               }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 transition-colors font-semibold"
             >
-              <UserCircle className="w-4 h-4 text-gray-400" />
-              <span>プロフィール</span>
+              <LayoutDashboard className="w-4 h-4 text-teal-600" />
+              <span>マイページ</span>
             </button>
             <button
               onClick={() => {

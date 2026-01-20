@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, HelpCircle, LogOut, Menu, X, Bell, User } from 'lucide-react';
+import { Home, HelpCircle, LogOut, Menu, X, Bell, User, Search } from 'lucide-react';
 import { BRAND } from '../../constants';
 
 interface UserHeaderProps {
@@ -80,6 +80,14 @@ const UserHeader: React.FC<UserHeaderProps> = ({ onLogout }) => {
               </button>
               
               <button
+                onClick={() => navigate('/therapists')}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-600 hover:text-teal-600 transition-colors"
+              >
+                <Search size={18} />
+                セラピストを探す
+              </button>
+              
+              <button
                 onClick={() => navigate('/app/support')}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-600 hover:text-teal-600 transition-colors"
               >
@@ -101,11 +109,12 @@ const UserHeader: React.FC<UserHeaderProps> = ({ onLogout }) => {
               </button>
 
               <button
-                onClick={() => navigate('/app/account')}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-600 hover:text-teal-600 transition-colors"
+                onClick={() => navigate('/app')}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-teal-50 text-teal-700 hover:bg-teal-100 rounded-xl transition-colors"
+                title="マイページ・ダッシュボード"
               >
                 <User size={18} />
-                {userName || 'アカウント'}
+                {userName || 'マイページ'}
               </button>
 
               <button
@@ -145,6 +154,17 @@ const UserHeader: React.FC<UserHeaderProps> = ({ onLogout }) => {
 
             <button
               onClick={() => {
+                navigate('/therapists');
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center gap-3 px-4 py-3 text-left font-bold text-gray-700 hover:bg-teal-50 rounded-xl transition-colors"
+            >
+              <Search size={20} />
+              セラピストを探す
+            </button>
+
+            <button
+              onClick={() => {
                 navigate('/app/support');
                 setMobileMenuOpen(false);
               }}
@@ -172,13 +192,13 @@ const UserHeader: React.FC<UserHeaderProps> = ({ onLogout }) => {
 
             <button
               onClick={() => {
-                navigate('/app/account');
+                navigate('/app');
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center gap-3 px-4 py-3 text-left font-bold text-gray-700 hover:bg-teal-50 rounded-xl transition-colors"
+              className="flex items-center gap-3 px-4 py-3 text-left font-bold bg-teal-50 text-teal-700 rounded-xl transition-colors"
             >
               <User size={20} />
-              {userName || 'アカウント'}
+              {userName || 'マイページ'}
             </button>
 
             <div className="pt-4 border-t border-gray-200">
