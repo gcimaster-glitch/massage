@@ -202,7 +202,6 @@ app.post('/', async (c) => {
       therapist_name, // 追加
       office_id,
       site_id,
-      room_id,
       type,
       service_name,
       duration,
@@ -251,9 +250,9 @@ app.post('/', async (c) => {
     console.log('📝 Inserting booking into database...');
     const insertBookingQuery = `
       INSERT INTO bookings (
-        id, user_id, therapist_id, therapist_name, office_id, site_id, room_id,
+        id, user_id, therapist_id, therapist_name, office_id, site_id,
         type, status, service_name, duration, price, location, scheduled_start, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
     `;
     
     try {
@@ -264,7 +263,6 @@ app.post('/', async (c) => {
         finalTherapistName,
         office_id || null,
         site_id || null,
-        room_id || null,
         type,
         service_name || '施術',
         duration,
