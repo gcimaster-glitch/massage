@@ -40,6 +40,7 @@ import BookingDetail from './pages/user/BookingDetail';
 import BookingReview from './pages/user/BookingReview';
 import BookingSuccess from './pages/user/BookingSuccess';
 import UserBookings from './pages/user/UserBookings';
+import UserBookingDetail from './pages/user/BookingDetail';
 import Account from './pages/user/Account';
 import ProfileEdit from './pages/user/ProfileEdit';
 import PaymentMethods from './pages/user/PaymentMethods';
@@ -285,6 +286,7 @@ const App: React.FC = () => {
         <Route path="/app/booking/:bookingId/chat" element={<RequireAuth allowedRoles={[Role.USER, Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><Chat /></RequireAuth>} />
         <Route path="/app/booking/:bookingId/review" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingReview /></RequireAuth>} />
         <Route path="/app/bookings" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><UserBookings /></RequireAuth>} />
+        <Route path="/app/booking/:id" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><UserBookingDetail /></RequireAuth>} />
         
         {/* User Settings */}
         <Route path="/app/account" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><Account onLogout={handleLogout} /></RequireAuth>} />
