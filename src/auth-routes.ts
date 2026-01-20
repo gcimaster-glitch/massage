@@ -855,7 +855,7 @@ authApp.post('/register', async (c) => {
 // =========================================
 // パスワードリセット
 // =========================================
-app.post('/forgot-password', async (c) => {
+authApp.post('/forgot-password', async (c) => {
   try {
     const { email } = await c.req.json()
 
