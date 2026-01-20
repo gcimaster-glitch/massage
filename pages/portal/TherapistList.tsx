@@ -19,34 +19,55 @@ const TherapistListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode'); // 'dispatch' or null
+  const areaParam = searchParams.get('area'); // URL parameter for area
+  const typeParam = searchParams.get('type'); // URL parameter for booking type
   
   // API State
   const [therapists, setTherapists] = useState<any[]>([]);
+  const [areas, setAreas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Filter States
-  const [area, setArea] = useState('');
+  const [area, setArea] = useState(areaParam || '');
   const [category, setCategory] = useState('');
   const [sortBy, setSortBy] = useState('RECOMMENDED'); 
   const [showFilterModal, setShowFilterModal] = useState(false);
 
+  // Update area when URL parameter changes
   useEffect(() => {
-    fetchTherapists();
+    if (areaParam) {
+      setArea(areaParam);
+    }
+  }, [areaParam]);
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
-  const fetchTherapists = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/therapists');
       
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+      // Fetch areas and therapists in parallel
+      const [areasRes, therapistsRes] = await Promise.all([
+        fetch('/api/areas'),
+        fetch('/api/therapists')
+      ]);
+      
+      if (areasRes.ok) {
+        const areasData = await areasRes.json();
+        setAreas(areasData.areas || MOCK_AREAS);
+      } else {
+        setAreas(MOCK_AREAS);
       }
       
-      const data = await res.json();
-      // APIレスポンスは {therapists: [...], total: ...} の構造
+      if (!therapistsRes.ok) {
+        throw new Error(`HTTP error! status: ${therapistsRes.status}`);
+      }
+      
+      const data = await therapistsRes.json();
       const therapistsList = data.therapists || [];
       setTherapists(therapistsList.map((t: any) => ({
         ...t,
@@ -56,8 +77,9 @@ const TherapistListPage: React.FC = () => {
         imageUrl: t.avatar_url || '/placeholder-therapist.jpg'
       })));
     } catch (e) {
-      console.error('Failed to fetch therapists:', e);
-      setError(e instanceof Error ? e.message : 'セラピスト情報の取得に失敗しました。');
+      console.error('Failed to fetch data:', e);
+      setError(e instanceof Error ? e.message : 'データの取得に失敗しました。');
+      setAreas(MOCK_AREAS);
     } finally {
       setLoading(false);
     }
@@ -84,7 +106,7 @@ const TherapistListPage: React.FC = () => {
     return result;
   }, [therapists, area, category, sortBy]);
 
-  const currentAreaName = MOCK_AREAS.find(a => a.id === area)?.name || '東京都';
+  const currentAreaName = areas.find(a => a.id === area)?.name || '全エリア';
 
   return (
     <PortalLayout>
@@ -138,7 +160,7 @@ const TherapistListPage: React.FC = () => {
                          className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-black outline-none focus:bg-white focus:border-teal-500 transition-all appearance-none"
                        >
                           <option value="">全てのエリア</option>
-                          {MOCK_AREAS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                        </select>
                     </div>
                     <div className="relative group">
