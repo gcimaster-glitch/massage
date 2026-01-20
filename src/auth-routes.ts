@@ -972,7 +972,23 @@ authApp.post('/admin/delete-users', async (c) => {
           console.log('  ⚠️ bookings更新スキップ:', e)
         }
 
-        // 5. セラピストプロファイル削除
+        // 5. セラピスト編集ログを削除（therapist_profilesの前に）
+        try {
+          const { results: therapistProfiles } = await c.env.DB.prepare(
+            'SELECT id FROM therapist_profiles WHERE user_id = ?'
+          ).bind(userId).all()
+
+          for (const profile of therapistProfiles) {
+            const profileId = (profile as any).id
+            await c.env.DB.prepare(
+              'DELETE FROM therapist_edit_logs WHERE profile_id = ?'
+            ).bind(profileId).run()
+          }
+        } catch (e) {
+          console.log('  ⚠️ therapist_edit_logs削除スキップ:', e)
+        }
+
+        // 6. セラピストプロファイル削除
         try {
           await c.env.DB.prepare(
             'DELETE FROM therapist_profiles WHERE user_id = ?'
@@ -981,7 +997,7 @@ authApp.post('/admin/delete-users', async (c) => {
           console.log('  ⚠️ therapist_profiles削除スキップ:', e)
         }
 
-        // 6. 最後にユーザー本体を削除
+        // 7. 最後にユーザー本体を削除
         await c.env.DB.prepare(
           'DELETE FROM users WHERE id = ?'
         ).bind(userId).run()
