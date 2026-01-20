@@ -75,7 +75,7 @@ app.post('/guest', async (c) => {
       INSERT INTO bookings (
         id, user_id, user_name, user_email, user_phone, user_address, postal_code,
         therapist_id, therapist_name, site_id,
-        type, status, service_name, duration, price, scheduled_start, created_at
+        type, status, service_name, duration, price, scheduled_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
     
@@ -98,7 +98,7 @@ app.post('/guest', async (c) => {
       service_name,           // 13: service_name
       total_duration,         // 14: duration
       total_price,            // 15: price
-      scheduled_at            // 16: scheduled_start
+      scheduled_at            // 16: scheduled_at
     ).run();
     
     // 予約アイテムを追加
@@ -258,7 +258,7 @@ app.post('/', requireAuth, async (c) => {
     const insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, therapist_id, office_id, site_id,
-        type, status, service_name, duration, price, scheduled_start, created_at
+        type, status, service_name, duration, price, scheduled_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
     `;
     
@@ -423,8 +423,7 @@ app.get('/:id', requireAuth, async (c) => {
         c_user.email as customer_email,
         c_user.phone as customer_phone,
         s.name as site_name,
-        s.address as site_address,
-        s.phone as site_phone
+        s.address as site_address
       FROM bookings b
       LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
       LEFT JOIN users t_user ON tp.user_id = t_user.id
