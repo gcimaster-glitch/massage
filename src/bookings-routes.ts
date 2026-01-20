@@ -189,9 +189,9 @@ app.get('/guest/:bookingId', async (c) => {
 app.use('/*', requireAuth);
 
 // ============================================
-// 予約作成
+// 予約作成（認証必須）
 // ============================================
-app.post('/', async (c) => {
+app.post('/', requireAuth, async (c) => {
   const { DB } = c.env;
   const userId = c.get('userId');
   
@@ -230,11 +230,28 @@ app.post('/', async (c) => {
       service_name,
       userId,
       site_id,
+      office_id,
       itemsCount: items?.length || 0
     });
     
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // バインド値を事前にログ出力
+    const bindValues = [
+      bookingId,
+      userId,
+      therapist_id,
+      office_id || null,
+      site_id || null,
+      type,
+      service_name || '施術',
+      duration,
+      price,
+      scheduled_at
+    ];
+    
+    console.log('📋 Bind values:', bindValues.map((v, i) => `[${i}] ${typeof v}: ${v}`));
     
     // 予約を作成
     console.log('📝 Inserting booking into database...');
@@ -246,18 +263,7 @@ app.post('/', async (c) => {
     `;
     
     try {
-      await DB.prepare(insertBookingQuery).bind(
-        bookingId,
-        userId,
-        therapist_id,
-        office_id || null,
-        site_id || null,
-        type,
-        service_name || '施術',
-        duration,
-        price,
-        scheduled_at
-      ).run();
+      await DB.prepare(insertBookingQuery).bind(...bindValues).run();
       console.log('✅ Booking inserted successfully');
     } catch (dbError: any) {
       console.error('❌ Database insert failed:', dbError);
