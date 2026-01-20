@@ -193,20 +193,14 @@ app.delete('/users', async (c) => {
     const userIdPlaceholders = userIds.map(() => '?').join(', ')
     let totalDeleted = 0
 
-    // 1. therapist_edit_logs (references therapist_profiles by user_id)
-    // therapist_edit_logsはtherapist_idでtherapist_profilesのuser_idを参照している
-    if (userIds.length > 0) {
-      try {
-        const editLogsResult = await DB.prepare(
-          `DELETE FROM therapist_edit_logs WHERE therapist_id IN (${userIdPlaceholders})`
-        ).bind(...userIds).run()
-        console.log('✅ Deleted therapist_edit_logs:', editLogsResult.meta.changes)
-        totalDeleted += editLogsResult.meta.changes || 0
-      } catch (error: any) {
-        console.error('⚠️ Failed to delete therapist_edit_logs:', error.message)
-        // 続行（テーブルが存在しない場合もある）
-      }
-    }
+    // 1. therapist_edit_logs をスキップ
+    // 理由: 本番環境でtherapist_profiles(id)を参照しているが、
+    // therapist_profilesにはidカラムが存在せず、user_idがPKである
+    // この外部キー制約は壊れているため、therapist_edit_logsは手動で削除不可
+    console.log('⚠️ Skipping therapist_edit_logs (broken foreign key constraint)')
+    
+    // NOTE: therapist_profiles削除時にCASCADE削除される可能性がある
+    // もし削除されない場合は、therapist_edit_logsが残留する
 
     // 2. therapist_profiles
     try {
