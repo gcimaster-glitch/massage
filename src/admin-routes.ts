@@ -144,6 +144,124 @@ app.post('/mock-data/seed', async (c) => {
 })
 
 /**
+ * Admin API: Delete specific users by email
+ * DELETE /api/admin/users
+ * Body: { emails: string[] }
+ */
+app.delete('/users', async (c) => {
+  const { DB } = c.env
+
+  if (!DB) {
+    return c.json({ error: 'Database not configured' }, 500)
+  }
+
+  try {
+    // Verify admin authentication
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+
+    const body = await c.req.json()
+    const { emails } = body
+
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return c.json({ error: 'emails array is required' }, 400)
+    }
+
+    console.log('🗑️ Deleting users with emails:', emails)
+
+    // Get user IDs
+    const placeholders = emails.map(() => '?').join(', ')
+    const userIdsResult = await DB.prepare(
+      `SELECT id FROM users WHERE email IN (${placeholders})`
+    ).bind(...emails).all()
+
+    const userIds = userIdsResult.results.map((r: any) => r.id)
+
+    if (userIds.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No users found with specified emails',
+        deleted: 0
+      })
+    }
+
+    console.log('Found user IDs:', userIds)
+
+    // Delete in correct order (respecting foreign keys)
+    const userIdPlaceholders = userIds.map(() => '?').join(', ')
+    let totalDeleted = 0
+
+    // 1. therapist_edit_logs (references therapist_profiles)
+    const therapistProfilesResult = await DB.prepare(
+      `SELECT id FROM therapist_profiles WHERE user_id IN (${userIdPlaceholders})`
+    ).bind(...userIds).all()
+    
+    const therapistIds = therapistProfilesResult.results.map((r: any) => r.id)
+    
+    if (therapistIds.length > 0) {
+      const therapistIdPlaceholders = therapistIds.map(() => '?').join(', ')
+      const editLogsResult = await DB.prepare(
+        `DELETE FROM therapist_edit_logs WHERE therapist_id IN (${therapistIdPlaceholders})`
+      ).bind(...therapistIds).run()
+      console.log('Deleted therapist_edit_logs:', editLogsResult.meta.changes)
+      totalDeleted += editLogsResult.meta.changes || 0
+    }
+
+    // 2. therapist_profiles
+    const therapistProfilesDeleteResult = await DB.prepare(
+      `DELETE FROM therapist_profiles WHERE user_id IN (${userIdPlaceholders})`
+    ).bind(...userIds).run()
+    console.log('Deleted therapist_profiles:', therapistProfilesDeleteResult.meta.changes)
+    totalDeleted += therapistProfilesDeleteResult.meta.changes || 0
+
+    // 3. email_verifications
+    const emailVerificationsResult = await DB.prepare(
+      `DELETE FROM email_verifications WHERE user_id IN (${userIdPlaceholders})`
+    ).bind(...userIds).run()
+    console.log('Deleted email_verifications:', emailVerificationsResult.meta.changes)
+    totalDeleted += emailVerificationsResult.meta.changes || 0
+
+    // 4. social_accounts
+    const socialAccountsResult = await DB.prepare(
+      `DELETE FROM social_accounts WHERE user_id IN (${userIdPlaceholders})`
+    ).bind(...userIds).run()
+    console.log('Deleted social_accounts:', socialAccountsResult.meta.changes)
+    totalDeleted += socialAccountsResult.meta.changes || 0
+
+    // 5. bookings
+    const bookingsResult = await DB.prepare(
+      `DELETE FROM bookings WHERE user_id IN (${userIdPlaceholders})`
+    ).bind(...userIds).run()
+    console.log('Deleted bookings:', bookingsResult.meta.changes)
+    totalDeleted += bookingsResult.meta.changes || 0
+
+    // 6. users (finally)
+    const usersResult = await DB.prepare(
+      `DELETE FROM users WHERE id IN (${userIdPlaceholders})`
+    ).bind(...userIds).run()
+    console.log('Deleted users:', usersResult.meta.changes)
+    totalDeleted += usersResult.meta.changes || 0
+
+    return c.json({
+      success: true,
+      message: `Successfully deleted ${userIds.length} user(s) and ${totalDeleted} related records`,
+      deletedEmails: emails,
+      deletedUserIds: userIds,
+      totalRecordsDeleted: totalDeleted
+    })
+  } catch (error: any) {
+    console.error('❌ Failed to delete users:', error)
+    return c.json({
+      error: 'Failed to delete users',
+      message: error.message,
+      details: error.stack
+    }, 500)
+  }
+})
+
+/**
  * Admin API: Get database statistics
  */
 app.get('/stats', async (c) => {
