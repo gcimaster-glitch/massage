@@ -315,7 +315,32 @@ authApp.post('/register', async (c) => {
         .all()
 
       if (existingUsers.length > 0) {
-        return c.json({ error: 'このメールアドレスは既に登録されています' }, 409)
+        const existingUserId = existingUsers[0].id
+        console.log(`⚠️ Existing user found: ${existingUserId}, deleting and re-registering...`)
+        
+        // Delete existing user's related data
+        try {
+          // 1. Delete email_verifications
+          await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
+            .bind(existingUserId).run()
+          
+          // 2. Delete social_accounts
+          await c.env.DB.prepare('DELETE FROM social_accounts WHERE user_id = ?')
+            .bind(existingUserId).run()
+          
+          // 3. Delete bookings (if no foreign key constraints)
+          await c.env.DB.prepare('DELETE FROM bookings WHERE user_id = ?')
+            .bind(existingUserId).run()
+          
+          // 4. Delete user
+          await c.env.DB.prepare('DELETE FROM users WHERE id = ?')
+            .bind(existingUserId).run()
+          
+          console.log(`✅ Existing user deleted: ${existingUserId}`)
+        } catch (deleteError: any) {
+          console.error('Failed to delete existing user:', deleteError)
+          return c.json({ error: 'このメールアドレスは既に登録されています。削除に失敗しました。' }, 409)
+        }
       }
 
       // Hash password using Web Crypto API
