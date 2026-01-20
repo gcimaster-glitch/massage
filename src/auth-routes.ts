@@ -900,4 +900,110 @@ authApp.post('/forgot-password', async (c) => {
   }
 })
 
+// =========================================
+// Admin: ユーザー削除 (本番環境のみ)
+// =========================================
+authApp.post('/admin/delete-users', async (c) => {
+  try {
+    const { emails } = await c.req.json()
+
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return c.json({ error: 'メールアドレスが必要です' }, 400)
+    }
+
+    if (!c.env.DB) {
+      return c.json({ error: 'データベースが利用できません' }, 500)
+    }
+
+    console.log('🗑️ 削除リクエスト:', emails)
+
+    const deletedUsers: string[] = []
+    const errors: { email: string, error: string }[] = []
+
+    for (const email of emails) {
+      try {
+        // ユーザーを検索
+        const { results } = await c.env.DB.prepare(
+          'SELECT id FROM users WHERE email = ?'
+        ).bind(email).all()
+
+        if (results.length === 0) {
+          errors.push({ email, error: 'ユーザーが見つかりません' })
+          continue
+        }
+
+        const userId = (results[0] as any).id
+
+        console.log(`🔍 削除開始: ${email} (ID: ${userId})`)
+
+        // 1. メール認証トークン削除
+        try {
+          await c.env.DB.prepare(
+            'DELETE FROM email_verifications WHERE user_id = ?'
+          ).bind(userId).run()
+        } catch (e) {
+          console.log('  ⚠️ email_verifications削除スキップ:', e)
+        }
+
+        // 2. セッション削除
+        try {
+          await c.env.DB.prepare(
+            'DELETE FROM auth_sessions WHERE user_id = ?'
+          ).bind(userId).run()
+        } catch (e) {
+          console.log('  ⚠️ auth_sessions削除スキップ:', e)
+        }
+
+        // 3. ソーシャルアカウント削除
+        try {
+          await c.env.DB.prepare(
+            'DELETE FROM social_accounts WHERE user_id = ?'
+          ).bind(userId).run()
+        } catch (e) {
+          console.log('  ⚠️ social_accounts削除スキップ:', e)
+        }
+
+        // 4. ゲスト予約は削除しない（履歴保持）が、user_idをNULLにする
+        try {
+          await c.env.DB.prepare(
+            'UPDATE bookings SET user_id = NULL WHERE user_id = ?'
+          ).bind(userId).run()
+        } catch (e) {
+          console.log('  ⚠️ bookings更新スキップ:', e)
+        }
+
+        // 5. セラピストプロファイル削除
+        try {
+          await c.env.DB.prepare(
+            'DELETE FROM therapist_profiles WHERE user_id = ?'
+          ).bind(userId).run()
+        } catch (e) {
+          console.log('  ⚠️ therapist_profiles削除スキップ:', e)
+        }
+
+        // 6. 最後にユーザー本体を削除
+        await c.env.DB.prepare(
+          'DELETE FROM users WHERE id = ?'
+        ).bind(userId).run()
+
+        deletedUsers.push(email)
+        console.log(`✅ 削除完了: ${email}`)
+      } catch (e) {
+        console.error(`❌ 削除失敗: ${email}`, e)
+        errors.push({ email, error: (e as Error).message })
+      }
+    }
+
+    return c.json({
+      success: true,
+      deletedUsers,
+      errors,
+      message: `${deletedUsers.length}件のユーザーを削除しました`,
+    })
+  } catch (e) {
+    console.error('Delete users error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
 export default authApp
