@@ -46,51 +46,75 @@ const UserDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   }, []);
 
   const loadDashboardData = async () => {
-    // TEMPORARY: API未実装のため、モックデータを使用
     try {
-      // モック通知
-      setNotifications([
-        {
-          id: '1',
-          title: 'ポイント付与',
-          message: '予約完了で100ポイントが付与されました',
-          type: 'success',
-          date: new Date().toISOString(),
-          read: false
-        }
-      ]);
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.warn('No auth token found');
+        return;
+      }
 
-      // モック予約履歴
-      setRecentBookings([
-        {
-          id: '1',
-          therapist_name: '山田 太郎',
-          site_name: 'CARE CUBE 新宿三丁目',
-          date: '2026-01-20',
-          time: '14:00',
-          status: 'upcoming',
-          amount: 8000
-        }
-      ]);
+      console.log('📊 Loading dashboard data...');
 
-      // モック統計
-      setStats({
-        totalBookings: 5,
-        totalSpent: 40000,
-        favoriteCount: 3,
-        points: 500
-      });
-      
-      // TODO: API実装後に以下を有効化
-      // const token = localStorage.getItem('auth_token');
-      // const notifResponse = await fetch('/api/users/notifications', {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-      // if (notifResponse.ok) {
-      //   const data = await notifResponse.json();
-      //   setNotifications(data.notifications || []);
-      // }
-      // ... 他のAPI呼び出し
+      // 予約履歴を取得
+      try {
+        const bookingsResponse = await fetch('/api/bookings?limit=10', {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (bookingsResponse.ok) {
+          const data = await bookingsResponse.json();
+          console.log('✅ Bookings loaded:', data);
+          
+          // APIレスポンスをBooking型に変換
+          const bookings = (data.bookings || []).map((b: any) => ({
+            id: b.id,
+            therapist_name: b.therapist_name || 'セラピスト',
+            site_name: b.site_name || '施設名未設定',
+            date: b.scheduled_start?.split('T')[0] || b.scheduled_at?.split('T')[0] || '',
+            time: b.scheduled_start?.split('T')[1]?.substring(0, 5) || b.scheduled_at?.split('T')[1]?.substring(0, 5) || '',
+            status: b.status === 'COMPLETED' ? 'completed' : 
+                   b.status === 'CANCELLED' ? 'cancelled' : 'upcoming',
+            amount: b.price || 0
+          }));
+
+          setRecentBookings(bookings);
+
+          // 統計を計算
+          const totalBookings = bookings.length;
+          const totalSpent = bookings
+            .filter((b: Booking) => b.status === 'completed')
+            .reduce((sum: number, b: Booking) => sum + b.amount, 0);
+
+          setStats({
+            totalBookings,
+            totalSpent,
+            favoriteCount: 0, // TODO: お気に入りAPI実装後
+            points: 0 // TODO: ポイントAPI実装後
+          });
+        } else {
+          console.error('Failed to fetch bookings:', bookingsResponse.status);
+        }
+      } catch (bookingError) {
+        console.error('Error fetching bookings:', bookingError);
+      }
+
+      // 通知を取得（オプション、まだ未実装の場合はスキップ）
+      try {
+        const notifResponse = await fetch('/api/users/notifications', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (notifResponse.ok) {
+          const data = await notifResponse.json();
+          setNotifications(data.notifications || []);
+        }
+      } catch (notifError) {
+        console.log('Notifications API not available yet');
+      }
+
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     }
