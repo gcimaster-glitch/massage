@@ -243,18 +243,14 @@ app.post('/guest', async (c) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `;
       
-      // ローカル環境用のtherapist_id変換
-      const profileResult = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(therapist_id_fixed).first<{ id: string }>();
-      
-      const finalTherapistId = profileResult?.id || therapist_id_fixed;
-      console.log(`  therapist_id: ${therapist_id_fixed} -> ${finalTherapistId}`);
+      // therapist_id は user_id と同じ（therapist_profiles の主キーは user_id）
+      // 外部キー制約が therapist_profiles(id) を参照しているが、実際には user_id を使う
+      console.log(`  Using therapist_id directly as user_id: ${therapist_id_fixed}`);
       
       bindValues = [
         bookingId,
         guestUserId,
-        finalTherapistId,
+        therapist_id_fixed, // therapist_profiles の主キーは user_id なので直接使用
         therapist_name,
         null, // office_id
         site_id_fixed || null,
