@@ -81,21 +81,74 @@ app.post('/guest', async (c) => {
     console.log(`  items: ${typeof items} = ${JSON.stringify(items)}`);
     console.log('========================================');
     
-    // バリデーション
-    if (!therapist_id || !booking_type || !scheduled_at || !customer_name || !customer_email || !customer_phone) {
-      console.error('❌ Validation failed - missing required fields');
-      return c.json({ error: '必須項目が不足しています' }, 400);
+    // 🛡️ undefined値を自動修正
+    const fixedBody: any = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (value === undefined || value === 'undefined') {
+        console.warn(`⚠️ Found undefined value for key: ${key}, converting to null`);
+        fixedBody[key] = null;
+      } else {
+        fixedBody[key] = value;
+      }
     }
     
+    // 修正後の値を再代入
+    const fixed = {
+      therapist_id: fixedBody.therapist_id,
+      site_id: fixedBody.site_id || null,
+      booking_type: fixedBody.booking_type || 'ONSITE',
+      scheduled_at: fixedBody.scheduled_at,
+      total_price: fixedBody.total_price || 0,
+      total_duration: fixedBody.total_duration || 60,
+      customer_name: fixedBody.customer_name,
+      customer_email: fixedBody.customer_email,
+      customer_phone: fixedBody.customer_phone,
+      customer_address: fixedBody.customer_address || null,
+      postal_code: fixedBody.postal_code || null,
+      items: fixedBody.items || []
+    };
+    
+    console.log('🔧 Fixed parameters:', JSON.stringify(fixed, null, 2));
+    
+    // バリデーション
+    if (!fixed.therapist_id || !fixed.booking_type || !fixed.scheduled_at || !fixed.customer_name || !fixed.customer_email || !fixed.customer_phone) {
+      console.error('❌ Validation failed - missing required fields after fix');
+      return c.json({ 
+        error: '必須項目が不足しています',
+        details: {
+          therapist_id: !!fixed.therapist_id,
+          booking_type: !!fixed.booking_type,
+          scheduled_at: !!fixed.scheduled_at,
+          customer_name: !!fixed.customer_name,
+          customer_email: !!fixed.customer_email,
+          customer_phone: !!fixed.customer_phone
+        }
+      }, 400);
+    }
+    
+    // 修正後の値を使用
+    const therapist_id_fixed = fixed.therapist_id;
+    const site_id_fixed = fixed.site_id;
+    const booking_type_fixed = fixed.booking_type;
+    const scheduled_at_fixed = fixed.scheduled_at;
+    const total_price_fixed = fixed.total_price;
+    const total_duration_fixed = fixed.total_duration;
+    const customer_name_fixed = fixed.customer_name;
+    const customer_email_fixed = fixed.customer_email;
+    const customer_phone_fixed = fixed.customer_phone;
+    const customer_address_fixed = fixed.customer_address;
+    const postal_code_fixed = fixed.postal_code;
+    const items_fixed = fixed.items;
+    
     // セラピスト名を取得
-    const therapist = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(therapist_id).first();
+    const therapist = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(therapist_id_fixed).first();
     const therapist_name = therapist ? (therapist as any).name : 'セラピスト';
     
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
     // バインド値
-    const service_name = items && items.length > 0 ? items[0].name : '施術';
+    const service_name = items_fixed && items_fixed.length > 0 ? items_fixed[0].name : '施術';
     
     // 🔍 環境判別: bookingsテーブルのスキーマを確認
     const schemaCheck = await DB.prepare(
@@ -125,20 +178,20 @@ app.post('/guest', async (c) => {
       bindValues = [
         bookingId,
         null, // user_id
-        customer_name,
-        customer_email,
-        customer_phone,
-        customer_address || null,
-        postal_code || null,
-        therapist_id,
+        customer_name_fixed,
+        customer_email_fixed,
+        customer_phone_fixed,
+        customer_address_fixed || null,
+        postal_code_fixed || null,
+        therapist_id_fixed,
         therapist_name,
-        site_id || null,
-        booking_type,
+        site_id_fixed || null,
+        booking_type_fixed,
         'PENDING_PAYMENT',
         service_name,
-        total_duration,
-        total_price,
-        scheduled_at
+        total_duration_fixed || 60,
+        total_price_fixed || 0,
+        scheduled_at_fixed
       ];
     } else {
       // ローカル環境: user_id, therapist_id, scheduled_at のみ使用
@@ -158,24 +211,24 @@ app.post('/guest', async (c) => {
       // ローカル環境用のtherapist_id変換
       const profileResult = await DB.prepare(
         'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(therapist_id).first<{ id: string }>();
+      ).bind(therapist_id_fixed).first<{ id: string }>();
       
-      const finalTherapistId = profileResult?.id || therapist_id;
-      console.log(`  therapist_id: ${therapist_id} -> ${finalTherapistId}`);
+      const finalTherapistId = profileResult?.id || therapist_id_fixed;
+      console.log(`  therapist_id: ${therapist_id_fixed} -> ${finalTherapistId}`);
       
       bindValues = [
         bookingId,
-        guestUserId, // ゲスト用の一時ユーザーID
+        guestUserId,
         finalTherapistId,
         therapist_name,
         null, // office_id
-        site_id || null,
-        booking_type,
-        'PENDING', // ローカル環境では PENDING_PAYMENT が使えない
+        site_id_fixed || null,
+        booking_type_fixed,
+        'PENDING',
         service_name,
-        total_duration,
-        total_price,
-        scheduled_at
+        total_duration_fixed || 60,
+        total_price_fixed || 0,
+        scheduled_at_fixed
       ];
     }
     
@@ -190,8 +243,8 @@ app.post('/guest', async (c) => {
     }
     
     // 予約アイテムを追加
-    if (items && items.length > 0) {
-      for (const item of items) {
+    if (items_fixed && items_fixed.length > 0) {
+      for (const item of items_fixed) {
         const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const insertItemQuery = `
           INSERT INTO booking_items (
@@ -205,7 +258,7 @@ app.post('/guest', async (c) => {
           item.type,
           item.type === 'COURSE' ? item.course_id : item.option_id,
           item.name,
-          item.price
+          item.price || 0
         ).run();
       }
     }
