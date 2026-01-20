@@ -193,18 +193,11 @@ app.delete('/users', async (c) => {
     const userIdPlaceholders = userIds.map(() => '?').join(', ')
     let totalDeleted = 0
 
-    // 1. therapist_edit_logs (references therapist_profiles)
-    const therapistProfilesResult = await DB.prepare(
-      `SELECT id FROM therapist_profiles WHERE user_id IN (${userIdPlaceholders})`
-    ).bind(...userIds).all()
-    
-    const therapistIds = therapistProfilesResult.results.map((r: any) => r.id)
-    
-    if (therapistIds.length > 0) {
-      const therapistIdPlaceholders = therapistIds.map(() => '?').join(', ')
+    // 1. therapist_edit_logs (references therapist_profiles by user_id)
+    if (userIds.length > 0) {
       const editLogsResult = await DB.prepare(
-        `DELETE FROM therapist_edit_logs WHERE therapist_id IN (${therapistIdPlaceholders})`
-      ).bind(...therapistIds).run()
+        `DELETE FROM therapist_edit_logs WHERE therapist_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
       console.log('Deleted therapist_edit_logs:', editLogsResult.meta.changes)
       totalDeleted += editLogsResult.meta.changes || 0
     }
