@@ -316,44 +316,101 @@ authApp.post('/register', async (c) => {
 
       if (existingUsers.length > 0) {
         const existingUserId = existingUsers[0].id
-        console.log(`⚠️ Existing user found: ${existingUserId}, deleting and re-registering...`)
+        console.log(`⚠️ Existing user found: ${existingUserId}, updating instead of deleting...`)
         
-        // Delete existing user's related data
+        // Update existing user instead of deleting
         try {
-          console.log(`🗑️ Step 1: Deleting email_verifications for user ${existingUserId}`)
-          // 1. Delete email_verifications
-          const step1 = await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
+          // Hash password
+          const encoder = new TextEncoder()
+          const data = encoder.encode(password)
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+          const hashArray = Array.from(new Uint8Array(hashBuffer))
+          const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+          // Update user with new password and info
+          await c.env.DB.prepare(
+            `UPDATE users 
+             SET password_hash = ?, name = ?, phone = ?, email_verified = 0, updated_at = datetime('now')
+             WHERE id = ?`
+          ).bind(passwordHash, name, phone || '', existingUserId).run()
+          
+          // Delete old email verifications
+          await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
             .bind(existingUserId).run()
-          console.log(`✅ Step 1 complete: ${step1.meta.changes} rows deleted`)
           
-          console.log(`🗑️ Step 2: Deleting social_accounts for user ${existingUserId}`)
-          // 2. Delete social_accounts
-          const step2 = await c.env.DB.prepare('DELETE FROM social_accounts WHERE user_id = ?')
-            .bind(existingUserId).run()
-          console.log(`✅ Step 2 complete: ${step2.meta.changes} rows deleted`)
+          // Generate new verification token
+          const verificationToken = generateState()
           
-          // Skip bookings deletion due to complex FK constraints
-          // bookings.user_id allows NULL, so we can safely leave them
-          console.log(`⚠️ Skipping bookings deletion (FK constraints with therapist_profiles)`)
+          // Insert new verification
+          await c.env.DB.prepare(
+            `INSERT INTO email_verifications (id, user_id, token, expires_at, created_at)
+             VALUES (?, ?, ?, datetime('now', '+24 hours'), datetime('now'))`
+          ).bind(
+            `ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            existingUserId,
+            verificationToken
+          ).run()
           
-          console.log(`🗑️ Step 3: Deleting user ${existingUserId}`)
-          // 3. Delete user
-          const step3 = await c.env.DB.prepare('DELETE FROM users WHERE id = ?')
-            .bind(existingUserId).run()
-          console.log(`✅ Step 3 complete: ${step3.meta.changes} rows deleted`)
+          console.log(`✅ Existing user updated: ${existingUserId}`)
           
-          console.log(`✅ ✅ ✅ Existing user deleted (bookings preserved): ${existingUserId}`)
-        } catch (deleteError: any) {
-          console.error('❌ ❌ ❌ Failed to delete existing user:', deleteError)
-          console.error('Error details:', {
-            message: deleteError.message,
-            stack: deleteError.stack,
-            cause: deleteError.cause
-          })
+          // Send verification email
+          if (c.env.RESEND_API_KEY) {
+            const verificationUrl = `${c.req.header('origin') || 'https://hogusy.com'}/api/auth/verify-email?token=${verificationToken}`
+            
+            try {
+              const resendResponse = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  from: 'HOGUSY <noreply@hogusy.com>',
+                  to: email,
+                  subject: '【HOGUSY】メールアドレスの確認',
+                  html: `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset="UTF-8">
+                    </head>
+                    <body style="font-family: sans-serif; line-height: 1.6;">
+                      <h2>メールアドレスの確認</h2>
+                      <p>${name} 様</p>
+                      <p>HOGUSYにご登録いただきありがとうございます。</p>
+                      <p>以下のリンクをクリックして、メールアドレスの確認を完了してください：</p>
+                      <p><a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">メールアドレスを確認する</a></p>
+                      <p>または、以下のURLをブラウザにコピー＆ペーストしてください：</p>
+                      <p>${verificationUrl}</p>
+                      <p>このリンクは24時間有効です。</p>
+                      <hr>
+                      <p style="color: #666; font-size: 12px;">このメールに心当たりがない場合は、無視してください。</p>
+                    </body>
+                    </html>
+                  `
+                })
+              })
+
+              if (!resendResponse.ok) {
+                console.error('Failed to send verification email:', await resendResponse.text())
+              }
+            } catch (emailError) {
+              console.error('Email sending error:', emailError)
+            }
+          }
+
+          return c.json({
+            success: true,
+            message: 'アカウント情報を更新しました。確認メールを送信しましたので、メールアドレスの確認を完了してください。',
+            userId: existingUserId,
+            email: email
+          }, 200)
+        } catch (updateError: any) {
+          console.error('❌ Failed to update existing user:', updateError)
           return c.json({ 
-            error: 'このメールアドレスは既に登録されています。削除に失敗しました。',
-            details: deleteError.message 
-          }, 409)
+            error: 'アカウント情報の更新に失敗しました。',
+            details: updateError.message 
+          }, 500)
         }
       }
 
