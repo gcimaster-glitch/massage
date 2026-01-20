@@ -32,8 +32,8 @@ app.get('/', async (c) => {
   const offset = (page - 1) * limit;
   
   try {
-    // WHERE句の構築
-    const conditions: string[] = ["tp.is_active = 1"];
+    // WHERE句の構築（APPROVED状態のみ表示）
+    const conditions: string[] = ["tp.status = 'APPROVED'"];
     const params: any[] = [];
     
     if (search) {
