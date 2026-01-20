@@ -199,24 +199,15 @@ app.post('/', async (c) => {
     const body = await c.req.json();
     const {
       therapist_id,
-      therapist_name, // 追加
       office_id,
       site_id,
       type,
       service_name,
       duration,
       price,
-      location,
       scheduled_at,
       items, // { item_type: 'COURSE' | 'OPTION', item_id: string, item_name: string, price: number }[]
     } = body;
-    
-    // セラピスト名を取得（渡されていない場合）
-    let finalTherapistName = therapist_name;
-    if (!finalTherapistName && therapist_id) {
-      const therapistQuery = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(therapist_id).first<{ name: string }>();
-      finalTherapistName = therapistQuery?.name || 'セラピスト';
-    }
     
     // バリデーション
     if (!therapist_id || !type || !scheduled_at || !duration || !price) {
@@ -232,7 +223,6 @@ app.post('/', async (c) => {
     
     console.log('✅ Creating booking with data:', {
       therapist_id,
-      finalTherapistName,
       type,
       scheduled_at,
       duration,
@@ -250,9 +240,9 @@ app.post('/', async (c) => {
     console.log('📝 Inserting booking into database...');
     const insertBookingQuery = `
       INSERT INTO bookings (
-        id, user_id, therapist_id, therapist_name, office_id, site_id,
-        type, status, service_name, duration, price, location, scheduled_start, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, datetime('now'))
+        id, user_id, therapist_id, office_id, site_id,
+        type, status, service_name, duration, price, scheduled_start, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
     `;
     
     try {
@@ -260,14 +250,12 @@ app.post('/', async (c) => {
         bookingId,
         userId,
         therapist_id,
-        finalTherapistName,
         office_id || null,
         site_id || null,
         type,
         service_name || '施術',
         duration,
         price,
-        location || null,
         scheduled_at
       ).run();
       console.log('✅ Booking inserted successfully');
