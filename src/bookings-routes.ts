@@ -234,13 +234,38 @@ app.post('/', requireAuth, async (c) => {
       itemsCount: items?.length || 0
     });
     
-    // セラピスト名を取得
+    // セラピスト名とプロフィールIDを取得
     const therapistResult = await DB.prepare(
       'SELECT name FROM users WHERE id = ?'
     ).bind(therapist_id).first<{ name: string }>();
     
     const therapistName = therapistResult?.name || 'セラピスト';
     console.log('👤 Therapist name:', therapistName);
+    
+    // 環境に応じてtherapist_idを決定
+    // ローカル: therapist_profiles.idを使用
+    // 本番: users.idを使用
+    let finalTherapistId = therapist_id;
+    
+    // therapist_profilesテーブルからIDを取得して環境判別
+    const profileResult = await DB.prepare(
+      'SELECT user_id FROM therapist_profiles WHERE user_id = ? LIMIT 1'
+    ).bind(therapist_id).first<{ user_id: string }>();
+    
+    if (profileResult) {
+      // ローカル環境: therapist_profiles(id)が主キー
+      // profile-xxxの形式のIDを取得
+      const localProfileResult = await DB.prepare(
+        'SELECT id FROM therapist_profiles WHERE user_id = ?'
+      ).bind(therapist_id).first<{ id: string }>();
+      
+      if (localProfileResult?.id && localProfileResult.id !== therapist_id) {
+        finalTherapistId = localProfileResult.id;
+        console.log(`🔄 Using therapist profile ID: ${finalTherapistId} (local env)`);
+      } else {
+        console.log(`✅ Using user ID: ${finalTherapistId} (production env)`);
+      }
+    }
     
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -249,7 +274,7 @@ app.post('/', requireAuth, async (c) => {
     const bindValues = [
       bookingId,
       userId,
-      therapist_id,
+      finalTherapistId, // 環境に応じたID
       therapistName,
       office_id || null,
       site_id || null,
@@ -264,10 +289,13 @@ app.post('/', requireAuth, async (c) => {
     
     // 予約を作成
     console.log('📝 Inserting booking into database...');
-    const insertBookingQuery = `
+    
+    // 環境判別: scheduled_at vs scheduled_start
+    // ローカル: scheduled_at, 本番: scheduled_start
+    let insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, therapist_id, therapist_name, office_id, site_id,
-        type, status, service_name, duration, price, scheduled_start, created_at
+        type, status, service_name, duration, price, scheduled_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
     `;
     
@@ -275,8 +303,28 @@ app.post('/', requireAuth, async (c) => {
       await DB.prepare(insertBookingQuery).bind(...bindValues).run();
       console.log('✅ Booking inserted successfully');
     } catch (dbError: any) {
-      console.error('❌ Database insert failed:', dbError);
-      throw new Error(`Database insert failed: ${dbError.message}`);
+      console.error('❌ Database insert failed (trying scheduled_at):', dbError);
+      
+      // scheduled_atで失敗した場合、scheduled_startで再試行
+      if (dbError.message?.includes('scheduled_at')) {
+        console.log('🔄 Retrying with scheduled_start column...');
+        insertBookingQuery = `
+          INSERT INTO bookings (
+            id, user_id, therapist_id, therapist_name, office_id, site_id,
+            type, status, service_name, duration, price, scheduled_start, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
+        `;
+        
+        try {
+          await DB.prepare(insertBookingQuery).bind(...bindValues).run();
+          console.log('✅ Booking inserted successfully with scheduled_start');
+        } catch (retryError: any) {
+          console.error('❌ Database insert failed again:', retryError);
+          throw new Error(`Database insert failed: ${retryError.message}`);
+        }
+      } else {
+        throw new Error(`Database insert failed: ${dbError.message}`);
+      }
     }
     
     // 予約アイテムを追加
