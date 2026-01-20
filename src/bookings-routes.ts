@@ -307,6 +307,106 @@ app.post('/guest', async (c) => {
       }
     }
     
+    // 📧 予約確認メールを送信
+    try {
+      const bookingDetails = {
+        bookingId,
+        userName: customer_name,
+        therapistName: therapist_name,
+        serviceName: service_name,
+        date: scheduled_at,
+        duration: total_duration,
+        price: total_price,
+        bookingType: booking_type
+      };
+      
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'HOGUSY <noreply@hogusy.com>',
+          to: [customer_email],
+          subject: '【HOGUSY】ご予約を承りました',
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 20px; }
+                .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); padding: 32px 20px; text-align: center; }
+                .header h1 { color: white; margin: 0; font-size: 28px; }
+                .content { padding: 32px 24px; }
+                .content h2 { color: #14b8a6; margin: 0 0 16px 0; font-size: 22px; }
+                .info-box { background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 16px; margin: 20px 0; border-radius: 8px; }
+                .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+                .info-label { width: 120px; color: #6b7280; font-size: 14px; }
+                .info-value { flex: 1; color: #111827; font-weight: 600; font-size: 14px; }
+                .footer { background: #f8f8f8; padding: 24px; text-align: center; color: #888; font-size: 13px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>🌿 HOGUSY</h1>
+                </div>
+                <div class="content">
+                  <h2>ご予約ありがとうございます</h2>
+                  <p>${customer_name}様、この度はHOGUSYをご利用いただき、誠にありがとうございます。</p>
+                  <p>ご予約を承りましたのでご確認ください。</p>
+                  
+                  <div class="info-box">
+                    <div class="info-row">
+                      <div class="info-label">予約番号</div>
+                      <div class="info-value">${bookingId}</div>
+                    </div>
+                    <div class="info-row">
+                      <div class="info-label">担当セラピスト</div>
+                      <div class="info-value">${therapist_name}</div>
+                    </div>
+                    <div class="info-row">
+                      <div class="info-label">サービス</div>
+                      <div class="info-value">${service_name}</div>
+                    </div>
+                    <div class="info-row">
+                      <div class="info-label">日時</div>
+                      <div class="info-value">${scheduled_at}</div>
+                    </div>
+                    <div class="info-row">
+                      <div class="info-label">所要時間</div>
+                      <div class="info-value">${total_duration}分</div>
+                    </div>
+                    <div class="info-row" style="border-bottom: none;">
+                      <div class="info-label">料金</div>
+                      <div class="info-value">¥${total_price.toLocaleString()}</div>
+                    </div>
+                  </div>
+                  
+                  <p style="margin-top: 24px; color: #6b7280; font-size: 14px;">
+                    ご不明な点がございましたら、お気軽にお問い合わせください。<br>
+                    当日お会いできることを楽しみにしております。
+                  </p>
+                </div>
+                <div class="footer">
+                  <p style="margin: 0;">© 2026 HOGUSY. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `
+        })
+      });
+      
+      console.log('✅ Confirmation email sent to:', customer_email);
+    } catch (emailError: any) {
+      console.error('⚠️ Failed to send confirmation email:', emailError);
+      // メール送信失敗しても予約は成功とする
+    }
+    
     return c.json({ 
       success: true,
       bookingId,
