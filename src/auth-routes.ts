@@ -332,7 +332,7 @@ authApp.post('/register', async (c) => {
             `UPDATE users 
              SET password_hash = ?, name = ?, phone = ?, email_verified = 0
              WHERE id = ?`
-          ).bind(passwordHash, name, phone || null, existingUserId).run()
+          ).bind(passwordHash, name, phone || '', existingUserId).run()
           
           // Delete old email verifications
           await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
