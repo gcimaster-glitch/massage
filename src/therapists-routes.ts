@@ -33,8 +33,8 @@ app.get('/', async (c) => {
   
   try {
     // WHERE句の構築（有効なセラピストのみ表示）
-    // 本番環境: is_active = 1, ローカル環境: status = 'APPROVED'
-    const conditions: string[] = ["(tp.is_active = 1 OR tp.status = 'APPROVED')"];
+    // 本番環境: is_active = 1のみ
+    const conditions: string[] = ["tp.is_active = 1"];
     const params: any[] = [];
     
     if (search) {
