@@ -194,48 +194,124 @@ app.delete('/users', async (c) => {
     let totalDeleted = 0
 
     // 1. therapist_edit_logs (references therapist_profiles by user_id)
+    // therapist_edit_logsはtherapist_idでtherapist_profilesのuser_idを参照している
     if (userIds.length > 0) {
-      const editLogsResult = await DB.prepare(
-        `DELETE FROM therapist_edit_logs WHERE therapist_id IN (${userIdPlaceholders})`
-      ).bind(...userIds).run()
-      console.log('Deleted therapist_edit_logs:', editLogsResult.meta.changes)
-      totalDeleted += editLogsResult.meta.changes || 0
+      try {
+        const editLogsResult = await DB.prepare(
+          `DELETE FROM therapist_edit_logs WHERE therapist_id IN (${userIdPlaceholders})`
+        ).bind(...userIds).run()
+        console.log('✅ Deleted therapist_edit_logs:', editLogsResult.meta.changes)
+        totalDeleted += editLogsResult.meta.changes || 0
+      } catch (error: any) {
+        console.error('⚠️ Failed to delete therapist_edit_logs:', error.message)
+        // 続行（テーブルが存在しない場合もある）
+      }
     }
 
     // 2. therapist_profiles
-    const therapistProfilesDeleteResult = await DB.prepare(
-      `DELETE FROM therapist_profiles WHERE user_id IN (${userIdPlaceholders})`
-    ).bind(...userIds).run()
-    console.log('Deleted therapist_profiles:', therapistProfilesDeleteResult.meta.changes)
-    totalDeleted += therapistProfilesDeleteResult.meta.changes || 0
+    try {
+      const therapistProfilesDeleteResult = await DB.prepare(
+        `DELETE FROM therapist_profiles WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted therapist_profiles:', therapistProfilesDeleteResult.meta.changes)
+      totalDeleted += therapistProfilesDeleteResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete therapist_profiles:', error.message)
+    }
 
     // 3. email_verifications
-    const emailVerificationsResult = await DB.prepare(
-      `DELETE FROM email_verifications WHERE user_id IN (${userIdPlaceholders})`
-    ).bind(...userIds).run()
-    console.log('Deleted email_verifications:', emailVerificationsResult.meta.changes)
-    totalDeleted += emailVerificationsResult.meta.changes || 0
+    try {
+      const emailVerificationsResult = await DB.prepare(
+        `DELETE FROM email_verifications WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted email_verifications:', emailVerificationsResult.meta.changes)
+      totalDeleted += emailVerificationsResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete email_verifications:', error.message)
+    }
 
     // 4. social_accounts
-    const socialAccountsResult = await DB.prepare(
-      `DELETE FROM social_accounts WHERE user_id IN (${userIdPlaceholders})`
-    ).bind(...userIds).run()
-    console.log('Deleted social_accounts:', socialAccountsResult.meta.changes)
-    totalDeleted += socialAccountsResult.meta.changes || 0
+    try {
+      const socialAccountsResult = await DB.prepare(
+        `DELETE FROM social_accounts WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted social_accounts:', socialAccountsResult.meta.changes)
+      totalDeleted += socialAccountsResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete social_accounts:', error.message)
+    }
 
-    // 5. bookings
-    const bookingsResult = await DB.prepare(
-      `DELETE FROM bookings WHERE user_id IN (${userIdPlaceholders})`
-    ).bind(...userIds).run()
-    console.log('Deleted bookings:', bookingsResult.meta.changes)
-    totalDeleted += bookingsResult.meta.changes || 0
+    // 5. booking_items (must delete before bookings)
+    try {
+      const bookingItemsResult = await DB.prepare(
+        `DELETE FROM booking_items WHERE booking_id IN (SELECT id FROM bookings WHERE user_id IN (${userIdPlaceholders}))`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted booking_items:', bookingItemsResult.meta.changes)
+      totalDeleted += bookingItemsResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete booking_items:', error.message)
+    }
 
-    // 6. users (finally)
-    const usersResult = await DB.prepare(
-      `DELETE FROM users WHERE id IN (${userIdPlaceholders})`
-    ).bind(...userIds).run()
-    console.log('Deleted users:', usersResult.meta.changes)
-    totalDeleted += usersResult.meta.changes || 0
+    // 6. bookings
+    try {
+      const bookingsResult = await DB.prepare(
+        `DELETE FROM bookings WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted bookings:', bookingsResult.meta.changes)
+      totalDeleted += bookingsResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete bookings:', error.message)
+    }
+
+    // 7. reviews (if exists)
+    try {
+      const reviewsResult = await DB.prepare(
+        `DELETE FROM reviews WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted reviews:', reviewsResult.meta.changes)
+      totalDeleted += reviewsResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete reviews:', error.message)
+    }
+
+    // 8. payments (if exists)
+    try {
+      const paymentsResult = await DB.prepare(
+        `DELETE FROM payments WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted payments:', paymentsResult.meta.changes)
+      totalDeleted += paymentsResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete payments:', error.message)
+    }
+
+    // 9. notifications (if exists)
+    try {
+      const notificationsResult = await DB.prepare(
+        `DELETE FROM notifications WHERE user_id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted notifications:', notificationsResult.meta.changes)
+      totalDeleted += notificationsResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('⚠️ Failed to delete notifications:', error.message)
+    }
+
+    // 10. users (finally)
+    try {
+      const usersResult = await DB.prepare(
+        `DELETE FROM users WHERE id IN (${userIdPlaceholders})`
+      ).bind(...userIds).run()
+      console.log('✅ Deleted users:', usersResult.meta.changes)
+      totalDeleted += usersResult.meta.changes || 0
+    } catch (error: any) {
+      console.error('❌ Failed to delete users:', error.message)
+      return c.json({
+        error: 'Failed to delete users',
+        message: error.message,
+        partialSuccess: true,
+        deletedRelatedRecords: totalDeleted
+      }, 500)
+    }
 
     return c.json({
       success: true,
