@@ -383,7 +383,7 @@ app.get('/', requireAuth, async (c) => {
       LEFT JOIN users u ON tp.user_id = u.id
       LEFT JOIN sites s ON b.site_id = s.id
       WHERE ${whereClause}
-      ORDER BY b.scheduled_start DESC
+      ORDER BY b.scheduled_at DESC
       LIMIT ? OFFSET ?
     `;
     
