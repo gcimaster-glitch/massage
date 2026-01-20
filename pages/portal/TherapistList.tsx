@@ -71,8 +71,12 @@ const TherapistListPage: React.FC = () => {
       const therapistsList = data.therapists || [];
       setTherapists(therapistsList.map((t: any) => ({
         ...t,
-        areas: typeof t.approved_areas === 'string' ? JSON.parse(t.approved_areas || '[]') : (t.approved_areas || []),
-        categories: typeof t.specialties === 'string' ? JSON.parse(t.specialties || '[]') : (t.specialties || []),
+        areas: typeof t.approved_areas === 'string' 
+          ? (t.approved_areas || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+          : (Array.isArray(t.approved_areas) ? t.approved_areas : []),
+        categories: typeof t.specialties === 'string'
+          ? (t.specialties || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+          : (Array.isArray(t.specialties) ? t.specialties : []),
         reviewCount: t.review_count,
         imageUrl: t.avatar_url || '/placeholder-therapist.jpg'
       })));
@@ -260,7 +264,7 @@ const TherapistListPage: React.FC = () => {
                 <ErrorState
                   title="セラピスト情報の読み込みに失敗しました"
                   message={error}
-                  onRetry={fetchTherapists}
+                  onRetry={fetchData}
                   showBackButton={false}
                   showHomeButton={false}
                 />
