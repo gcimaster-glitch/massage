@@ -320,26 +320,48 @@ authApp.post('/register', async (c) => {
         
         // Delete existing user's related data
         try {
+          console.log(`🗑️ Step 1: Deleting email_verifications for user ${existingUserId}`)
           // 1. Delete email_verifications
-          await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
+          const step1 = await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
             .bind(existingUserId).run()
+          console.log(`✅ Step 1 complete: ${step1.meta.changes} rows deleted`)
           
+          console.log(`🗑️ Step 2: Deleting social_accounts for user ${existingUserId}`)
           // 2. Delete social_accounts
-          await c.env.DB.prepare('DELETE FROM social_accounts WHERE user_id = ?')
+          const step2 = await c.env.DB.prepare('DELETE FROM social_accounts WHERE user_id = ?')
             .bind(existingUserId).run()
+          console.log(`✅ Step 2 complete: ${step2.meta.changes} rows deleted`)
           
-          // 3. Delete bookings (if no foreign key constraints)
-          await c.env.DB.prepare('DELETE FROM bookings WHERE user_id = ?')
+          console.log(`🗑️ Step 3: Deleting booking_items (sub-records)`)
+          // 3. Delete booking_items first (references bookings)
+          const step3 = await c.env.DB.prepare('DELETE FROM booking_items WHERE booking_id IN (SELECT id FROM bookings WHERE user_id = ?)')
             .bind(existingUserId).run()
+          console.log(`✅ Step 3 complete: ${step3.meta.changes} rows deleted`)
           
-          // 4. Delete user
-          await c.env.DB.prepare('DELETE FROM users WHERE id = ?')
+          console.log(`🗑️ Step 4: Deleting bookings for user ${existingUserId}`)
+          // 4. Delete bookings
+          const step4 = await c.env.DB.prepare('DELETE FROM bookings WHERE user_id = ?')
             .bind(existingUserId).run()
+          console.log(`✅ Step 4 complete: ${step4.meta.changes} rows deleted`)
           
-          console.log(`✅ Existing user deleted: ${existingUserId}`)
+          console.log(`🗑️ Step 5: Deleting user ${existingUserId}`)
+          // 5. Delete user
+          const step5 = await c.env.DB.prepare('DELETE FROM users WHERE id = ?')
+            .bind(existingUserId).run()
+          console.log(`✅ Step 5 complete: ${step5.meta.changes} rows deleted`)
+          
+          console.log(`✅ ✅ ✅ Existing user completely deleted: ${existingUserId}`)
         } catch (deleteError: any) {
-          console.error('Failed to delete existing user:', deleteError)
-          return c.json({ error: 'このメールアドレスは既に登録されています。削除に失敗しました。' }, 409)
+          console.error('❌ ❌ ❌ Failed to delete existing user:', deleteError)
+          console.error('Error details:', {
+            message: deleteError.message,
+            stack: deleteError.stack,
+            cause: deleteError.cause
+          })
+          return c.json({ 
+            error: 'このメールアドレスは既に登録されています。削除に失敗しました。',
+            details: deleteError.message 
+          }, 409)
         }
       }
 
