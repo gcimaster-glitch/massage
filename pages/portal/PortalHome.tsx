@@ -13,35 +13,52 @@ const PortalHome: React.FC = () => {
   const navigate = useNavigate();
   const [bookingType, setBookingType] = useState<BookingType>(BookingType.ONSITE);
   const [area, setArea] = useState('');
+  const [areas, setAreas] = useState<any[]>([]);
   const [popularTherapists, setPopularTherapists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch popular therapists from API
+  // Fetch areas and popular therapists from API
   useEffect(() => {
-    const fetchPopularTherapists = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/therapists?limit=4');
-        if (response.ok) {
-          const data = await response.json();
-          // APIレスポンスは {therapists: [...], total: ...} の構造
+        // Fetch areas
+        const areasResponse = await fetch('/api/areas');
+        if (areasResponse.ok) {
+          const areasData = await areasResponse.json();
+          setAreas(areasData.areas || MOCK_AREAS);
+        } else {
+          setAreas(MOCK_AREAS);
+        }
+
+        // Fetch popular therapists
+        const therapistsResponse = await fetch('/api/therapists?limit=4');
+        if (therapistsResponse.ok) {
+          const data = await therapistsResponse.json();
           const therapistsList = data.therapists || [];
-          // Sort by rating and take top 4
           const sorted = therapistsList.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
           setPopularTherapists(sorted.slice(0, 4));
         } else {
-          // Fallback to mock data
           setPopularTherapists(MOCK_THERAPISTS.slice(0, 4));
         }
       } catch (error) {
-        console.error('Failed to fetch therapists:', error);
+        console.error('Failed to fetch data:', error);
+        setAreas(MOCK_AREAS);
         setPopularTherapists(MOCK_THERAPISTS.slice(0, 4));
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPopularTherapists();
+    fetchData();
   }, []);
+
+  // Handle search
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (area) params.append('area', area);
+    if (bookingType) params.append('type', bookingType);
+    navigate(`/therapists?${params.toString()}`);
+  };
 
   return (
     <PortalLayout>
@@ -185,22 +202,33 @@ const PortalHome: React.FC = () => {
                       <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-2">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">エリアを選択</label>
-                            <select value={area} onChange={e => setArea(e.target.value)} className="w-full p-5 bg-white border border-gray-200 rounded-[24px] font-black text-sm outline-none appearance-none shadow-sm">
+                            <select 
+                              value={area} 
+                              onChange={e => setArea(e.target.value)} 
+                              className="w-full p-5 bg-white border border-gray-200 rounded-[24px] font-black text-sm outline-none appearance-none shadow-sm hover:border-teal-300 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all cursor-pointer"
+                            >
                                <option value="">全てのエリア</option>
-                               {MOCK_AREAS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                             </select>
                          </div>
                          <div className="space-y-2">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">利用方法</label>
-                            <select className="w-full p-5 bg-white border border-gray-200 rounded-[24px] font-black text-sm outline-none appearance-none shadow-sm">
-                               <option>CARE CUBEを利用</option>
-                               <option>自宅/ホテル客室へ呼ぶ</option>
+                            <select 
+                              value={bookingType}
+                              onChange={e => setBookingType(e.target.value as BookingType)}
+                              className="w-full p-5 bg-white border border-gray-200 rounded-[24px] font-black text-sm outline-none appearance-none shadow-sm hover:border-teal-300 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all cursor-pointer"
+                            >
+                               <option value={BookingType.ONSITE}>CARE CUBEを利用</option>
+                               <option value={BookingType.MOBILE}>自宅/ホテル客室へ呼ぶ</option>
                             </select>
                          </div>
                       </div>
                    </div>
-                   <button onClick={() => navigate('/therapists')} className="w-full py-6 bg-gray-900 text-white rounded-[28px] font-black text-sm uppercase tracking-[0.2em] hover:bg-teal-600 transition-all flex items-center justify-center gap-3 shadow-xl">
-                      全セラピスト・拠点を一覧表示 <ArrowRight size={20} />
+                   <button 
+                     onClick={handleSearch} 
+                     className="w-full py-6 bg-gray-900 text-white rounded-[28px] font-black text-sm uppercase tracking-[0.2em] hover:bg-teal-600 transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95"
+                   >
+                      {area ? `${areas.find(a => a.id === area)?.name || 'エリア'}で` : ''}検索する <Search size={20} />
                    </button>
                 </div>
              </div>

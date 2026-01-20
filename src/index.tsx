@@ -10,6 +10,7 @@ import imageApp from './image-routes'
 import userManagementApp from './user-management-routes'
 import sitesRoutesApp from './sites-routes'
 import therapistsRoutesApp from './therapists-routes'
+import areasRoutesApp from './areas-routes'
 import bookingsRoutesApp from './bookings-routes'
 import schedulesRoutesApp from './schedules-routes'
 import paymentApp from './routes/payment-routes'
@@ -112,6 +113,11 @@ app.route('/api/sites', sitesRoutesApp)
 // Mount Public Therapists Routes
 // ============================================
 app.route('/api/therapists', therapistsRoutesApp)
+
+// ============================================
+// Mount Public Areas Routes
+// ============================================
+app.route('/api/areas', areasRoutesApp)
 
 // ============================================
 // Mount Bookings Routes (Auth required)
