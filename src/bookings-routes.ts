@@ -70,19 +70,11 @@ app.post('/guest', async (c) => {
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    // 予約を作成（user_id は NULL、ゲスト予約）
-    const insertBookingQuery = `
-      INSERT INTO bookings (
-        id, user_id, user_name, user_email, user_phone, user_address, postal_code,
-        therapist_id, therapist_name, site_id,
-        type, status, service_name, duration, price, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `;
-    
     // サービス名を生成（最初のコースの名前）
     const service_name = items && items.length > 0 ? items[0].name : '施術';
     
-    await DB.prepare(insertBookingQuery).bind(
+    // バインド値
+    const bindValues = [
       bookingId,              // 1: id
       null,                   // 2: user_id (ゲスト予約なので NULL)
       customer_name,          // 3: user_name
@@ -98,8 +90,44 @@ app.post('/guest', async (c) => {
       service_name,           // 13: service_name
       total_duration,         // 14: duration
       total_price,            // 15: price
-      scheduled_at            // 16: scheduled_at
-    ).run();
+      scheduled_at            // 16: scheduled_at/scheduled_start
+    ];
+    
+    console.log('📋 Guest booking bind values:', bindValues.map((v, i) => `[${i}] ${typeof v}: ${v}`));
+    
+    // 予約を作成（user_id は NULL、ゲスト予約）
+    // 環境判別: scheduled_at (ローカル) vs scheduled_start (本番)
+    let insertBookingQuery = `
+      INSERT INTO bookings (
+        id, user_id, user_name, user_email, user_phone, user_address, postal_code,
+        therapist_id, therapist_name, site_id,
+        type, status, service_name, duration, price, scheduled_at, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `;
+    
+    try {
+      await DB.prepare(insertBookingQuery).bind(...bindValues).run();
+      console.log('✅ Guest booking inserted successfully');
+    } catch (dbError: any) {
+      console.error('❌ Guest booking insert failed (trying scheduled_at):', dbError);
+      
+      // scheduled_atで失敗した場合、scheduled_startで再試行
+      if (dbError.message?.includes('scheduled_at')) {
+        console.log('🔄 Retrying with scheduled_start column...');
+        insertBookingQuery = `
+          INSERT INTO bookings (
+            id, user_id, user_name, user_email, user_phone, user_address, postal_code,
+            therapist_id, therapist_name, site_id,
+            type, status, service_name, duration, price, scheduled_start, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `;
+        
+        await DB.prepare(insertBookingQuery).bind(...bindValues).run();
+        console.log('✅ Guest booking inserted successfully with scheduled_start');
+      } else {
+        throw dbError;
+      }
+    }
     
     // 予約アイテムを追加
     if (items && items.length > 0) {
