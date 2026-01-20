@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
+import UnifiedLogin from './pages/auth/UnifiedLogin';
+import UnifiedRegister from './pages/auth/UnifiedRegister';
+import ForgotPassword from './pages/auth/ForgotPassword';
 import LoginUser from './pages/auth/LoginUser';
 import LoginTherapist from './pages/auth/LoginTherapist';
 import LoginOffice from './pages/auth/LoginOffice';
@@ -223,8 +226,13 @@ const App: React.FC = () => {
         {/* Affiliate Login (optional) */}
         <Route path="/affiliate/login" element={<LoginAffiliate onLogin={handleLogin} />} />
         
-        {/* Legacy Auth Routes (kept for compatibility - redirect to new URLs) */}
-        <Route path="/auth/login" element={<Login onLogin={handleLogin} />} />
+        {/* NEW Unified Auth Routes */}
+        <Route path="/auth/login" element={<UnifiedLogin />} />
+        <Route path="/auth/register" element={<UnifiedRegister />} />
+        <Route path="/auth/register/user" element={<UnifiedRegister />} />
+        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        
+        {/* Legacy Auth Routes (kept for compatibility) */}
         <Route path="/auth/login/user" element={<LoginUser onLogin={handleLogin} />} />
         <Route path="/auth/login/therapist" element={<LoginTherapist onLogin={handleLogin} />} />
         <Route path="/auth/login/office" element={<LoginOffice onLogin={handleLogin} />} />

@@ -852,4 +852,52 @@ authApp.post('/register', async (c) => {
   }
 })
 
+// =========================================
+// パスワードリセット
+// =========================================
+app.post('/forgot-password', async (c) => {
+  try {
+    const { email } = await c.req.json()
+
+    if (!email) {
+      return c.json({ error: 'メールアドレスが必要です' }, 400)
+    }
+
+    const { DB } = c.env as CloudflareBindings
+
+    // ユーザーが存在するか確認
+    const user = await DB.prepare('SELECT id, email, name FROM users WHERE email = ?')
+      .bind(email)
+      .first<{ id: string; email: string; name: string }>()
+
+    // セキュリティのため、ユーザーが存在しない場合でも成功レスポンスを返す
+    if (!user) {
+      console.log('Password reset requested for non-existent email:', email)
+      return c.json({ 
+        success: true,
+        message: 'パスワードリセット用のメールを送信しました'
+      })
+    }
+
+    // TODO: 実際のメール送信処理を実装
+    // 現在は開発モードのため、リセットトークンをログ出力
+    const resetToken = crypto.randomUUID()
+    console.log(`Password reset token for ${email}: ${resetToken}`)
+    console.log(`Reset link: https://hogusy.com/auth/reset-password?token=${resetToken}`)
+
+    // TODO: リセットトークンをDBに保存（有効期限付き）
+    // await DB.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)')
+    //   .bind(user.id, resetToken, new Date(Date.now() + 3600000).toISOString())
+    //   .run()
+
+    return c.json({ 
+      success: true,
+      message: 'パスワードリセット用のメールを送信しました'
+    })
+  } catch (e) {
+    console.error('Forgot password error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
 export default authApp
