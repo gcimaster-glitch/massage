@@ -4,7 +4,8 @@ import {
   MapPin, Navigation, Search, Filter, 
   Building2, Star, Clock, ArrowRight, X, 
   Map as MapIcon, Layers, Target, Zap, ShieldCheck, Locate,
-  Users, Phone, Wifi, Coffee, Award, Home, Heart, SlidersHorizontal
+  Users, Phone, Wifi, Coffee, Award, Home, Heart, SlidersHorizontal,
+  User, LogIn, UserPlus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_SITES } from '../../constants';
@@ -398,12 +399,42 @@ const SiteMapSearch: React.FC = () => {
       {/* 左上ロゴエリア */}
       <div className="absolute top-4 left-4 z-50">
         <button
-          onClick={() => navigate('/app')}
+          onClick={() => navigate('/')}
           className="bg-white/95 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-3 group"
         >
           <Home size={24} className="text-teal-600 group-hover:scale-110 transition-transform" />
           <span className="font-black text-xl text-gray-900">HOGUSY</span>
         </button>
+      </div>
+      
+      {/* 右上ログイン/新規登録エリア */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
+        {localStorage.getItem('auth_token') ? (
+          <button
+            onClick={() => navigate('/app')}
+            className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
+          >
+            <User size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
+            <span className="font-bold text-gray-900">マイページ</span>
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
+            >
+              <LogIn size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
+              <span className="font-bold text-gray-900">ログイン</span>
+            </button>
+            <button
+              onClick={() => navigate('/signup')}
+              className="bg-gradient-to-r from-teal-600 to-blue-600 text-white px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center gap-2 group"
+            >
+              <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
+              <span className="font-bold">新規登録</span>
+            </button>
+          </>
+        )}
       </div>
       
       {/* 検索バー */}
