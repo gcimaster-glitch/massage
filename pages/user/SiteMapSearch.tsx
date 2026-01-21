@@ -991,17 +991,33 @@ const SiteMapSearch: React.FC = () => {
                     {/* 専門分野タグ */}
                     {therapist.specialties && (
                       <div className="flex flex-wrap gap-1.5 mb-4">
-                        {(typeof therapist.specialties === 'string' 
-                          ? JSON.parse(therapist.specialties) 
-                          : therapist.specialties
-                        ).slice(0, 3).map((specialty: string, idx: number) => (
-                          <span 
-                            key={idx}
-                            className="text-xs font-medium px-2 py-1 bg-teal-50 text-teal-700 rounded-lg border border-teal-200"
-                          >
-                            {specialty}
-                          </span>
-                        ))}
+                        {(() => {
+                          const specialties = therapist.specialties;
+                          let parsed: string[] = [];
+                          
+                          if (Array.isArray(specialties)) {
+                            parsed = specialties;
+                          } else if (typeof specialties === 'string') {
+                            if (specialties.startsWith('[')) {
+                              try {
+                                parsed = JSON.parse(specialties);
+                              } catch (e) {
+                                parsed = specialties.split(',').map((s: string) => s.trim()).filter(Boolean);
+                              }
+                            } else {
+                              parsed = specialties.split(',').map((s: string) => s.trim()).filter(Boolean);
+                            }
+                          }
+                          
+                          return parsed.slice(0, 3).map((specialty: string, idx: number) => (
+                            <span 
+                              key={idx}
+                              className="text-xs font-medium px-2 py-1 bg-teal-50 text-teal-700 rounded-lg border border-teal-200"
+                            >
+                              {specialty}
+                            </span>
+                          ));
+                        })()}
                       </div>
                     )}
 

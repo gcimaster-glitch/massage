@@ -69,11 +69,18 @@ const TherapistDetail: React.FC = () => {
     // Parse specialties from JSON string if needed
     let categories = therapist.specialties || [];
     if (typeof categories === 'string') {
-      try {
-        categories = JSON.parse(categories);
-      } catch (e) {
-        console.error('❌ Failed to parse specialties:', e);
-        categories = [];
+      // Try JSON parse first if it starts with [
+      if (categories.startsWith('[')) {
+        try {
+          categories = JSON.parse(categories);
+        } catch (e) {
+          console.error('❌ Failed to parse specialties as JSON:', e);
+          // Fall back to comma split
+          categories = categories.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+      } else {
+        // Split by comma
+        categories = categories.split(',').map((s: string) => s.trim()).filter(Boolean);
       }
     }
     

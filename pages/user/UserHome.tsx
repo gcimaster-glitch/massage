@@ -332,7 +332,23 @@ const UserHome: React.FC = () => {
                           <div>
                              <h3 className="text-3xl font-black text-gray-900 group-hover:text-teal-600 transition-colors leading-none tracking-tight">{t.name}</h3>
                              <p className="text-xs font-bold text-gray-400 mt-3 flex items-center gap-3">
-                                歴{t.experience_years || t.experience || 0}年 / <span className="text-gray-900 font-black">{(t.specialties && typeof t.specialties === 'string' ? JSON.parse(t.specialties) : t.specialties || [])[0] || '深層筋リリース'}</span>
+                                歴{t.experience_years || t.experience || 0}年 / <span className="text-gray-900 font-black">{(() => {
+                                  const specialties = t.specialties;
+                                  if (!specialties) return '深層筋リリース';
+                                  if (Array.isArray(specialties)) return specialties[0] || '深層筋リリース';
+                                  if (typeof specialties === 'string') {
+                                    if (specialties.startsWith('[')) {
+                                      try {
+                                        const parsed = JSON.parse(specialties);
+                                        return Array.isArray(parsed) ? (parsed[0] || '深層筋リリース') : '深層筋リリース';
+                                      } catch (e) {
+                                        return specialties.split(',')[0]?.trim() || '深層筋リリース';
+                                      }
+                                    }
+                                    return specialties.split(',')[0]?.trim() || '深層筋リリース';
+                                  }
+                                  return '深層筋リリース';
+                                })()}</span>
                              </p>
                           </div>
                           <p className="text-gray-500 font-medium leading-relaxed line-clamp-2 italic text-sm border-l-4 border-teal-500/10 pl-4">
