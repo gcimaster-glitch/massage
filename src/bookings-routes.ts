@@ -163,6 +163,16 @@ app.post('/guest', async (c) => {
     
     // 修正後の値を使用
     const therapist_id_fixed = fixed.therapist_id;
+    
+    // 🔧 therapist_id を therapist_profiles.id に変換
+    // URL params: therapist-1 → therapist_profiles.id: tp-1
+    let therapist_profile_id = therapist_id_fixed;
+    if (therapist_id_fixed && therapist_id_fixed.startsWith('therapist-')) {
+      const num = therapist_id_fixed.replace('therapist-', '');
+      therapist_profile_id = `tp-${num}`;
+      console.log(`🔄 Converting therapist_id: ${therapist_id_fixed} → ${therapist_profile_id}`);
+    }
+    
     const site_id_fixed = fixed.site_id;
     const booking_type_fixed = fixed.booking_type;
     const scheduled_at_fixed = fixed.scheduled_at;
@@ -218,7 +228,7 @@ app.post('/guest', async (c) => {
         customer_phone_fixed,
         customer_address_fixed || null,
         postal_code_fixed || null,
-        therapist_id_fixed,
+        therapist_profile_id, // therapist_profiles.id を使用
         therapist_name,
         site_id_fixed || null,
         booking_type_fixed,
@@ -250,7 +260,7 @@ app.post('/guest', async (c) => {
       bindValues = [
         bookingId,
         guestUserId,
-        therapist_id_fixed, // therapist_profiles の主キーは user_id なので直接使用
+        therapist_profile_id, // therapist_profiles.id を使用
         therapist_name,
         null, // office_id
         site_id_fixed || null,

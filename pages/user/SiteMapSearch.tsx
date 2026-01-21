@@ -135,7 +135,9 @@ const SiteMapSearch: React.FC = () => {
         types: data.sites?.reduce((acc: any, s: any) => {
           acc[s.type] = (acc[s.type] || 0) + 1;
           return acc;
-        }, {})
+        }, {}),
+        firstFive: data.sites?.slice(0, 5).map((s: any) => `${s.name} (${s.type})`),
+        lastFive: data.sites?.slice(-5).map((s: any) => `${s.name} (${s.type})`)
       });
       // APIレスポンスは {sites: [...], total: ...} の構造
       setSites(data.sites || []);
@@ -259,7 +261,7 @@ const SiteMapSearch: React.FC = () => {
     // マップを作成（完全グレースケール）
     const map = new window.google.maps.Map(mapRef.current, {
       center: defaultCenter,
-      zoom: 13,
+      zoom: 11, // ズームレベルを下げて広範囲を表示（13 → 11）
       styles: [
         // 全体をグレースケールに
         {
@@ -364,9 +366,9 @@ const SiteMapSearch: React.FC = () => {
         animation: window.google.maps.Animation.DROP,
       });
 
-      // デバッグログ（最初の5件のみ）
-      if (markersRef.current.length < 5) {
-        console.log(`📍 Marker ${markersRef.current.length + 1}: ${site.name} (${site.type}) - Color: ${getMarkerColor(site)}`);
+      // デバッグログ（最初の10件）
+      if (markersRef.current.length < 10) {
+        console.log(`📍 Marker ${markersRef.current.length + 1}: ${site.name} (${site.type}) - Color: ${getMarkerColor(site)} - Lat: ${site.latitude}, Lng: ${site.longitude}`);
       }
 
       marker.addListener('click', () => {
@@ -377,6 +379,8 @@ const SiteMapSearch: React.FC = () => {
 
       markersRef.current.push(marker);
     });
+
+    console.log(`✅ Total markers created: ${markersRef.current.length}`);
 
   }, [mapLoaded, sites]);
 
