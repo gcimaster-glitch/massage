@@ -343,10 +343,12 @@ const SiteMapSearch: React.FC = () => {
     // サイトのマーカーを追加
     sites.forEach((site) => {
       // 施設タイプに応じた鮮やかなカラー
-      const getMarkerColor = (type: string) => {
-        if (type === 'CARE_CUBE') return '#FF6B35'; // 鮮やかなオレンジ
-        if (type === 'HOTEL') return '#5B4FFF'; // 鮮やかな紫
-        if (type === 'PRIVATE_SPACE') return '#00C896'; // 鮮やかなエメラルド
+      const getMarkerColor = (site: any) => {
+        // CHARGE拠点は特別にオレンジ
+        if (site.name && site.name.startsWith('CHARGE')) return '#FF6B35';
+        if (site.type === 'CARE_CUBE') return '#FF6B35'; // 鮮やかなオレンジ
+        if (site.type === 'HOTEL') return '#5B4FFF'; // 鮮やかな紫
+        if (site.type === 'PRIVATE_SPACE') return '#00C896'; // 鮮やかなエメラルド
         return '#FF4081'; // デフォルトはピンク
       };
 
@@ -357,7 +359,7 @@ const SiteMapSearch: React.FC = () => {
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 14,
-          fillColor: getMarkerColor(site.type),
+          fillColor: getMarkerColor(site),
           fillOpacity: 0.95,
           strokeColor: '#ffffff',
           strokeWeight: 3,
@@ -703,11 +705,31 @@ const SiteMapSearch: React.FC = () => {
                   }`}
                 >
                   <div className="space-y-3">
+                    {/* CHARGE拠点の画像表示 */}
+                    {site.image_url && (
+                      <div className="w-full h-32 rounded-xl overflow-hidden">
+                        <img 
+                          src={site.image_url} 
+                          alt={site.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    
                     {/* 施設名と距離 */}
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-black text-gray-900 text-base leading-tight flex-1">
-                        {site.name}
-                      </h4>
+                      <div className="flex-1">
+                        <h4 className="font-black text-gray-900 text-base leading-tight">
+                          {site.name}
+                        </h4>
+                        {site.name?.startsWith('CHARGE') && (
+                          <div className="mt-1 inline-block">
+                            <span className="bg-orange-500 text-white text-xs font-black px-2 py-1 rounded-full">
+                              CHARGE
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       {userLocation && site.distance > 0 && (
                         <div className="flex items-center gap-1 bg-teal-600 text-white text-xs font-black px-2 py-1 rounded-full shrink-0">
                           <Navigation size={10} />

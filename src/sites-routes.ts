@@ -83,6 +83,7 @@ app.get('/', async (c) => {
         s.amenities,
         s.status,
         s.created_at,
+        s.image_url,
         u.name as host_name,
         (SELECT COUNT(*) FROM site_rooms WHERE site_id = s.id AND is_available = 1) as available_rooms
       FROM sites s
