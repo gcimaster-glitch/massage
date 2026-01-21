@@ -69,14 +69,31 @@ const TherapistListPage: React.FC = () => {
       
       const data = await therapistsRes.json();
       const therapistsList = data.therapists || [];
+      
+      // Helper function to parse areas/categories
+      const parseStringOrArray = (value: any): string[] => {
+        if (!value) return [];
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') {
+          // Try to parse as JSON first
+          if (value.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(value);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+              console.warn('Failed to parse JSON:', value);
+            }
+          }
+          // Otherwise split by comma
+          return value.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+        return [];
+      };
+      
       setTherapists(therapistsList.map((t: any) => ({
         ...t,
-        areas: typeof t.approved_areas === 'string' 
-          ? (t.approved_areas || '').split(',').map((s: string) => s.trim()).filter(Boolean)
-          : (Array.isArray(t.approved_areas) ? t.approved_areas : []),
-        categories: typeof t.specialties === 'string'
-          ? (t.specialties || '').split(',').map((s: string) => s.trim()).filter(Boolean)
-          : (Array.isArray(t.specialties) ? t.specialties : []),
+        areas: parseStringOrArray(t.approved_areas),
+        categories: parseStringOrArray(t.specialties),
         reviewCount: t.review_count,
         imageUrl: t.avatar_url || '/placeholder-therapist.jpg'
       })));
