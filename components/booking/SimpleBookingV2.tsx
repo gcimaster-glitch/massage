@@ -1043,50 +1043,108 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
           )}
           
           <div className="space-y-4">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                👤 お名前 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={bookingData.customerName}
-                onChange={(e) => handleCustomerInfoChange('customerName', e.target.value)}
-                placeholder="山田 太郎"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-              />
-            </div>
+            {(() => {
+              const token = localStorage.getItem('auth_token');
+              const isLoggedIn = !!token && bookingData.customerName && bookingData.customerEmail;
+              
+              if (isLoggedIn) {
+                // 会員の場合：情報を固定表示（編集不可）
+                return (
+                  <>
+                    {/* Name - Fixed */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        👤 お名前
+                      </label>
+                      <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-lg text-gray-700">
+                        {bookingData.customerName}
+                      </div>
+                      <p className="text-xs text-teal-600 mt-1 flex items-center gap-1">
+                        <span>✓</span> 会員情報が使用されます
+                      </p>
+                    </div>
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                📧 メールアドレス <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                value={bookingData.customerEmail}
-                onChange={(e) => handleCustomerInfoChange('customerEmail', e.target.value)}
-                placeholder="example@hogusy.com"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                予約確認メールが送信されます
-              </p>
-            </div>
+                    {/* Email - Fixed */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        📧 メールアドレス
+                      </label>
+                      <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-lg text-gray-700">
+                        {bookingData.customerEmail}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        予約確認メールが送信されます
+                      </p>
+                    </div>
 
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                📱 電話番号 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                value={bookingData.customerPhone}
-                onChange={(e) => handleCustomerInfoChange('customerPhone', e.target.value)}
-                placeholder="090-1234-5678"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-              />
-            </div>
+                    {/* Phone - Fixed */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        📱 電話番号
+                      </label>
+                      <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-lg text-gray-700">
+                        {bookingData.customerPhone || '未登録'}
+                      </div>
+                      {!bookingData.customerPhone && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          ⚠️ マイページから電話番号を登録してください
+                        </p>
+                      )}
+                    </div>
+                  </>
+                );
+              } else {
+                // ゲストの場合：自由入力
+                return (
+                  <>
+                    {/* Name - Editable */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        👤 お名前 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingData.customerName}
+                        onChange={(e) => handleCustomerInfoChange('customerName', e.target.value)}
+                        placeholder="山田 太郎"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Email - Editable */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        📧 メールアドレス <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={bookingData.customerEmail}
+                        onChange={(e) => handleCustomerInfoChange('customerEmail', e.target.value)}
+                        placeholder="example@hogusy.com"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        予約確認メールが送信されます
+                      </p>
+                    </div>
+
+                    {/* Phone - Editable */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        📱 電話番号 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={bookingData.customerPhone}
+                        onChange={(e) => handleCustomerInfoChange('customerPhone', e.target.value)}
+                        placeholder="090-1234-5678"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
+                      />
+                    </div>
+                  </>
+                );
+              }
+            })()}
 
             {/* Address (MOBILE only) */}
             {bookingType === 'MOBILE' && (
