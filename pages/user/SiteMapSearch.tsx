@@ -346,8 +346,10 @@ const SiteMapSearch: React.FC = () => {
       const getMarkerColor = (site: any) => {
         // CHARGE拠点は特別にオレンジ
         if (site.name && site.name.startsWith('CHARGE')) return '#FF6B35';
-        if (site.type === 'CARE_CUBE') return '#FF6B35'; // 鮮やかなオレンジ
-        if (site.type === 'HOTEL') return '#5B4FFF'; // 鮮やかな紫
+        // タイプ別の色分け
+        if (site.type === 'CARE_CUBE') return '#00C896'; // 鮮やかな緑
+        if (site.type === 'HOTEL') return '#5B4FFF'; // 鮮やかな青
+        if (site.type === 'OFFICE') return '#8B5CF6'; // 鮮やかな紫
         if (site.type === 'PRIVATE_SPACE') return '#00C896'; // 鮮やかなエメラルド
         return '#FF4081'; // デフォルトはピンク
       };
