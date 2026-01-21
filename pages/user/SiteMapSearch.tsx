@@ -248,87 +248,66 @@ const SiteMapSearch: React.FC = () => {
     // デフォルトの中心位置（東京駅）
     const defaultCenter = { lat: 35.6812, lng: 139.7671 };
 
-    // マップを作成（モノクロベース + 視認性の高いラベル）
+    // マップを作成（完全グレースケール）
     const map = new window.google.maps.Map(mapRef.current, {
       center: defaultCenter,
       zoom: 13,
       styles: [
-        // 背景全体をモノクロに
+        // 全体をグレースケールに
         {
           featureType: 'all',
           elementType: 'geometry',
-          stylers: [{ color: '#f0f0f0' }]
+          stylers: [{ saturation: -100 }, { lightness: 40 }]
         },
-        // 水域を薄いグレーに
+        {
+          featureType: 'all',
+          elementType: 'labels.text.fill',
+          stylers: [{ saturation: -100 }, { color: '#333333' }, { lightness: 40 }]
+        },
+        {
+          featureType: 'all',
+          elementType: 'labels.text.stroke',
+          stylers: [{ visibility: 'on' }, { color: '#ffffff' }, { lightness: 16 }]
+        },
+        {
+          featureType: 'all',
+          elementType: 'labels.icon',
+          stylers: [{ visibility: 'off' }]
+        },
+        // 水域
         {
           featureType: 'water',
           elementType: 'geometry',
-          stylers: [{ color: '#d8e4e8' }]
+          stylers: [{ color: '#d0d0d0' }, { lightness: 17 }]
         },
-        {
-          featureType: 'water',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#7a9ca5' }]
-        },
-        // 道路を白に
+        // 道路
         {
           featureType: 'road',
           elementType: 'geometry',
-          stylers: [{ color: '#ffffff' }]
+          stylers: [{ color: '#ffffff' }, { lightness: 17 }]
         },
         {
           featureType: 'road',
           elementType: 'geometry.stroke',
-          stylers: [{ color: '#d9d9d9' }]
+          stylers: [{ color: '#e0e0e0' }, { lightness: 29 }, { weight: 0.2 }]
         },
-        // 道路ラベルを視認しやすく
-        {
-          featureType: 'road',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#5a5a5a' }]
-        },
-        {
-          featureType: 'road.arterial',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#3a3a3a' }]
-        },
-        // 区名・地名ラベルを強調
-        {
-          featureType: 'administrative.locality',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#2d2d2d' }]
-        },
-        {
-          featureType: 'administrative.neighborhood',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#4a4a4a' }]
-        },
-        // ポイント・施設名を控えめに
-        {
-          featureType: 'poi',
-          elementType: 'geometry',
-          stylers: [{ color: '#e5e5e5' }]
-        },
-        {
-          featureType: 'poi',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#8a8a8a' }]
-        },
+        // 公園
         {
           featureType: 'poi.park',
           elementType: 'geometry',
-          stylers: [{ color: '#d9ead3' }]
+          stylers: [{ color: '#e8e8e8' }, { lightness: 21 }]
         },
-        // 鉄道・交通を薄めに
+        // 建物
+        {
+          featureType: 'poi',
+          elementType: 'geometry',
+          stylers: [{ color: '#f0f0f0' }, { lightness: 21 }]
+        },
+        // 交通機関
         {
           featureType: 'transit',
           elementType: 'geometry',
-          stylers: [{ color: '#e0e0e0' }]
-        },
-        {
-          featureType: 'transit.station',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#6a6a6a' }]
+          stylers: [{ color: '#e8e8e8' }, { lightness: 19 }]
         }
       ],
       disableDefaultUI: true,
@@ -339,6 +318,14 @@ const SiteMapSearch: React.FC = () => {
     });
 
     googleMapRef.current = map;
+
+    // デバッグ: 拠点タイプの分布を確認
+    const typeCount: Record<string, number> = {};
+    sites.forEach(site => {
+      typeCount[site.type] = (typeCount[site.type] || 0) + 1;
+    });
+    console.log('🗺️ Map markers - Site type distribution:', typeCount);
+    console.log('🗺️ Total sites to display:', sites.length);
 
     // サイトのマーカーを追加
     sites.forEach((site) => {
@@ -368,6 +355,11 @@ const SiteMapSearch: React.FC = () => {
         },
         animation: window.google.maps.Animation.DROP,
       });
+
+      // デバッグログ（最初の5件のみ）
+      if (markersRef.current.length < 5) {
+        console.log(`📍 Marker ${markersRef.current.length + 1}: ${site.name} (${site.type}) - Color: ${getMarkerColor(site)}`);
+      }
 
       marker.addListener('click', () => {
         setSelectedSite(site);
