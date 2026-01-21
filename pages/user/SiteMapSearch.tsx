@@ -127,8 +127,16 @@ const SiteMapSearch: React.FC = () => {
 
   const fetchSites = async () => {
     try {
-      const res = await fetch('/api/sites?status=APPROVED');
+      const res = await fetch('/api/sites?status=APPROVED&limit=500');
       const data = await res.json();
+      console.log('📊 API response:', {
+        total: data.total,
+        count: data.sites?.length,
+        types: data.sites?.reduce((acc: any, s: any) => {
+          acc[s.type] = (acc[s.type] || 0) + 1;
+          return acc;
+        }, {})
+      });
       // APIレスポンスは {sites: [...], total: ...} の構造
       setSites(data.sites || []);
     } catch (e) {
