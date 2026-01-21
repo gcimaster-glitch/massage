@@ -76,6 +76,7 @@ import TherapistCalendar from './pages/therapist/Calendar';
 import TherapistEarnings from './pages/therapist/Earnings';
 import TherapistSafety from './pages/therapist/Safety';
 import TherapistProfile from './pages/therapist/Profile';
+import TherapistProfileManagement from './pages/therapist/ProfileManagement';
 import ActiveSession from './pages/therapist/ActiveSession';
 import SessionSummary from './pages/therapist/SessionSummary';
 import BioEditor from './pages/therapist/BioEditor';
@@ -368,6 +369,7 @@ const App: React.FC = () => {
         <Route path="/t/earnings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistEarnings /></RequireAuth>} />
         <Route path="/t/safety" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSafety /></RequireAuth>} />
         <Route path="/t/profile" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistProfile /></RequireAuth>} />
+        <Route path="/t/profile-management" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistProfileManagement /></RequireAuth>} />
         <Route path="/t/bio" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><BioEditor /></RequireAuth>} />
         <Route path="/t/session/:bookingId" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><ActiveSession /></RequireAuth>} />
         <Route path="/t/session-summary/:bookingId" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><SessionSummary /></RequireAuth>} />

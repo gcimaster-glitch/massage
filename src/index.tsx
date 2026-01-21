@@ -7,6 +7,7 @@ import adminApp from './admin-routes'
 import sitesApp from './sites-routes'
 import officesApp from './offices-routes'
 import therapistEditApp from './therapist-edit-routes'
+import therapistManagementApp from './therapist-management-routes'
 import imageApp from './image-routes'
 import userManagementApp from './user-management-routes'
 import sitesRoutesApp from './sites-routes'
@@ -115,6 +116,11 @@ app.route('/api/sites', sitesRoutesApp)
 // Mount Public Therapists Routes
 // ============================================
 app.route('/api/therapists', therapistsRoutesApp)
+
+// ============================================
+// Mount Therapist Management Routes (Auth required)
+// ============================================
+app.route('/api/therapists', therapistManagementApp)
 
 // ============================================
 // Mount Public Areas Routes
