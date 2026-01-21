@@ -171,7 +171,12 @@ const SiteMapSearch: React.FC = () => {
 
       // 施設タイプフィルター
       if (selectedSiteType !== 'ALL') {
-        filtered = filtered.filter(site => site.type === selectedSiteType);
+        if (selectedSiteType === 'OTHER') {
+          // CHARGE拠点のみ
+          filtered = filtered.filter(site => site.name && site.name.startsWith('CHARGE'));
+        } else {
+          filtered = filtered.filter(site => site.type === selectedSiteType);
+        }
       }
 
       // 営業時間フィルター（今すぐ予約可能のみ）
@@ -202,7 +207,12 @@ const SiteMapSearch: React.FC = () => {
       
       // 施設タイプフィルター
       if (selectedSiteType !== 'ALL') {
-        allSites = allSites.filter(site => site.type === selectedSiteType);
+        if (selectedSiteType === 'OTHER') {
+          // CHARGE拠点のみ
+          allSites = allSites.filter(site => site.name && site.name.startsWith('CHARGE'));
+        } else {
+          allSites = allSites.filter(site => site.type === selectedSiteType);
+        }
       }
       
       // 評価順にソート（実際にはAPIからrating情報を取得）
@@ -447,7 +457,10 @@ const SiteMapSearch: React.FC = () => {
           className="bg-white/95 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-3 group"
         >
           <Home size={24} className="text-teal-600 group-hover:scale-110 transition-transform" />
-          <span className="font-black text-xl text-gray-900">HOGUSY</span>
+          <div className="flex flex-col items-start">
+            <span className="font-black text-xl text-gray-900">HOGUSY</span>
+            <span className="text-[10px] text-gray-500 font-normal -mt-1">Powered by CHARGE</span>
+          </div>
         </button>
       </div>
       
@@ -458,8 +471,22 @@ const SiteMapSearch: React.FC = () => {
           if (token) {
             // ログイン中: ユーザー名とログアウトボタンを表示
             try {
-              const payload = JSON.parse(atob(token.split('.')[1]));
-              const userName = payload.userName || payload.name || 'ユーザー';
+              // JWT Base64デコード（日本語対応）
+              const base64Url = token.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(
+                atob(base64)
+                  .split('')
+                  .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                  .join('')
+              );
+              const payload = JSON.parse(jsonPayload);
+              const userName = payload.userName || payload.name || payload.email || '';
+              
+              // トークンが無効な場合は例外をスロー
+              if (!userName) {
+                throw new Error('Invalid token: no user info');
+              }
               
               return (
                 <>
@@ -470,7 +497,7 @@ const SiteMapSearch: React.FC = () => {
                     </span>
                   </div>
                   <button
-                    onClick={() => navigate('/app')}
+                    onClick={() => navigate('/app/user')}
                     className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
                   >
                     <User size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
@@ -491,14 +518,26 @@ const SiteMapSearch: React.FC = () => {
               );
             } catch (e) {
               console.error('Failed to decode token:', e);
+              // トークンが無効な場合は削除して未ログイン扱い
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('currentUser');
               return (
-                <button
-                  onClick={() => navigate('/app')}
-                  className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
-                >
-                  <User size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-gray-900">マイページ</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
+                  >
+                    <LogIn size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
+                    <span className="font-bold text-gray-900">ログイン</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/signup')}
+                    className="bg-gradient-to-r from-teal-600 to-blue-600 text-white px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center gap-2 group"
+                  >
+                    <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
+                    <span className="font-bold">新規登録</span>
+                  </button>
+                </>
               );
             }
           } else {
