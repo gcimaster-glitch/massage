@@ -552,7 +552,7 @@ authApp.post('/register', async (c) => {
 // ============================================
 authApp.get('/verify-email', async (c) => {
   const token = c.req.query('token')
-  const redirectTo = c.req.query('redirect') || '/app/dashboard' // 予約途中だった場合はredirect指定
+  const redirectTo = c.req.query('redirect') || '/app' // 予約途中だった場合はredirect指定
 
   if (!token) {
     return c.redirect('/?error=invalid_verification_token')

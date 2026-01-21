@@ -42,6 +42,25 @@ const UserDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   });
 
   useEffect(() => {
+    // メール認証後のトークンをURLから取得してlocalStorageに保存
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const verified = urlParams.get('verified');
+    const message = urlParams.get('message');
+
+    if (token && verified === 'true') {
+      console.log('📧 Email verification successful! Saving token...');
+      localStorage.setItem('auth_token', token);
+      
+      // メッセージを表示
+      if (message) {
+        alert(decodeURIComponent(message));
+      }
+      
+      // URLからパラメータを削除
+      window.history.replaceState({}, document.title, '/app/dashboard');
+    }
+
     loadDashboardData();
   }, []);
 
