@@ -12,6 +12,30 @@ const app = new Hono<{ Bindings: Bindings }>()
 // ============================================
 
 /**
+ * GET /api/images/list
+ * List all images in R2 storage (for debugging)
+ */
+app.get('/list', async (c) => {
+  try {
+    const { STORAGE } = c.env
+    const listed = await STORAGE.list()
+    
+    return c.json({
+      success: true,
+      objects: listed.objects.map(obj => ({
+        key: obj.key,
+        size: obj.size,
+        uploaded: obj.uploaded,
+      })),
+      truncated: listed.truncated,
+    })
+  } catch (error) {
+    console.error('List images error:', error)
+    return c.json({ error: 'Failed to list images' }, 500)
+  }
+})
+
+/**
  * POST /api/images/upload
  * Upload image to R2 storage
  */
