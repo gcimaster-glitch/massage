@@ -6,6 +6,7 @@ import Login from './pages/auth/Login';
 import UnifiedLogin from './pages/auth/UnifiedLogin';
 import UnifiedRegister from './pages/auth/UnifiedRegister';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import TherapistLP from './pages/partner/TherapistLP';
 import HostLP from './pages/partner/HostLP';
 import OfficeLP from './pages/partner/OfficeLP';
@@ -275,6 +276,7 @@ const App: React.FC = () => {
         <Route path="/auth/register" element={<UnifiedRegister />} />
         <Route path="/auth/register/user" element={<UnifiedRegister />} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
         
         {/* Partner Landing Pages */}
         <Route path="/therapist-lp" element={<TherapistLP />} />

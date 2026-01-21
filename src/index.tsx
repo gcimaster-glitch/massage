@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import authApp from './auth-routes'
+import passwordResetApp from './password-reset-routes'
 import mapsApp from './maps-routes'
 import adminApp from './admin-routes'
 import sitesApp from './sites-routes'
@@ -68,6 +69,7 @@ app.get('/api/health', (c) => {
 // Mount Social Auth Routes
 // ============================================
 app.route('/api/auth', authApp)
+app.route('/api/auth', passwordResetApp)
 
 // ============================================
 // Mount Google Maps Routes

@@ -205,6 +205,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 新規登録
               </button>
            </p>
+           <p className="text-sm font-bold text-gray-400">
+              パスワードをお忘れの方は{' '}
+              <button 
+                onClick={() => navigate('/auth/forgot-password')} 
+                className="text-teal-600 font-black hover:underline transition-colors"
+              >
+                こちら
+              </button>
+           </p>
            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
               HOGUSY<br/>
               Wellness Platform v1.0
