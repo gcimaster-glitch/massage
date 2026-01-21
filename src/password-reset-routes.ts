@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
+import { EmailService } from './services/email-service';
 
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
+  RESEND_API_KEY: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -46,9 +48,19 @@ app.post('/forgot-password', async (c) => {
     console.log(`🔐 パスワードリセット申請 - Email: ${email}, Token: ${resetToken}`);
     console.log(`📧 リセットURL: ${resetUrl}`);
 
-    // TODO: メール送信機能を実装
-    // 現在はコンソールにログ出力のみ
-    // 本番環境では、SendGrid、Resend、Mailgun などのメールサービスを使用
+    // メール送信
+    if (c.env.RESEND_API_KEY) {
+      const emailService = new EmailService(c.env.RESEND_API_KEY);
+      const sent = await emailService.sendPasswordReset(email, resetUrl, user.name as string);
+      
+      if (sent) {
+        console.log('✅ パスワードリセットメール送信成功');
+      } else {
+        console.error('❌ パスワードリセットメール送信失敗');
+      }
+    } else {
+      console.warn('⚠️ RESEND_API_KEY が設定されていません。メール送信をスキップします。');
+    }
 
     return c.json({ 
       success: true, 

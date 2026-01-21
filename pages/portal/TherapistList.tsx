@@ -95,7 +95,7 @@ const TherapistListPage: React.FC = () => {
         areas: parseStringOrArray(t.approved_areas),
         categories: parseStringOrArray(t.specialties),
         reviewCount: t.review_count,
-        imageUrl: t.avatar_url || '/placeholder-therapist.jpg'
+        imageUrl: t.avatar_url || `/therapists/${t.user_id || t.id}.jpg`
       })));
     } catch (e) {
       console.error('Failed to fetch data:', e);
