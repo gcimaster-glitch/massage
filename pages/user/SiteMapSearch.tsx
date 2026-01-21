@@ -453,32 +453,76 @@ const SiteMapSearch: React.FC = () => {
       
       {/* 右上ログイン/新規登録エリア */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
-        {localStorage.getItem('auth_token') ? (
-          <button
-            onClick={() => navigate('/app')}
-            className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
-          >
-            <User size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-gray-900">マイページ</span>
-          </button>
-        ) : (
-          <>
-            <button
-              onClick={() => navigate('/login')}
-              className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
-            >
-              <LogIn size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
-              <span className="font-bold text-gray-900">ログイン</span>
-            </button>
-            <button
-              onClick={() => navigate('/signup')}
-              className="bg-gradient-to-r from-teal-600 to-blue-600 text-white px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center gap-2 group"
-            >
-              <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
-              <span className="font-bold">新規登録</span>
-            </button>
-          </>
-        )}
+        {(() => {
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            // ログイン中: ユーザー名とログアウトボタンを表示
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              const userName = payload.userName || payload.name || 'ユーザー';
+              
+              return (
+                <>
+                  <div className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl border border-gray-200 flex items-center gap-2">
+                    <User size={20} className="text-teal-600" />
+                    <span className="font-bold text-gray-900">
+                      ログイン中: <span className="text-teal-600">{userName}</span>様
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => navigate('/app')}
+                    className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
+                  >
+                    <User size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
+                    <span className="font-bold text-gray-900">マイページ</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('auth_token');
+                      localStorage.removeItem('currentUser');
+                      window.location.href = '/';
+                    }}
+                    className="bg-red-500/90 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all text-white flex items-center gap-2 group hover:bg-red-600"
+                  >
+                    <LogIn size={20} className="group-hover:scale-110 transition-transform rotate-180" />
+                    <span className="font-bold">ログアウト</span>
+                  </button>
+                </>
+              );
+            } catch (e) {
+              console.error('Failed to decode token:', e);
+              return (
+                <button
+                  onClick={() => navigate('/app')}
+                  className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
+                >
+                  <User size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
+                  <span className="font-bold text-gray-900">マイページ</span>
+                </button>
+              );
+            }
+          } else {
+            // 未ログイン: ログインと新規登録ボタンを表示
+            return (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="bg-white/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-200 flex items-center gap-2 group"
+                >
+                  <LogIn size={20} className="text-teal-600 group-hover:scale-110 transition-transform" />
+                  <span className="font-bold text-gray-900">ログイン</span>
+                </button>
+                <button
+                  onClick={() => navigate('/signup')}
+                  className="bg-gradient-to-r from-teal-600 to-blue-600 text-white px-5 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center gap-2 group"
+                >
+                  <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
+                  <span className="font-bold">新規登録</span>
+                </button>
+              </>
+            );
+          }
+        })()}
       </div>
       
       {/* 検索バー */}

@@ -235,6 +235,40 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         console.log('ℹ️ Continuing with JWT data (if available)');
         // Continue with JWT data if API fails
       }
+      
+      // ログイン後に保存された予約を復元
+      const pendingBookingStr = localStorage.getItem('pendingBooking');
+      if (pendingBookingStr) {
+        try {
+          const pendingBooking = JSON.parse(pendingBookingStr);
+          console.log('📦 保存された予約を復元します:', pendingBooking);
+          
+          // 予約内容を復元
+          if (pendingBooking.bookingData) {
+            setBookingData(prev => ({
+              ...prev,
+              ...pendingBooking.bookingData,
+              // 会員情報は上書きしない
+              customerName: prev.customerName || pendingBooking.bookingData.customerName,
+              customerEmail: prev.customerEmail || pendingBooking.bookingData.customerEmail,
+              customerPhone: prev.customerPhone || pendingBooking.bookingData.customerPhone
+            }));
+          }
+          
+          // 復元後は削除
+          localStorage.removeItem('pendingBooking');
+          console.log('✅ 予約内容を復元しました');
+          
+          // 確認ステップに自動遷移
+          setTimeout(() => {
+            setCurrentStep(4); // Step 4: Confirmation
+          }, 500);
+          
+        } catch (e) {
+          console.error('❌ 予約復元エラー:', e);
+          localStorage.removeItem('pendingBooking');
+        }
+      }
     };
     
     fetchUserInfo();
@@ -478,6 +512,35 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
       });
       
+      // 未ログインの場合：予約内容を保存して会員登録へ誘導
+      if (!isLoggedIn) {
+        console.log('❌ 未ログイン: 会員登録が必要です');
+        
+        // 予約内容をlocalStorageに保存
+        const pendingBooking = {
+          therapist,
+          site,
+          bookingType,
+          bookingData: {
+            ...bookingData,
+            // 保存時に必要な情報を追加
+            therapist_id: therapist.id,
+            therapist_name: therapist.name,
+            site_id: site?.id,
+            site_name: site?.name
+          },
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem('pendingBooking', JSON.stringify(pendingBooking));
+        console.log('💾 予約内容を保存しました:', pendingBooking);
+        
+        // 会員登録ページへリダイレクト
+        alert('予約を完了するには会員登録が必要です。\n\n予約内容は保存されています。\n会員登録後、自動的に予約を続行します。');
+        window.location.href = '/signup?redirect=/app/booking/from-therapist/' + therapist.id;
+        return;
+      }
+      
       // Create booking
       const bookingPayload: any = {
         therapist_id: therapist.id,
@@ -494,16 +557,6 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       if (bookingType === 'ONSITE' && site?.id) {
         bookingPayload.site_id = site.id;
         console.log('🏢 site_id追加:', site.id);
-      }
-      
-      // Add customer info for GUEST bookings only
-      if (!isLoggedIn) {
-        bookingPayload.customer_name = bookingData.customerName;
-        bookingPayload.customer_email = bookingData.customerEmail;
-        bookingPayload.customer_phone = bookingData.customerPhone;
-        bookingPayload.total_price = bookingData.totalPrice;
-        bookingPayload.total_duration = bookingData.totalDuration;
-        bookingPayload.booking_type = bookingType;
       }
       
       // Add address for MOBILE bookings
@@ -529,13 +582,13 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       ];
       
       console.log('📤 最終ペイロード:', JSON.stringify(bookingPayload, null, 2));
-      console.log('🔐 ログイン状態:', isLoggedIn ? 'ログイン済み' : 'ゲスト');
+      console.log('🔐 ログイン状態: ログイン済み（会員予約）');
       
-      // Use appropriate endpoint based on login status
-      const endpoint = isLoggedIn ? '/api/bookings' : '/api/bookings/guest';
+      // Use member booking endpoint
+      const endpoint = '/api/bookings';
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
-        ...(isLoggedIn ? { 'Authorization': `Bearer ${token}` } : {})
+        'Authorization': `Bearer ${token}`
       };
       
       console.log('🌐 リクエスト送信:', {
@@ -1043,108 +1096,59 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
           )}
           
           <div className="space-y-4">
-            {(() => {
-              const token = localStorage.getItem('auth_token');
-              const isLoggedIn = !!token && bookingData.customerName && bookingData.customerEmail;
-              
-              if (isLoggedIn) {
-                // 会員の場合：情報を固定表示（編集不可）
-                return (
-                  <>
-                    {/* Name - Fixed */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        👤 お名前
-                      </label>
-                      <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-lg text-gray-700">
-                        {bookingData.customerName}
-                      </div>
-                      <p className="text-xs text-teal-600 mt-1 flex items-center gap-1">
-                        <span>✓</span> 会員情報が使用されます
-                      </p>
-                    </div>
+            {/* Name - Always Editable */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                👤 お名前 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={bookingData.customerName}
+                onChange={(e) => handleCustomerInfoChange('customerName', e.target.value)}
+                placeholder="山田 太郎"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
+              />
+              {(() => {
+                const token = localStorage.getItem('auth_token');
+                const isLoggedIn = !!token && bookingData.customerName;
+                return isLoggedIn ? (
+                  <p className="text-xs text-teal-600 mt-1 flex items-center gap-1">
+                    <span>✓</span> 会員情報が自動入力されています（編集可能）
+                  </p>
+                ) : null;
+              })()}
+            </div>
 
-                    {/* Email - Fixed */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        📧 メールアドレス
-                      </label>
-                      <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-lg text-gray-700">
-                        {bookingData.customerEmail}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        予約確認メールが送信されます
-                      </p>
-                    </div>
+            {/* Email - Always Editable */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                📧 メールアドレス <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={bookingData.customerEmail}
+                onChange={(e) => handleCustomerInfoChange('customerEmail', e.target.value)}
+                placeholder="example@hogusy.com"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                予約確認メールが送信されます
+              </p>
+            </div>
 
-                    {/* Phone - Fixed */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        📱 電話番号
-                      </label>
-                      <div className="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-lg text-gray-700">
-                        {bookingData.customerPhone || '未登録'}
-                      </div>
-                      {!bookingData.customerPhone && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          ⚠️ マイページから電話番号を登録してください
-                        </p>
-                      )}
-                    </div>
-                  </>
-                );
-              } else {
-                // ゲストの場合：自由入力
-                return (
-                  <>
-                    {/* Name - Editable */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        👤 お名前 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={bookingData.customerName}
-                        onChange={(e) => handleCustomerInfoChange('customerName', e.target.value)}
-                        placeholder="山田 太郎"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-                      />
-                    </div>
-
-                    {/* Email - Editable */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        📧 メールアドレス <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        value={bookingData.customerEmail}
-                        onChange={(e) => handleCustomerInfoChange('customerEmail', e.target.value)}
-                        placeholder="example@hogusy.com"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        予約確認メールが送信されます
-                      </p>
-                    </div>
-
-                    {/* Phone - Editable */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        📱 電話番号 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        value={bookingData.customerPhone}
-                        onChange={(e) => handleCustomerInfoChange('customerPhone', e.target.value)}
-                        placeholder="090-1234-5678"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
-                      />
-                    </div>
-                  </>
-                );
-              }
-            })()}
+            {/* Phone - Always Editable */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                📱 電話番号 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                value={bookingData.customerPhone}
+                onChange={(e) => handleCustomerInfoChange('customerPhone', e.target.value)}
+                placeholder="090-1234-5678"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:outline-none"
+              />
+            </div>
 
             {/* Address (MOBILE only) */}
             {bookingType === 'MOBILE' && (
