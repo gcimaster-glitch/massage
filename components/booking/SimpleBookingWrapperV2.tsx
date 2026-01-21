@@ -61,9 +61,9 @@ const SimpleBookingWrapperV2: React.FC = () => {
             console.log('✅ 店舗データ取得:', siteData);
             
             const siteInfo: Site = {
-              id: siteData.id || site?.id || siteId,
-              name: siteData.name || site?.name || '店舗',
-              address: siteData.address || site?.address || ''
+              id: siteData.site?.id || siteData.id || siteId,
+              name: siteData.site?.name || siteData.name || '店舗',
+              address: siteData.site?.address || siteData.address || ''
             };
             
             console.log('✅ 正規化された店舗情報:', siteInfo);
