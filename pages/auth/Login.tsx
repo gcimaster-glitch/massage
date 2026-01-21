@@ -36,7 +36,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       
       // Parse JWT token to get user info
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        // JWT Base64デコード（日本語対応）
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
         const role = payload.role || Role.USER;
         const userName = payload.userName || payload.email || 'Google User';
         

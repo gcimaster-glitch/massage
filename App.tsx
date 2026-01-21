@@ -166,7 +166,48 @@ const RequireAuth: React.FC<any> = ({ children, allowedRoles, currentUser, onLog
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<{ role: Role; displayName: string } | null>(() => {
     const saved = localStorage.getItem('currentUser');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    
+    // currentUserがない場合、auth_tokenからユーザー情報を復元
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      try {
+        // JWT Base64デコード（日本語対応）
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
+        
+        // roleをRole enumに変換
+        let role = Role.USER;
+        if (payload.role === 'ADMIN') role = Role.ADMIN;
+        else if (payload.role === 'THERAPIST') role = Role.THERAPIST;
+        else if (payload.role === 'HOST') role = Role.HOST;
+        else if (payload.role === 'THERAPIST_OFFICE') role = Role.THERAPIST_OFFICE;
+        else if (payload.role === 'AFFILIATE') role = Role.AFFILIATE;
+        
+        const displayName = payload.userName || payload.name || 'ユーザー';
+        const user = { role, displayName };
+        
+        // currentUserを保存
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        return user;
+      } catch (e) {
+        console.error('Failed to decode token:', e);
+        // トークンが無効な場合は削除
+        localStorage.removeItem('auth_token');
+        return null;
+      }
+    }
+    
+    return null;
   });
 
   const handleLogin = (role: Role, name?: string) => {
