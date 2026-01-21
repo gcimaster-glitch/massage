@@ -115,6 +115,16 @@ const SiteMapSearch: React.FC = () => {
     fetchSites();
   }, []);
 
+  // ページ読み込み時に自動で現在地を取得
+  useEffect(() => {
+    // 少し遅延させてGoogle Maps APIの読み込みを待つ
+    const timer = setTimeout(() => {
+      getCurrentLocation();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   const fetchSites = async () => {
     try {
       const res = await fetch('/api/sites?status=APPROVED');
@@ -130,7 +140,10 @@ const SiteMapSearch: React.FC = () => {
 
   // ユーザーの現在地を取得してフィルタリング
   useEffect(() => {
-    if (userLocation && sites.length > 0) {
+    if (sites.length === 0) return;
+    
+    if (userLocation) {
+      // 現在地がある場合：距離でフィルタリング
       let filtered = sites
         .filter(site => site.latitude && site.longitude) // 座標データがある施設のみ
         .map(site => ({
@@ -168,6 +181,29 @@ const SiteMapSearch: React.FC = () => {
       });
 
       setNearbySites(filtered);
+    } else {
+      // 現在地がない場合：全拠点を表示（評価順）
+      let allSites = sites
+        .filter(site => site.latitude && site.longitude)
+        .map(site => ({
+          ...site,
+          distance: 0 // 距離情報なし
+        }));
+      
+      // 施設タイプフィルター
+      if (selectedSiteType !== 'ALL') {
+        allSites = allSites.filter(site => site.type === selectedSiteType);
+      }
+      
+      // 評価順にソート（実際にはAPIからrating情報を取得）
+      allSites.sort((a, b) => {
+        const aFav = favoriteSites.has(a.id) ? 1 : 0;
+        const bFav = favoriteSites.has(b.id) ? 1 : 0;
+        if (aFav !== bFav) return bFav - aFav;
+        return 0; // 順序維持
+      });
+      
+      setNearbySites(allSites);
     }
   }, [userLocation, sites, distanceRange, selectedSiteType, onlyAvailableNow, favoriteSites]);
 
@@ -590,8 +626,8 @@ const SiteMapSearch: React.FC = () => {
         )}
       </div>
 
-      {/* フローティング施設リスト（3km以内） */}
-      {userLocation && nearbySites.length > 0 && !isListClosed && (
+      {/* フローティング施設リスト */}
+      {nearbySites.length > 0 && !isListClosed && (
         <div className={`absolute top-40 right-4 z-30 transition-all duration-300 ${
           isListMinimized ? 'w-16' : 'w-96'
         } max-h-[calc(100vh-180px)] animate-fade-in`}>
@@ -603,7 +639,7 @@ const SiteMapSearch: React.FC = () => {
                   <>
                     <h3 className="text-white font-black text-xl flex items-center gap-2">
                       <MapPin size={24} />
-                      近くの施設
+                      {userLocation ? '近くの施設' : '全ての施設'}
                     </h3>
                     <div className="flex items-center gap-2">
                       <span className="bg-white/20 backdrop-blur-md text-white text-xs font-black px-3 py-1.5 rounded-full">
@@ -641,7 +677,7 @@ const SiteMapSearch: React.FC = () => {
               </div>
               {!isListMinimized && (
                 <p className="text-white/90 text-sm font-medium">
-                  現在地から{distanceRange}km以内
+                  {userLocation ? `現在地から${distanceRange}km以内` : '全ての施設を表示中'}
                 </p>
               )}
             </div>
@@ -672,10 +708,12 @@ const SiteMapSearch: React.FC = () => {
                       <h4 className="font-black text-gray-900 text-base leading-tight flex-1">
                         {site.name}
                       </h4>
-                      <div className="flex items-center gap-1 bg-teal-600 text-white text-xs font-black px-2 py-1 rounded-full shrink-0">
-                        <Navigation size={10} />
-                        {site.distance.toFixed(1)}km
-                      </div>
+                      {userLocation && site.distance > 0 && (
+                        <div className="flex items-center gap-1 bg-teal-600 text-white text-xs font-black px-2 py-1 rounded-full shrink-0">
+                          <Navigation size={10} />
+                          {site.distance.toFixed(1)}km
+                        </div>
+                      )}
                     </div>
 
                     {/* 住所 */}
