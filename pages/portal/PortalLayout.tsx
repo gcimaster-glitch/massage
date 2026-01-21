@@ -1,9 +1,8 @@
 
 import React from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Menu, X, LogIn, LayoutDashboard, UserPlus, Building2, Award, Briefcase, Sparkles, Map } from 'lucide-react';
+import { Menu, X, LogIn, LayoutDashboard, UserPlus, Building2, Award, Briefcase, Sparkles, Map, UserCheck, Home } from 'lucide-react';
 import { Role } from '../../types';
-import UserMenu from '../../components/UserMenu';
 
 const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
