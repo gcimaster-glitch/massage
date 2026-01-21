@@ -39,7 +39,7 @@ const SiteMapSearch: React.FC = () => {
   // フィルター設定
   const [distanceRange, setDistanceRange] = useState<number>(10); // 1km, 2km, 3km, 5km, 10km
   const [onlyAvailableNow, setOnlyAvailableNow] = useState<boolean>(false);
-  const [selectedSiteType, setSelectedSiteType] = useState<string>('ALL'); // ALL, CARE_CUBE, HOTEL, OFFICE
+  const [selectedSiteType, setSelectedSiteType] = useState<string>('ALL'); // ALL, CARE_CUBE, HOTEL, OFFICE, CHARGE
   const [favoriteSites, setFavoriteSites] = useState<Set<string>>(new Set());
   
   const mapRef = useRef<HTMLDivElement>(null);
@@ -207,7 +207,7 @@ const SiteMapSearch: React.FC = () => {
       
       // 施設タイプフィルター
       if (selectedSiteType !== 'ALL') {
-        if (selectedSiteType === 'OTHER') {
+        if (selectedSiteType === 'CHARGE') {
           // CHARGE拠点のみ
           allSites = allSites.filter(site => site.name && site.name.startsWith('CHARGE'));
         } else {
