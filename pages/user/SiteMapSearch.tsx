@@ -37,7 +37,7 @@ const SiteMapSearch: React.FC = () => {
   const [isListClosed, setIsListClosed] = useState(false); // リスト完全非表示
   
   // フィルター設定
-  const [distanceRange, setDistanceRange] = useState<number>(2); // 1km, 2km, 3km, 5km
+  const [distanceRange, setDistanceRange] = useState<number>(10); // 1km, 2km, 3km, 5km, 10km
   const [onlyAvailableNow, setOnlyAvailableNow] = useState<boolean>(false);
   const [selectedSiteType, setSelectedSiteType] = useState<string>('ALL'); // ALL, CARE_CUBE, HOTEL, OFFICE
   const [favoriteSites, setFavoriteSites] = useState<Set<string>>(new Set());
@@ -535,7 +535,7 @@ const SiteMapSearch: React.FC = () => {
                 距離範囲
               </label>
               <div className="grid grid-cols-4 gap-2">
-                {[1, 2, 3, 5].map(dist => (
+                {[2, 5, 10, 20].map(dist => (
                   <button
                     key={dist}
                     onClick={() => setDistanceRange(dist)}
@@ -545,7 +545,7 @@ const SiteMapSearch: React.FC = () => {
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {dist}km以内
+                    {dist}km
                   </button>
                 ))}
               </div>
@@ -558,18 +558,26 @@ const SiteMapSearch: React.FC = () => {
               </label>
               <div className="space-y-2">
                 {[
-                  { value: 'ALL', label: 'すべて' },
-                  { value: 'CARE_CUBE', label: 'CARE CUBE' },
-                  { value: 'HOTEL', label: 'ホテル' },
-                  { value: 'OFFICE', label: 'オフィスビル' }
+                  { value: 'ALL', label: 'すべて', color: '' },
+                  { value: 'CARE_CUBE', label: 'CARE CUBE', color: 'text-green-600' },
+                  { value: 'HOTEL', label: 'ホテル', color: 'text-blue-600' },
+                  { value: 'OFFICE', label: 'オフィスビル', color: 'text-purple-600' },
+                  { value: 'CHARGE', label: 'CHARGE', color: 'text-orange-600' }
                 ].map(type => (
                   <button
                     key={type.value}
-                    onClick={() => setSelectedSiteType(type.value)}
+                    onClick={() => {
+                      if (type.value === 'CHARGE') {
+                        // CHARGEは名前でフィルタリング
+                        setSelectedSiteType('OTHER');
+                      } else {
+                        setSelectedSiteType(type.value);
+                      }
+                    }}
                     className={`w-full py-3 rounded-xl font-bold text-sm transition-all text-left px-4 ${
-                      selectedSiteType === type.value
+                      selectedSiteType === type.value || (type.value === 'CHARGE' && selectedSiteType === 'OTHER')
                         ? 'bg-teal-600 text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : `bg-gray-100 hover:bg-gray-200 ${type.color || 'text-gray-700'}`
                     }`}
                   >
                     {type.label}
@@ -599,7 +607,7 @@ const SiteMapSearch: React.FC = () => {
             {/* フィルターリセット */}
             <button
               onClick={() => {
-                setDistanceRange(3);
+                setDistanceRange(10);
                 setSelectedSiteType('ALL');
                 setOnlyAvailableNow(false);
               }}
