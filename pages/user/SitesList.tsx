@@ -53,14 +53,16 @@ export default function SitesList() {
 
   const fetchSites = async () => {
     try {
-      // 新しいAPIエンドポイントを使用
-      const res = await fetch('/api/sites?status=PENDING&limit=100')
+      // ユーザーには稼働中（APPROVED）の施設のみを表示
+      const res = await fetch('/api/sites?status=APPROVED&limit=100')
       const data = await res.json()
       
       // APIレスポンスから sites 配列を取得
       setSites(data.sites || [])
     } catch (e) {
       console.error('Failed to fetch sites:', e)
+      // エラー時は空配列を設定
+      setSites([])
     } finally {
       setLoading(false)
     }

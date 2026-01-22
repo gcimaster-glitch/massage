@@ -1520,10 +1520,11 @@ app.get('/api/sites', async (c) => {
   const area = c.req.query('area')
   const type = c.req.query('type')
   const search = c.req.query('search')
+  const status = c.req.query('status') || 'APPROVED' // デフォルトは稼働中のみ
   
   try {
     if (!c.env.DB) {
-      return c.json([])
+      return c.json({ sites: [] })
     }
     
     // Check if we're using area or area_code
@@ -1540,13 +1541,19 @@ app.get('/api/sites', async (c) => {
     
     let query = `
       SELECT s.id, s.name, s.type, s.address, ${areaColumn} as area, 
-             ${latColumn} as lat, ${lngColumn} as lng, s.host_id,
+             ${latColumn} as lat, ${lngColumn} as lng, s.host_id, s.status,
              u.name as host_name
       FROM sites s
       LEFT JOIN users u ON s.host_id = u.id
       WHERE 1=1
     `
     const params: any[] = []
+    
+    // ステータスフィルター（重要！）
+    if (status && status !== 'ALL') {
+      query += ' AND s.status = ?'
+      params.push(status)
+    }
     
     if (area) {
       query += ` AND ${areaColumn} = ?`
@@ -1566,10 +1573,10 @@ app.get('/api/sites', async (c) => {
     query += ' ORDER BY s.name LIMIT 100'
     
     const { results } = await c.env.DB.prepare(query).bind(...params).all()
-    return c.json(results)
+    return c.json({ sites: results })
   } catch (e) {
     console.error('Sites API error:', e)
-    return c.json([], 500)
+    return c.json({ sites: [], error: e.message }, 500)
   }
 })
 
