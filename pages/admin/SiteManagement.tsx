@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Search, Check } from 'lucide-react';
-import TopNavLayout from '../../components/TopNavLayout';
+import SimpleLayout from '../../components/SimpleLayout';
 
 interface Site {
   id: string;
@@ -178,7 +178,7 @@ const SiteManagement: React.FC = () => {
   };
 
   return (
-    <TopNavLayout>
+    <SimpleLayout>
       <div className="p-8 bg-gray-50 min-h-screen">
         {/* ヘッダー */}
         <div className="mb-6">
@@ -333,7 +333,7 @@ const SiteManagement: React.FC = () => {
           )}
         </div>
       </div>
-    </TopNavLayout>
+    </SimpleLayout>
   );
 };
 
