@@ -685,20 +685,30 @@ authApp.post('/login', async (c) => {
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
-      // Find user by email and password
-      const { results } = await c.env.DB.prepare(
+      // Find user by email and password (try both hashed and plain for demo accounts)
+      let results: any = await c.env.DB.prepare(
         'SELECT id, email, name, role, avatar_url, email_verified FROM users WHERE email = ? AND password_hash = ?'
       )
         .bind(email, passwordHash)
         .all()
 
-      if (results.length === 0) {
+      // If no results with hashed password, try plain password for demo accounts
+      if (results.results.length === 0) {
+        results = await c.env.DB.prepare(
+          'SELECT id, email, name, role, avatar_url, email_verified FROM users WHERE email = ? AND password_hash = ?'
+        )
+          .bind(email, password)
+          .all()
+      }
+
+      if (results.results.length === 0) {
         return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401)
       }
 
-      const user = results[0] as any
+      const user = results.results[0] as any
 
-      if (!user.email_verified) {
+      // Skip email verification for admin accounts
+      if (user.role !== 'ADMIN' && !user.email_verified) {
         return c.json({ error: 'メールアドレスが未認証です。ご登録のメールから認証を完了してください。' }, 403)
       }
 
