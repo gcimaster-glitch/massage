@@ -19,6 +19,38 @@ interface PortalItem {
 const IndexList: React.FC = () => {
   const navigate = useNavigate()
 
+  // ワンクリックログイン関数
+  const handleQuickLogin = async (role: string, email: string) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'demo123' })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('auth_token', data.token);
+        
+        // 役割に応じてリダイレクト
+        const redirectPaths: { [key: string]: string } = {
+          'USER': '/app',
+          'THERAPIST': '/t',
+          'THERAPIST_OFFICE': '/o',
+          'HOST': '/h',
+          'AFFILIATE': '/affiliate',
+          'ADMIN': '/admin'
+        };
+        
+        window.location.href = redirectPaths[role] || '/app';
+      } else {
+        alert('ログインに失敗しました');
+      }
+    } catch (err) {
+      alert('ログインエラーが発生しました');
+    }
+  };
+
   const portals: PortalItem[] = [
     {
       id: 'user',
@@ -151,17 +183,32 @@ const IndexList: React.FC = () => {
                 {/* Buttons */}
                 <div className="space-y-2">
                   <button
-                    onClick={() => navigate(portal.path)}
+                    onClick={() => handleQuickLogin(
+                      portal.id === 'user' ? 'USER' :
+                      portal.id === 'therapist' ? 'THERAPIST' :
+                      portal.id === 'office' ? 'THERAPIST_OFFICE' :
+                      portal.id === 'host' ? 'HOST' :
+                      portal.id === 'affiliate' ? 'AFFILIATE' :
+                      'ADMIN',
+                      portal.id === 'admin' ? 'admin@hogusy.com' : `demo-${portal.id}@hogusy.com`
+                    )}
                     className={`w-full bg-gradient-to-r ${portal.color} text-white py-3 rounded-xl font-black text-sm hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 group-hover:scale-[1.02]`}
                   >
+                    <CheckCircle size={16} />
+                    ワンクリックログイン
+                  </button>
+                  <button
+                    onClick={() => navigate(portal.path)}
+                    className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
                     ポータルTOPへ
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight size={16} />
                   </button>
                   <button
                     onClick={() => navigate(portal.loginPath)}
-                    className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-black text-sm hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2"
+                    className="w-full bg-gray-50 text-gray-600 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-100 transition-all duration-300 flex items-center justify-center gap-2"
                   >
-                    <Lock size={16} />
+                    <Lock size={14} />
                     ログインページへ
                   </button>
                 </div>
