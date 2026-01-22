@@ -362,4 +362,38 @@ app.post('/bulk/archive', async (c) => {
   }
 });
 
+// ============================================
+// 一括ステータス変更
+// ============================================
+app.post('/bulk/status', async (c) => {
+  const { DB } = c.env;
+  
+  const role = c.get('role');
+  if (role !== 'ADMIN') {
+    return c.json({ error: 'Unauthorized' }, 403);
+  }
+  
+  try {
+    const { ids, status } = await c.req.json();
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return c.json({ error: 'Invalid site IDs' }, 400);
+    }
+    
+    if (!status || !['APPROVED', 'SUSPENDED', 'PENDING', 'REJECTED'].includes(status)) {
+      return c.json({ error: 'Invalid status' }, 400);
+    }
+    
+    const placeholders = ids.map(() => '?').join(',');
+    const query = `UPDATE sites SET status = ?, updated_at = datetime('now') WHERE id IN (${placeholders})`;
+    
+    await DB.prepare(query).bind(status, ...ids).run();
+    
+    return c.json({ success: true, count: ids.length, status });
+  } catch (error: any) {
+    console.error('Error updating site status:', error);
+    return c.json({ error: 'Failed to update site status', details: error.message }, 500);
+  }
+});
+
 export default app;
