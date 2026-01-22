@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, Search, Filter, Grid, List, Plus, Edit, Trash2, 
-  Eye, Mail, Phone, MapPin, Calendar, CheckCircle, XCircle,
-  AlertCircle, Download, RefreshCw, User, Award, Building2
+  Search, Filter, Grid, List, Edit, Trash2, 
+  Mail, Phone, Calendar, CheckCircle, XCircle,
+  AlertCircle, RefreshCw, Building, MapPin
 } from 'lucide-react';
 
-interface User {
+interface Host {
   id: string;
   email: string;
   name: string;
@@ -14,39 +14,39 @@ interface User {
   avatar_url: string;
   email_verified: number;
   phone_verified: number;
-  kyc_status: string;
+  site_count: number;
+  approval_status: string;
   created_at: string;
   updated_at: string;
 }
 
 type ViewMode = 'list' | 'card';
 
-const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+const HostManagement: React.FC = () => {
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [filteredHosts, setFilteredHosts] = useState<Host[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedHost, setSelectedHost] = useState<Host | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
+    fetchHosts();
   }, []);
 
   useEffect(() => {
-    filterUsers();
-  }, [users, searchQuery, roleFilter]);
+    filterHosts();
+  }, [hosts, searchQuery, statusFilter]);
 
-  const fetchUsers = async () => {
+  const fetchHosts = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/api/admin/hosts', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -54,45 +54,41 @@ const UserManagement: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        // 一般ユーザーとゲストのみフィルター
-        const regularUsers = (data.users || []).filter(
-          (u: User) => u.role === 'USER' || u.role === 'GUEST'
-        );
-        setUsers(regularUsers);
+        setHosts(data.hosts || []);
       } else {
-        setError('ユーザー一覧の取得に失敗しました');
+        setError('拠点ホスト一覧の取得に失敗しました');
       }
     } catch (err) {
-      setError('ユーザー一覧の取得に失敗しました');
+      setError('拠点ホスト一覧の取得に失敗しました');
     } finally {
       setLoading(false);
     }
   };
 
-  const filterUsers = () => {
-    let filtered = [...users];
+  const filterHosts = () => {
+    let filtered = [...hosts];
 
     // 検索フィルター
     if (searchQuery) {
-      filtered = filtered.filter(user => 
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.phone?.includes(searchQuery)
+      filtered = filtered.filter(host => 
+        host.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        host.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        host.phone?.includes(searchQuery)
       );
     }
 
-    // ロールフィルター
-    if (roleFilter !== 'ALL') {
-      filtered = filtered.filter(user => user.role === roleFilter);
+    // ステータスフィルター
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter(host => host.approval_status === statusFilter);
     }
 
-    setFilteredUsers(filtered);
+    setFilteredHosts(filtered);
   };
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteHost = async (hostId: string) => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await fetch(`/api/admin/hosts/${hostId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -100,8 +96,8 @@ const UserManagement: React.FC = () => {
       });
 
       if (response.ok) {
-        setMessage('ユーザーを削除しました');
-        fetchUsers();
+        setMessage('拠点ホストを削除しました');
+        fetchHosts();
         setShowDeleteModal(false);
         setTimeout(() => setMessage(''), 3000);
       } else {
@@ -112,23 +108,65 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'ADMIN': return 'bg-red-100 text-red-700';
-      case 'THERAPIST': return 'bg-indigo-100 text-indigo-700';
-      case 'HOST': return 'bg-orange-100 text-orange-700';
-      case 'THERAPIST_OFFICE': return 'bg-blue-100 text-blue-700';
-      case 'USER': return 'bg-green-100 text-green-700';
+  const handleApprove = async (hostId: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/admin/hosts/${hostId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setMessage('拠点ホストを承認しました');
+        fetchHosts();
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setError('承認に失敗しました');
+      }
+    } catch (err) {
+      setError('承認に失敗しました');
+    }
+  };
+
+  const handleReject = async (hostId: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/admin/hosts/${hostId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setMessage('拠点ホストを却下しました');
+        fetchHosts();
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setError('却下に失敗しました');
+      }
+    } catch (err) {
+      setError('却下に失敗しました');
+    }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'APPROVED': return 'bg-green-100 text-green-700';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-700';
+      case 'REJECTED': return 'bg-red-100 text-red-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'THERAPIST': return <Award size={16} />;
-      case 'HOST': return <Building2 size={16} />;
-      case 'THERAPIST_OFFICE': return <Building2 size={16} />;
-      default: return <User size={16} />;
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'APPROVED': return '承認済';
+      case 'PENDING': return '審査中';
+      case 'REJECTED': return '却下';
+      default: return status;
     }
   };
 
@@ -137,10 +175,10 @@ const UserManagement: React.FC = () => {
       {/* ヘッダー */}
       <div className="mb-8">
         <h1 className="text-4xl font-black text-gray-900 tracking-tighter mb-2">
-          一般ユーザー管理
+          拠点ホスト管理
         </h1>
         <p className="text-gray-400 font-bold text-sm uppercase tracking-wider">
-          Regular User & Guest Management
+          Facility Host Management System
         </p>
       </div>
 
@@ -170,21 +208,22 @@ const UserManagement: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="名前、メール、電話番号で検索..."
-              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-teal-500"
+              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
             />
           </div>
 
-          {/* ロールフィルター */}
+          {/* ステータスフィルター */}
           <div className="relative">
             <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="pl-12 pr-8 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-teal-500 appearance-none bg-white"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="pl-12 pr-8 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 appearance-none bg-white"
             >
-              <option value="ALL">全て</option>
-              <option value="USER">一般ユーザー</option>
-              <option value="GUEST">ゲストユーザー</option>
+              <option value="ALL">全ステータス</option>
+              <option value="APPROVED">承認済</option>
+              <option value="PENDING">審査中</option>
+              <option value="REJECTED">却下</option>
             </select>
           </div>
 
@@ -194,7 +233,7 @@ const UserManagement: React.FC = () => {
               onClick={() => setViewMode('list')}
               className={`p-3 rounded-xl transition-colors ${
                 viewMode === 'list'
-                  ? 'bg-teal-600 text-white'
+                  ? 'bg-orange-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -204,7 +243,7 @@ const UserManagement: React.FC = () => {
               onClick={() => setViewMode('card')}
               className={`p-3 rounded-xl transition-colors ${
                 viewMode === 'card'
-                  ? 'bg-teal-600 text-white'
+                  ? 'bg-orange-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -214,7 +253,7 @@ const UserManagement: React.FC = () => {
 
           {/* リフレッシュ */}
           <button
-            onClick={fetchUsers}
+            onClick={fetchHosts}
             disabled={loading}
             className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"
           >
@@ -224,37 +263,49 @@ const UserManagement: React.FC = () => {
         </div>
 
         {/* 統計情報 */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <p className="text-2xl font-black text-gray-900">{users.length}</p>
-            <p className="text-xs text-gray-500 font-bold">総ユーザー数</p>
+            <p className="text-2xl font-black text-gray-900">{hosts.length}</p>
+            <p className="text-xs text-gray-500 font-bold">総ホスト数</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-black text-green-600">
-              {users.filter(u => u.role === 'USER').length}
+              {hosts.filter(h => h.approval_status === 'APPROVED').length}
             </p>
-            <p className="text-xs text-gray-500 font-bold">一般ユーザー</p>
+            <p className="text-xs text-gray-500 font-bold">承認済</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-yellow-600">
+              {hosts.filter(h => h.approval_status === 'PENDING').length}
+            </p>
+            <p className="text-xs text-gray-500 font-bold">審査中</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-red-600">
+              {hosts.filter(h => h.approval_status === 'REJECTED').length}
+            </p>
+            <p className="text-xs text-gray-500 font-bold">却下</p>
           </div>
         </div>
       </div>
 
-      {/* ユーザー一覧 */}
+      {/* ホスト一覧 */}
       {viewMode === 'list' ? (
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  ユーザー
+                  ホスト
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  ロール
+                  拠点数
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   連絡先
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  認証状態
+                  ステータス
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   登録日
@@ -265,72 +316,70 @@ const UserManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+              {filteredHosts.map((host) => (
+                <tr key={host.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img
-                        src={user.avatar_url || '/placeholder-user.jpg'}
-                        alt={user.name}
+                        src={host.avatar_url || '/placeholder-user.jpg'}
+                        alt={host.name}
                         className="w-10 h-10 rounded-full object-cover"
                       />
                       <div>
-                        <p className="font-bold text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="font-bold text-gray-900">{host.name}</p>
+                        <p className="text-sm text-gray-500">{host.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getRoleBadgeColor(user.role)}`}>
-                      {getRoleIcon(user.role)}
-                      {user.role}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <MapPin size={16} className="text-orange-600" />
+                      <span className="text-sm font-bold text-orange-600">{host.site_count || 0} 拠点</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm space-y-1">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Mail size={14} />
-                        {user.email}
+                        {host.email}
                       </div>
-                      {user.phone && (
+                      {host.phone && (
                         <div className="flex items-center gap-2 text-gray-600">
                           <Phone size={14} />
-                          {user.phone}
+                          {host.phone}
                         </div>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      {user.email_verified ? (
-                        <CheckCircle size={16} className="text-green-500" />
-                      ) : (
-                        <XCircle size={16} className="text-gray-300" />
-                      )}
-                      {user.phone_verified ? (
-                        <CheckCircle size={16} className="text-green-500" />
-                      ) : (
-                        <XCircle size={16} className="text-gray-300" />
-                      )}
-                    </div>
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeColor(host.approval_status)}`}>
+                      {getStatusLabel(host.approval_status)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {new Date(user.created_at).toLocaleDateString('ja-JP')}
+                    {new Date(host.created_at).toLocaleDateString('ja-JP')}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
+                      {host.approval_status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(host.id)}
+                            className="px-3 py-1 text-xs bg-green-50 text-green-600 rounded-lg font-bold hover:bg-green-100 transition-colors"
+                          >
+                            承認
+                          </button>
+                          <button
+                            onClick={() => handleReject(host.id)}
+                            className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded-lg font-bold hover:bg-red-100 transition-colors"
+                          >
+                            却下
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => {
-                          setSelectedUser(user);
-                          setShowEditModal(true);
-                        }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedUser(user);
+                          setSelectedHost(host);
                           setShowDeleteModal(true);
                         }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -344,64 +393,76 @@ const UserManagement: React.FC = () => {
             </tbody>
           </table>
 
-          {filteredUsers.length === 0 && (
+          {filteredHosts.length === 0 && (
             <div className="text-center py-12 text-gray-400">
-              ユーザーが見つかりません
+              拠点ホストが見つかりません
             </div>
           )}
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredUsers.map((user) => (
-            <div key={user.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          {filteredHosts.map((host) => (
+            <div key={host.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-start justify-between mb-4">
                 <img
-                  src={user.avatar_url || '/placeholder-user.jpg'}
-                  alt={user.name}
+                  src={host.avatar_url || '/placeholder-user.jpg'}
+                  alt={host.name}
                   className="w-16 h-16 rounded-full object-cover"
                 />
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getRoleBadgeColor(user.role)}`}>
-                  {getRoleIcon(user.role)}
-                  {user.role}
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeColor(host.approval_status)}`}>
+                  {getStatusLabel(host.approval_status)}
                 </span>
               </div>
 
-              <h3 className="font-bold text-gray-900 text-lg mb-2">{user.name}</h3>
+              <h3 className="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                <Building size={18} className="text-orange-600" />
+                {host.name}
+              </h3>
               
               <div className="space-y-2 text-sm text-gray-600 mb-4">
                 <div className="flex items-center gap-2">
                   <Mail size={14} />
-                  {user.email}
+                  {host.email}
                 </div>
-                {user.phone && (
+                {host.phone && (
                   <div className="flex items-center gap-2">
                     <Phone size={14} />
-                    {user.phone}
+                    {host.phone}
                   </div>
                 )}
                 <div className="flex items-center gap-2">
+                  <MapPin size={14} className="text-orange-600" />
+                  <span className="font-bold text-orange-600">{host.site_count || 0} 拠点</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <Calendar size={14} />
-                  {new Date(user.created_at).toLocaleDateString('ja-JP')}
+                  {new Date(host.created_at).toLocaleDateString('ja-JP')}
                 </div>
               </div>
 
               <div className="flex gap-2">
+                {host.approval_status === 'PENDING' && (
+                  <>
+                    <button
+                      onClick={() => handleApprove(host.id)}
+                      className="flex-1 px-4 py-2 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 transition-colors"
+                    >
+                      承認
+                    </button>
+                    <button
+                      onClick={() => handleReject(host.id)}
+                      className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors"
+                    >
+                      却下
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => {
-                    setSelectedUser(user);
-                    setShowEditModal(true);
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Edit size={16} />
-                  編集
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedUser(user);
+                    setSelectedHost(host);
                     setShowDeleteModal(true);
                   }}
-                  className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 size={16} />
                   削除
@@ -410,21 +471,21 @@ const UserManagement: React.FC = () => {
             </div>
           ))}
 
-          {filteredUsers.length === 0 && (
+          {filteredHosts.length === 0 && (
             <div className="col-span-full text-center py-12 text-gray-400">
-              ユーザーが見つかりません
+              拠点ホストが見つかりません
             </div>
           )}
         </div>
       )}
 
       {/* 削除確認モーダル */}
-      {showDeleteModal && selectedUser && (
+      {showDeleteModal && selectedHost && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">ユーザー削除の確認</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">拠点ホスト削除の確認</h3>
             <p className="text-gray-600 mb-6">
-              <strong>{selectedUser.name}</strong> を削除してもよろしいですか？
+              <strong>{selectedHost.name}</strong> を削除してもよろしいですか？
               <br />
               この操作は取り消せません。
             </p>
@@ -436,7 +497,7 @@ const UserManagement: React.FC = () => {
                 キャンセル
               </button>
               <button
-                onClick={() => handleDeleteUser(selectedUser.id)}
+                onClick={() => handleDeleteHost(selectedHost.id)}
                 className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
               >
                 削除
@@ -449,4 +510,4 @@ const UserManagement: React.FC = () => {
   );
 };
 
-export default UserManagement;
+export default HostManagement;
