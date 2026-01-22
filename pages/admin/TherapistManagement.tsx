@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Grid, List, Edit, Trash2, 
   Mail, Phone, Calendar, CheckCircle, XCircle,
-  AlertCircle, RefreshCw, Award, Building2, Star
+  AlertCircle, RefreshCw, Award, Building2, Star, Download, Archive, EyeOff
 } from 'lucide-react';
 
 interface Therapist {
@@ -37,6 +37,7 @@ const TherapistManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedTherapist, setSelectedTherapist] = useState<Therapist | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedTherapists, setSelectedTherapists] = useState<string[]>([]);
 
   useEffect(() => {
     fetchTherapists();
@@ -88,6 +89,87 @@ const TherapistManagement: React.FC = () => {
     }
 
     setFilteredTherapists(filtered);
+  };
+
+  const handleSelectTherapist = (therapistId: string) => {
+    setSelectedTherapists(prev => 
+      prev.includes(therapistId) 
+        ? prev.filter(id => id !== therapistId)
+        : [...prev, therapistId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedTherapists.length === filteredTherapists.length) {
+      setSelectedTherapists([]);
+    } else {
+      setSelectedTherapists(filteredTherapists.map(t => t.id));
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (selectedTherapists.length === 0) {
+      setError('セラピストを選択してください');
+      return;
+    }
+
+    const selectedData = filteredTherapists.filter(t => selectedTherapists.includes(t.id));
+    
+    const csvContent = [
+      ['ID', '名前', 'メール', '電話', '所属', 'ステータス', '作成日'],
+      ...selectedData.map(t => [
+        t.id,
+        t.name,
+        t.email,
+        t.phone || '',
+        t.office_name || '直営',
+        t.approval_status,
+        new Date(t.created_at).toLocaleDateString('ja-JP'),
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `therapists_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    setMessage(`${selectedTherapists.length}件のセラピストをエクスポートしました`);
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedTherapists.length === 0) {
+      setError('セラピストを選択してください');
+      return;
+    }
+
+    if (!confirm(`${selectedTherapists.length}件のセラピストをアーカイブしますか？`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      let successCount = 0;
+      
+      for (const therapistId of selectedTherapists) {
+        const response = await fetch(`/api/admin/therapists/${therapistId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (response.ok) {
+          successCount++;
+        }
+      }
+      
+      setMessage(`${successCount}件のセラピストをアーカイブしました`);
+      setSelectedTherapists([]);
+      fetchTherapists();
+    } catch (err) {
+      setError('一括アーカイブに失敗しました');
+    }
   };
 
   const handleDeleteTherapist = async (therapistId: string) => {
@@ -268,7 +350,7 @@ const TherapistManagement: React.FC = () => {
         </div>
 
         {/* 統計情報 */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center">
             <p className="text-2xl font-black text-gray-900">{therapists.length}</p>
             <p className="text-xs text-gray-500 font-bold">総セラピスト数</p>
@@ -291,7 +373,31 @@ const TherapistManagement: React.FC = () => {
             </p>
             <p className="text-xs text-gray-500 font-bold">却下</p>
           </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-purple-600">{selectedTherapists.length}</p>
+            <p className="text-xs text-gray-500 font-bold">選択中</p>
+          </div>
         </div>
+
+        {/* 一括操作ボタン */}
+        {selectedTherapists.length > 0 && (
+          <div className="flex gap-3 pt-4 mt-4 border-t">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              <Download className="w-4 h-4" />
+              CSV出力 ({selectedTherapists.length})
+            </button>
+            <button
+              onClick={handleBulkArchive}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <Archive className="w-4 h-4" />
+              一括アーカイブ ({selectedTherapists.length})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* セラピスト一覧 */}
@@ -300,6 +406,14 @@ const TherapistManagement: React.FC = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-4 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedTherapists.length === filteredTherapists.length && filteredTherapists.length > 0}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-indigo-600"
+                  />
+                </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   セラピスト
                 </th>
@@ -323,6 +437,14 @@ const TherapistManagement: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {filteredTherapists.map((therapist) => (
                 <tr key={therapist.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedTherapists.includes(therapist.id)}
+                      onChange={() => handleSelectTherapist(therapist.id)}
+                      className="w-4 h-4 text-indigo-600"
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img
@@ -413,11 +535,19 @@ const TherapistManagement: React.FC = () => {
           {filteredTherapists.map((therapist) => (
             <div key={therapist.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-start justify-between mb-4">
-                <img
-                  src={therapist.avatar_url || '/placeholder-therapist.jpg'}
-                  alt={therapist.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedTherapists.includes(therapist.id)}
+                    onChange={() => handleSelectTherapist(therapist.id)}
+                    className="w-5 h-5 text-indigo-600 mt-1"
+                  />
+                  <img
+                    src={therapist.avatar_url || '/placeholder-therapist.jpg'}
+                    alt={therapist.name}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                </div>
                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeColor(therapist.approval_status)}`}>
                   {getStatusLabel(therapist.approval_status)}
                 </span>

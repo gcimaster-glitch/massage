@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Grid, List, Edit, Trash2, 
   Mail, Phone, Calendar, CheckCircle, XCircle,
-  AlertCircle, RefreshCw, Building, MapPin
+  AlertCircle, RefreshCw, Building, MapPin, Download, Archive, EyeOff
 } from 'lucide-react';
 
 interface Host {
@@ -33,6 +33,7 @@ const HostManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedHost, setSelectedHost] = useState<Host | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
 
   useEffect(() => {
     fetchHosts();
@@ -83,6 +84,87 @@ const HostManagement: React.FC = () => {
     }
 
     setFilteredHosts(filtered);
+  };
+
+  const handleSelectHost = (hostId: string) => {
+    setSelectedHosts(prev => 
+      prev.includes(hostId) 
+        ? prev.filter(id => id !== hostId)
+        : [...prev, hostId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedHosts.length === filteredHosts.length) {
+      setSelectedHosts([]);
+    } else {
+      setSelectedHosts(filteredHosts.map(h => h.id));
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (selectedHosts.length === 0) {
+      setError('拠点ホストを選択してください');
+      return;
+    }
+
+    const selectedData = filteredHosts.filter(h => selectedHosts.includes(h.id));
+    
+    const csvContent = [
+      ['ID', '名前', 'メール', '電話', '管理拠点数', 'ステータス', '作成日'],
+      ...selectedData.map(h => [
+        h.id,
+        h.name,
+        h.email,
+        h.phone || '',
+        h.site_count || 0,
+        h.approval_status,
+        new Date(h.created_at).toLocaleDateString('ja-JP'),
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `hosts_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    setMessage(`${selectedHosts.length}件の拠点ホストをエクスポートしました`);
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedHosts.length === 0) {
+      setError('拠点ホストを選択してください');
+      return;
+    }
+
+    if (!confirm(`${selectedHosts.length}件の拠点ホストをアーカイブしますか？`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      let successCount = 0;
+      
+      for (const hostId of selectedHosts) {
+        const response = await fetch(`/api/admin/hosts/${hostId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (response.ok) {
+          successCount++;
+        }
+      }
+      
+      setMessage(`${successCount}件の拠点ホストをアーカイブしました`);
+      setSelectedHosts([]);
+      fetchHosts();
+    } catch (err) {
+      setError('一括アーカイブに失敗しました');
+    }
   };
 
   const handleDeleteHost = async (hostId: string) => {
@@ -263,7 +345,7 @@ const HostManagement: React.FC = () => {
         </div>
 
         {/* 統計情報 */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center">
             <p className="text-2xl font-black text-gray-900">{hosts.length}</p>
             <p className="text-xs text-gray-500 font-bold">総ホスト数</p>
@@ -286,7 +368,31 @@ const HostManagement: React.FC = () => {
             </p>
             <p className="text-xs text-gray-500 font-bold">却下</p>
           </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-purple-600">{selectedHosts.length}</p>
+            <p className="text-xs text-gray-500 font-bold">選択中</p>
+          </div>
         </div>
+
+        {/* 一括操作ボタン */}
+        {selectedHosts.length > 0 && (
+          <div className="flex gap-3 pt-4 mt-4 border-t">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              <Download className="w-4 h-4" />
+              CSV出力 ({selectedHosts.length})
+            </button>
+            <button
+              onClick={handleBulkArchive}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <Archive className="w-4 h-4" />
+              一括アーカイブ ({selectedHosts.length})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ホスト一覧 */}
@@ -295,6 +401,14 @@ const HostManagement: React.FC = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-4 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedHosts.length === filteredHosts.length && filteredHosts.length > 0}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-orange-600"
+                  />
+                </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   ホスト
                 </th>
@@ -318,6 +432,14 @@ const HostManagement: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {filteredHosts.map((host) => (
                 <tr key={host.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedHosts.includes(host.id)}
+                      onChange={() => handleSelectHost(host.id)}
+                      className="w-4 h-4 text-orange-600"
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img
@@ -404,11 +526,19 @@ const HostManagement: React.FC = () => {
           {filteredHosts.map((host) => (
             <div key={host.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-start justify-between mb-4">
-                <img
-                  src={host.avatar_url || '/placeholder-user.jpg'}
-                  alt={host.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedHosts.includes(host.id)}
+                    onChange={() => handleSelectHost(host.id)}
+                    className="w-5 h-5 text-orange-600 mt-1"
+                  />
+                  <img
+                    src={host.avatar_url || '/placeholder-user.jpg'}
+                    alt={host.name}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                </div>
                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeColor(host.approval_status)}`}>
                   {getStatusLabel(host.approval_status)}
                 </span>
