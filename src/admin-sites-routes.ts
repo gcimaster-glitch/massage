@@ -12,10 +12,38 @@ type Bindings = {
   JWT_SECRET: string;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Bindings; Variables: { userId: string; role: string } }>();
 
 // 全てのルートで管理者認証を要求
-app.use('*', verifyJWT);
+app.use('*', async (c, next) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    console.log('[admin-sites] Auth header:', authHeader?.substring(0, 30));
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: '認証トークンが必要です' }, 401);
+    }
+    
+    const token = authHeader.substring(7);
+    console.log('[admin-sites] Token extracted, length:', token.length);
+    
+    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    console.log('[admin-sites] JWT payload:', payload);
+    
+    if (!payload || payload.role !== 'ADMIN') {
+      console.log('[admin-sites] Authorization failed. Payload role:', payload?.role);
+      return c.json({ error: '管理者権限が必要です' }, 403);
+    }
+    
+    c.set('userId', payload.userId);
+    c.set('role', payload.role);
+    console.log('[admin-sites] Auth successful. Role set to:', payload.role);
+    await next();
+  } catch (error) {
+    console.error('[admin-sites] JWT verification error:', error);
+    return c.json({ error: '認証に失敗しました' }, 401);
+  }
+});
 
 // ============================================
 // 施設一覧取得（管理者用 - 全ステータス）
@@ -23,9 +51,9 @@ app.use('*', verifyJWT);
 app.get('/', async (c) => {
   const { DB } = c.env;
   
-  // 管理者チェック
-  const user = c.get('user');
-  if (user.role !== 'ADMIN') {
+  // 管理者チェックは既にミドルウェアで済んでいる
+  const role = c.get('role');
+  if (role !== 'ADMIN') {
     return c.json({ error: 'Unauthorized' }, 403);
   }
   
@@ -83,7 +111,6 @@ app.get('/', async (c) => {
         s.amenities,
         s.status,
         s.image_url,
-        s.description,
         s.host_id,
         s.created_at,
         s.updated_at,
@@ -147,8 +174,8 @@ app.get('/:id', async (c) => {
 app.post('/', async (c) => {
   const { DB } = c.env;
   
-  const user = c.get('user');
-  if (user.role !== 'ADMIN') {
+  const role = c.get('role');
+  if (role !== 'ADMIN') {
     return c.json({ error: 'Unauthorized' }, 403);
   }
   
@@ -213,8 +240,8 @@ app.put('/:id', async (c) => {
   const { DB } = c.env;
   const siteId = c.req.param('id');
   
-  const user = c.get('user');
-  if (user.role !== 'ADMIN') {
+  const role = c.get('role');
+  if (role !== 'ADMIN') {
     return c.json({ error: 'Unauthorized' }, 403);
   }
   
@@ -261,8 +288,8 @@ app.delete('/:id', async (c) => {
   const { DB } = c.env;
   const siteId = c.req.param('id');
   
-  const user = c.get('user');
-  if (user.role !== 'ADMIN') {
+  const role = c.get('role');
+  if (role !== 'ADMIN') {
     return c.json({ error: 'Unauthorized' }, 403);
   }
   
@@ -281,8 +308,8 @@ app.delete('/:id', async (c) => {
 app.post('/bulk/hide', async (c) => {
   const { DB } = c.env;
   
-  const user = c.get('user');
-  if (user.role !== 'ADMIN') {
+  const role = c.get('role');
+  if (role !== 'ADMIN') {
     return c.json({ error: 'Unauthorized' }, 403);
   }
   
@@ -311,8 +338,8 @@ app.post('/bulk/hide', async (c) => {
 app.post('/bulk/archive', async (c) => {
   const { DB } = c.env;
   
-  const user = c.get('user');
-  if (user.role !== 'ADMIN') {
+  const role = c.get('role');
+  if (role !== 'ADMIN') {
     return c.json({ error: 'Unauthorized' }, 403);
   }
   
