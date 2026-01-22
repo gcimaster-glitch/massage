@@ -482,14 +482,14 @@ const UserDetail: React.FC = () => {
             <div className="space-y-4">
               <div className="text-center p-6 bg-teal-50 rounded-2xl">
                 <p className="text-sm text-gray-600 font-bold mb-2">予約回数</p>
-                <p className="text-4xl font-black text-teal-600">{user.booking_count}</p>
+                <p className="text-4xl font-black text-teal-600">{user.booking_count || 0}</p>
                 <p className="text-xs text-gray-500 mt-1">回</p>
               </div>
 
               <div className="text-center p-6 bg-indigo-50 rounded-2xl">
                 <p className="text-sm text-gray-600 font-bold mb-2">総利用金額</p>
                 <p className="text-4xl font-black text-indigo-600">
-                  ¥{user.total_spent.toLocaleString()}
+                  ¥{(user.total_spent || 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">円</p>
               </div>

@@ -155,17 +155,26 @@ const AdminDashboard: React.FC = () => {
                </div>
                
                <div className="relative z-10 space-y-4">
+                  {/* ユーザー・アカウント管理 */}
                   <GovLink label="一般ユーザー管理" icon={<Users size={18}/>} onClick={() => navigate('/admin/users')} />
-                  <GovLink label="セラピスト管理" icon={<UserCheck size={18}/>} count={8} onClick={() => navigate('/admin/therapists')} />
+                  <GovLink label="セラピスト管理" icon={<UserCheck size={18}/>} onClick={() => navigate('/admin/therapists')} />
                   <GovLink label="拠点ホスト管理" icon={<MapPin size={18}/>} onClick={() => navigate('/admin/hosts')} />
-                  <GovLink label="メニュー/価格承認" icon={<ClipboardCheck size={18}/>} count={3} onClick={() => navigate('/admin/pricing-approvals')} />
-                  <GovLink label="健康経営・法人管理" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/corporate')} />
-                  {/* Fixed: Replaced Building with Building2 which is correctly imported */}
-                  <GovLink label="提携事務所監査" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/offices')} />
-                  <GovLink label="セラピスト事務所管理" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/office-management')} />
-                  <GovLink label="CARE CUBE施設管理" icon={<MapPin size={18}/>} onClick={() => navigate('/admin/site-management')} />
                   <GovLink label="アフィリエイト管理" icon={<Heart size={18}/>} onClick={() => navigate('/admin/affiliates')} />
+                  
+                  {/* 施設・事務所管理 */}
+                  <GovLink label="施設管理（全拠点）" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/site-management')} />
+                  <GovLink label="セラピスト事務所管理" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/office-management')} />
+                  
+                  {/* 予約・決済管理 */}
+                  <GovLink label="予約管理" icon={<Calendar size={18}/>} onClick={() => navigate('/admin/bookings')} />
+                  <GovLink label="決済管理" icon={<JapaneseYen size={18}/>} onClick={() => navigate('/admin/payments')} />
                   <GovLink label="送金/Stripe監視" icon={<JapaneseYen size={18}/>} onClick={() => navigate('/admin/stripe')} />
+                  
+                  {/* 承認・審査 */}
+                  <GovLink label="メニュー/価格承認" icon={<ClipboardCheck size={18}/>} onClick={() => navigate('/admin/pricing-approvals')} />
+                  <GovLink label="KYC審査" icon={<ShieldCheck size={18}/>} onClick={() => navigate('/admin/kyc-approvals')} />
+                  
+                  {/* システム管理 */}
                   <GovLink label="配信テンプレート" icon={<MessageSquare size={18}/>} onClick={() => navigate('/admin/emails')} />
                   <GovLink label="監査ログ・証跡" icon={<History size={18}/>} onClick={() => navigate('/admin/logs')} />
                </div>
