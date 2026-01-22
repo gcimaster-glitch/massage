@@ -7,6 +7,7 @@ import adminApp from './admin-routes'
 import sitesApp from './sites-routes'
 import officesApp from './offices-routes'
 import officeManagementApp from './office-management-routes'
+import earningsManagementApp from './earnings-management-routes'
 import therapistEditApp from './therapist-edit-routes'
 import therapistManagementApp from './therapist-management-routes'
 import imageApp from './image-routes'
@@ -97,6 +98,11 @@ app.route('/api/offices', officesApp)
 // Mount Office Management Routes (Auth required)
 // ============================================
 app.route('/api/office-management', officeManagementApp)
+
+// ============================================
+// Mount Earnings Management Routes (Auth required)
+// ============================================
+app.route('/api/earnings', earningsManagementApp)
 
 // ============================================
 // Mount Therapist Edit Routes

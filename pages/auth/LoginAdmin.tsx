@@ -138,6 +138,19 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
           </div>
         ) : (
           <>
+            {/* Demo Account Info */}
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+              <h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                <Database size={16} />
+                デモアカウント情報
+              </h3>
+              <div className="text-xs text-blue-700 space-y-1">
+                <p><strong>メール:</strong> admin@hogusy.com</p>
+                <p><strong>パスワード:</strong> demo123</p>
+                <p className="text-blue-600 mt-2">※ 下記の「デモログイン」ボタンで即座にログインできます</p>
+              </div>
+            </div>
+
             {/* Email/Password Login Form */}
             <form onSubmit={handleEmailLogin} className="mb-8 space-y-5">
               <div>
@@ -206,11 +219,16 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
 
             <div className="text-center mb-8">
               <button
+                type="button"
                 onClick={handleQuickLogin}
-                className="text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors"
+                className="w-full py-4 bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-2xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
-                開発用デモログイン
+                <Shield size={20} />
+                デモログイン（管理者）
               </button>
+              <p className="text-xs text-gray-400 mt-2">
+                ※ 開発・確認用のクイックログイン
+              </p>
             </div>
 
             <div className="mt-10 grid gap-4">
