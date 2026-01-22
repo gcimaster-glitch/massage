@@ -43,6 +43,18 @@ const SiteManagement: React.FC = () => {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   useEffect(() => {
+    // モックトークンをチェックして自動的にクリア
+    const token = localStorage.getItem('auth_token');
+    if (token && token.startsWith('mock.')) {
+      console.warn('古いモックトークンを検出しました。ログアウトしてください。');
+      localStorage.removeItem('auth_token');
+      setError('セッションが無効です。再度ログインしてください。');
+      setTimeout(() => {
+        window.location.href = '/admin/login';
+      }, 2000);
+      return;
+    }
+    
     fetchSites();
   }, []);
 
@@ -76,6 +88,13 @@ const SiteManagement: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setSites(data.sites || []);
+      } else if (response.status === 401 || response.status === 403) {
+        // 認証エラー: トークンをクリアしてログインページへ
+        localStorage.removeItem('auth_token');
+        setError('セッションが無効です。再度ログインしてください。');
+        setTimeout(() => {
+          window.location.href = '/admin/login';
+        }, 2000);
       } else {
         setError('施設一覧の取得に失敗しました');
       }
@@ -213,6 +232,17 @@ const SiteManagement: React.FC = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
+      
+      // トークン検証
+      if (!token || token.startsWith('mock.')) {
+        localStorage.removeItem('auth_token');
+        setError('セッションが無効です。再度ログインしてください。');
+        setTimeout(() => {
+          window.location.href = '/admin/login';
+        }, 2000);
+        return;
+      }
+      
       const response = await fetch('/api/admin/sites/bulk/status', {
         method: 'POST',
         headers: {
@@ -226,8 +256,16 @@ const SiteManagement: React.FC = () => {
         setMessage(`${selectedSites.length}件の施設を「${statusLabels[newStatus]}」に変更しました`);
         setSelectedSites([]);
         fetchSites();
+      } else if (response.status === 401 || response.status === 403) {
+        // 認証エラー: トークンをクリアしてログインページへ
+        localStorage.removeItem('auth_token');
+        setError('セッションが無効です。再度ログインしてください。');
+        setTimeout(() => {
+          window.location.href = '/admin/login';
+        }, 2000);
       } else {
-        setError('ステータス変更に失敗しました');
+        const errorData = await response.json().catch(() => ({}));
+        setError(`ステータス変更に失敗しました: ${errorData.error || '不明なエラー'}`);
       }
     } catch (err) {
       setError('ステータス変更に失敗しました');
