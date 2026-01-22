@@ -4,6 +4,7 @@ import authApp from './auth-routes'
 import passwordResetApp from './password-reset-routes'
 import mapsApp from './maps-routes'
 import adminApp from './admin-routes'
+import adminComprehensiveApp from './admin-comprehensive-routes'
 import sitesApp from './sites-routes'
 import officesApp from './offices-routes'
 import officeManagementApp from './office-management-routes'
@@ -83,6 +84,7 @@ app.route('/api/maps', mapsApp)
 // Mount Admin Routes
 // ============================================
 app.route('/api/admin', adminApp)
+app.route('/api/admin', adminComprehensiveApp)
 
 // ============================================
 // Mount Sites Routes
