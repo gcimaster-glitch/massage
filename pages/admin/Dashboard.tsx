@@ -4,7 +4,7 @@ import {
   Users, UserCheck, Building2, MapPin, Heart, Calendar, 
   CreditCard, ClipboardCheck, Shield, MessageSquare, FileText 
 } from 'lucide-react';
-import AdminLayout from '../../components/AdminLayout';
+import TopNavLayout from '../../components/TopNavLayout';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -97,7 +97,7 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <AdminLayout>
+    <TopNavLayout>
       <div className="p-8 bg-gray-50 min-h-screen">
         {/* ヘッダー */}
         <div className="mb-8">
@@ -122,7 +122,7 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
       </div>
-    </AdminLayout>
+    </TopNavLayout>
   );
 };
 
