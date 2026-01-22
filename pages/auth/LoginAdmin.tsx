@@ -80,33 +80,67 @@ const LoginAdmin: React.FC<LoginAdminProps> = ({ onLogin }) => {
     }
   };
 
-  const handleQuickLogin = () => {
+  const handleQuickLogin = async () => {
     setIsSubmitting(true);
-    
-    // Create a mock JWT token for quick login (development only)
-    // Use UTF-8 safe base64 encoding
-    const payload = JSON.stringify({
-      userId: 'admin-demo',
-      email: 'admin@hogusy.com',
-      userName: '総管理者',
-      role: 'ADMIN',
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-    });
-    
-    // UTF-8 safe base64 encoding
-    const mockToken = btoa(
-      encodeURIComponent(payload).replace(/%([0-9A-F]{2})/g, (match, p1) => {
-        return String.fromCharCode(parseInt(p1, 16));
-      })
-    );
-    
-    localStorage.setItem('auth_token', `mock.${mockToken}.demo`);
-    onLogin(Role.ADMIN);
-    
-    setTimeout(() => {
-      navigate('/admin');
+    setError('');
+
+    try {
+      // デモアカウントでログインAPIを呼び出す
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: 'admin@hogusy.com', 
+          password: 'demo123' 
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Check if user is admin
+        if (data.user.role !== 'ADMIN') {
+          setError('管理者権限が必要です');
+          setIsSubmitting(false);
+          return;
+        }
+
+        localStorage.setItem('auth_token', data.token);
+        onLogin(Role.ADMIN, data.user.name);
+        
+        setTimeout(() => {
+          navigate('/admin');
+          setIsSubmitting(false);
+        }, 500);
+      } else {
+        // フォールバック: APIが失敗した場合は、モックトークンを使用
+        console.warn('Login API failed, using mock token');
+        const payload = JSON.stringify({
+          userId: 'admin-demo',
+          email: 'admin@hogusy.com',
+          userName: '総管理者',
+          role: 'ADMIN',
+          exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+        });
+        
+        const mockToken = btoa(
+          encodeURIComponent(payload).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+            return String.fromCharCode(parseInt(p1, 16));
+          })
+        );
+        
+        localStorage.setItem('auth_token', `mock.${mockToken}.demo`);
+        onLogin(Role.ADMIN);
+        
+        setTimeout(() => {
+          navigate('/admin');
+          setIsSubmitting(false);
+        }, 500);
+      }
+    } catch (err) {
+      setError('ログイン処理中にエラーが発生しました');
       setIsSubmitting(false);
-    }, 500);
+    }
   };
 
   const handleGoogleLogin = () => {

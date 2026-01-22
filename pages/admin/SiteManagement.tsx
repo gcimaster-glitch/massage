@@ -40,6 +40,7 @@ const SiteManagement: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   useEffect(() => {
     fetchSites();
@@ -48,6 +49,19 @@ const SiteManagement: React.FC = () => {
   useEffect(() => {
     filterSites();
   }, [sites, searchQuery, areaFilter, typeFilter, statusFilter]);
+
+  // ドロップダウンの外側をクリックで閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.status-dropdown')) {
+        setShowStatusDropdown(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const fetchSites = async () => {
     setLoading(true);
@@ -476,43 +490,58 @@ const SiteManagement: React.FC = () => {
               </button>
               
               {/* ステータス変更ドロップダウン */}
-              <div className="relative group">
+              <div className="relative status-dropdown">
                 <button
+                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   <CheckCircle className="w-4 h-4" />
                   ステータス変更 ({selectedSites.length})
                 </button>
-                <div className="hidden group-hover:block absolute top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[200px]">
-                  <button
-                    onClick={() => handleBulkStatusChange('APPROVED')}
-                    className="w-full text-left px-4 py-2 hover:bg-green-50 text-green-700 flex items-center gap-2"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    稼働中にする
-                  </button>
-                  <button
-                    onClick={() => handleBulkStatusChange('SUSPENDED')}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    停止中にする
-                  </button>
-                  <button
-                    onClick={() => handleBulkStatusChange('PENDING')}
-                    className="w-full text-left px-4 py-2 hover:bg-yellow-50 text-yellow-700 flex items-center gap-2"
-                  >
-                    <AlertCircle className="w-4 h-4" />
-                    メンテナンスにする
-                  </button>
-                  <button
-                    onClick={() => handleBulkStatusChange('REJECTED')}
-                    className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-700 flex items-center gap-2"
-                  >
-                    <EyeOff className="w-4 h-4" />
-                    非表示にする
-                  </button>
-                </div>
+                {showStatusDropdown && (
+                  <div className="absolute top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[200px]">
+                    <button
+                      onClick={() => {
+                        handleBulkStatusChange('APPROVED');
+                        setShowStatusDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-green-50 text-green-700 flex items-center gap-2 rounded-t-lg"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      稼働中にする
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleBulkStatusChange('SUSPENDED');
+                        setShowStatusDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      停止中にする
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleBulkStatusChange('PENDING');
+                        setShowStatusDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-yellow-50 text-yellow-700 flex items-center gap-2"
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      メンテナンスにする
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleBulkStatusChange('REJECTED');
+                        setShowStatusDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-700 flex items-center gap-2 rounded-b-lg"
+                    >
+                      <EyeOff className="w-4 h-4" />
+                      非表示にする
+                    </button>
+                  </div>
+                )}
               </div>
               
               <button
