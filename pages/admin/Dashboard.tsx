@@ -4,13 +4,40 @@ import {
   Users, UserCheck, Building2, MapPin, Heart, Calendar, 
   CreditCard, ClipboardCheck, Shield, MessageSquare, FileText,
   TrendingUp, TrendingDown, AlertCircle, CheckCircle, Clock,
-  DollarSign, Activity, Bell, UserPlus, ArrowRight
+  DollarSign, Activity, Bell, UserPlus, ArrowRight, RefreshCw
 } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line, Bar } from 'react-chartjs-2';
 import SimpleLayout from '../../components/SimpleLayout';
+
+// Chart.js登録
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'day' | 'week' | 'month'>('day');
+  const [loading, setLoading] = useState(false);
 
   // 統計データ（モックデータ）
   const stats = {
@@ -31,6 +58,87 @@ const AdminDashboard: React.FC = () => {
       activeTherapists: { value: 234, change: 15.8, trend: 'up' },
       revenue: { value: '¥21,800,000', change: 28.4, trend: 'up' },
       completionRate: { value: '96.1%', change: 3.2, trend: 'up' }
+    }
+  };
+
+  // グラフデータ
+  const chartData = {
+    day: {
+      labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+      revenue: [45000, 38000, 52000, 89000, 145000, 178000, 142000],
+      bookings: [8, 6, 12, 18, 28, 35, 35]
+    },
+    week: {
+      labels: ['月', '火', '水', '木', '金', '土', '日'],
+      revenue: [620000, 680000, 720000, 850000, 920000, 1180000, 1270000],
+      bookings: [98, 112, 125, 138, 145, 168, 170]
+    },
+    month: {
+      labels: ['1週', '2週', '3週', '4週'],
+      revenue: [4200000, 4800000, 5600000, 7200000],
+      bookings: [580, 680, 820, 1340]
+    }
+  };
+
+  const currentChartData = chartData[activeTab];
+
+  // 売上グラフ設定
+  const revenueChartData = {
+    labels: currentChartData.labels,
+    datasets: [
+      {
+        label: '売上',
+        data: currentChartData.revenue,
+        borderColor: 'rgb(20, 184, 166)',
+        backgroundColor: 'rgba(20, 184, 166, 0.1)',
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  };
+
+  // 予約数グラフ設定
+  const bookingsChartData = {
+    labels: currentChartData.labels,
+    datasets: [
+      {
+        label: '予約数',
+        data: currentChartData.bookings,
+        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+        borderColor: 'rgb(99, 102, 241)',
+        borderWidth: 1
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)'
+        }
+      },
+      x: {
+        grid: {
+          display: false
+        }
+      }
     }
   };
 
@@ -145,13 +253,31 @@ const AdminDashboard: React.FC = () => {
     }
   ];
 
+  // データ更新（モック）
+  const handleRefresh = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  };
+
   return (
     <SimpleLayout>
       <div className="p-8 bg-gray-50 min-h-screen">
         {/* ヘッダー */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">管理ダッシュボード</h1>
-          <p className="text-gray-600">リアルタイムの運営状況を確認できます</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">管理ダッシュボード</h1>
+            <p className="text-gray-600">リアルタイムの運営状況を確認できます</p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="px-6 py-3 bg-white border border-gray-300 rounded-lg font-bold hover:bg-gray-50 transition-all flex items-center gap-2"
+          >
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            データ更新
+          </button>
         </div>
 
         {/* 期間切り替えタブ */}
@@ -224,13 +350,21 @@ const AdminDashboard: React.FC = () => {
           />
         </div>
 
-        {/* グラフエリア（プレースホルダー） */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">売上推移グラフ</h2>
-          <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400">
-            <div className="text-center">
-              <TrendingUp size={48} className="mx-auto mb-2 opacity-50" />
-              <p className="font-bold">グラフ表示エリア（Chart.js等で実装予定）</p>
+        {/* グラフエリア */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* 売上推移グラフ */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">売上推移</h2>
+            <div className="h-64">
+              <Line data={revenueChartData} options={chartOptions} />
+            </div>
+          </div>
+
+          {/* 予約数推移グラフ */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">予約数推移</h2>
+            <div className="h-64">
+              <Bar data={bookingsChartData} options={chartOptions} />
             </div>
           </div>
         </div>
