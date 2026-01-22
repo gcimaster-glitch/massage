@@ -111,6 +111,8 @@ import AdminUserDetail from './pages/admin/UserDetail';
 import AdminTherapistManagement from './pages/admin/TherapistManagement';
 import AdminHostManagement from './pages/admin/HostManagement';
 import AdminPayouts from './pages/admin/Payouts';
+import AdminPayments from './pages/admin/Payments';
+import AdminLogs from './pages/admin/Logs';
 import AdminRevenueConfig from './pages/admin/RevenueConfig';
 import AdminStripeDashboard from './pages/admin/StripeDashboard';
 import AdminAffiliateManager from './pages/admin/AffiliateManager';
@@ -411,7 +413,9 @@ const App: React.FC = () => {
         <Route path="/admin/stripe" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminStripeDashboard /></RequireAuth>} />
         <Route path="/admin/affiliates" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminAffiliateManager /></RequireAuth>} />
         <Route path="/admin/emails" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminEmailSettings /></RequireAuth>} />
-        <Route path="/admin/logs" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminBookingLogs /></RequireAuth>} />
+        <Route path="/admin/bookings" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminBookingLogs /></RequireAuth>} />
+        <Route path="/admin/payments" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminPayments /></RequireAuth>} />
+        <Route path="/admin/logs" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminLogs /></RequireAuth>} />
         <Route path="/admin/analytics" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminAnalytics /></RequireAuth>} />
         <Route path="/admin/pricing-approvals" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminPricingApprovals /></RequireAuth>} />
         <Route path="/admin/kyc-approvals" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminKYCApprovals /></RequireAuth>} />
