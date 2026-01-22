@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, Search, Filter, Grid, List, Plus, Edit, Trash2, 
   Eye, Mail, Phone, MapPin, Calendar, CheckCircle, XCircle,
@@ -22,6 +23,7 @@ interface User {
 type ViewMode = 'list' | 'card';
 
 const UserManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -320,13 +322,11 @@ const UserManagement: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
                       <button
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowEditModal(true);
-                        }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        onClick={() => navigate(`/admin/users/${user.id}`)}
+                        className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                        title="詳細を見る"
                       >
-                        <Edit size={18} />
+                        <Eye size={18} />
                       </button>
                       <button
                         onClick={() => {
@@ -387,14 +387,11 @@ const UserManagement: React.FC = () => {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    setSelectedUser(user);
-                    setShowEditModal(true);
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                  onClick={() => navigate(`/admin/users/${user.id}`)}
+                  className="flex-1 px-4 py-2 bg-teal-50 text-teal-600 rounded-xl font-bold hover:bg-teal-100 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Edit size={16} />
-                  編集
+                  <Eye size={16} />
+                  詳細
                 </button>
                 <button
                   onClick={() => {
