@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Users, Search, Filter, Grid, List, Plus, Edit, Trash2, 
   Eye, Mail, Phone, MapPin, Calendar, CheckCircle, XCircle,
-  AlertCircle, Download, RefreshCw, User, Award, Building2
+  AlertCircle, Download, RefreshCw, User, Award, Building2, Archive, EyeOff
 } from 'lucide-react';
 
 interface User {
@@ -35,6 +35,7 @@ const UserManagement: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -89,6 +90,86 @@ const UserManagement: React.FC = () => {
     }
 
     setFilteredUsers(filtered);
+  };
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUsers.length === filteredUsers.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(filteredUsers.map(user => user.id));
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (selectedUsers.length === 0) {
+      setError('ユーザーを選択してください');
+      return;
+    }
+
+    const selectedData = filteredUsers.filter(user => selectedUsers.includes(user.id));
+    
+    const csvContent = [
+      ['ID', '名前', 'メール', '電話', 'ロール', '作成日'],
+      ...selectedData.map(user => [
+        user.id,
+        user.name,
+        user.email,
+        user.phone || '',
+        user.role,
+        new Date(user.created_at).toLocaleDateString('ja-JP'),
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    setMessage(`${selectedUsers.length}件のユーザーをエクスポートしました`);
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedUsers.length === 0) {
+      setError('ユーザーを選択してください');
+      return;
+    }
+
+    if (!confirm(`${selectedUsers.length}件のユーザーをアーカイブしますか？`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      let successCount = 0;
+      
+      for (const userId of selectedUsers) {
+        const response = await fetch(`/api/admin/users/${userId}/archive`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (response.ok) {
+          successCount++;
+        }
+      }
+      
+      setMessage(`${successCount}件のユーザーをアーカイブしました`);
+      setSelectedUsers([]);
+      fetchUsers();
+    } catch (err) {
+      setError('一括アーカイブに失敗しました');
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -226,7 +307,7 @@ const UserManagement: React.FC = () => {
         </div>
 
         {/* 統計情報 */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-4 gap-4">
           <div className="text-center">
             <p className="text-2xl font-black text-gray-900">{users.length}</p>
             <p className="text-xs text-gray-500 font-bold">総ユーザー数</p>
@@ -237,7 +318,37 @@ const UserManagement: React.FC = () => {
             </p>
             <p className="text-xs text-gray-500 font-bold">一般ユーザー</p>
           </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-yellow-600">
+              {users.filter(u => u.role === 'GUEST').length}
+            </p>
+            <p className="text-xs text-gray-500 font-bold">ゲスト</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-purple-600">{selectedUsers.length}</p>
+            <p className="text-xs text-gray-500 font-bold">選択中</p>
+          </div>
         </div>
+
+        {/* 一括操作ボタン */}
+        {selectedUsers.length > 0 && (
+          <div className="flex gap-3 pt-4 mt-4 border-t">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              <Download className="w-4 h-4" />
+              CSV出力 ({selectedUsers.length})
+            </button>
+            <button
+              onClick={handleBulkArchive}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <Archive className="w-4 h-4" />
+              一括アーカイブ ({selectedUsers.length})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ユーザー一覧 */}
@@ -246,6 +357,14 @@ const UserManagement: React.FC = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-4 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-teal-600"
+                  />
+                </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   ユーザー
                 </th>
@@ -269,6 +388,14 @@ const UserManagement: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.includes(user.id)}
+                      onChange={() => handleSelectUser(user.id)}
+                      className="w-4 h-4 text-teal-600"
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img
@@ -355,11 +482,19 @@ const UserManagement: React.FC = () => {
           {filteredUsers.map((user) => (
             <div key={user.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-start justify-between mb-4">
-                <img
-                  src={user.avatar_url || '/placeholder-user.jpg'}
-                  alt={user.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.includes(user.id)}
+                    onChange={() => handleSelectUser(user.id)}
+                    className="w-5 h-5 text-teal-600 mt-1"
+                  />
+                  <img
+                    src={user.avatar_url || '/placeholder-user.jpg'}
+                    alt={user.name}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                </div>
                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getRoleBadgeColor(user.role)}`}>
                   {getRoleIcon(user.role)}
                   {user.role}
