@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Activity, ArrowRight, ShieldAlert, UserCheck, Radio, Globe, Zap, 
-  ClipboardCheck, JapaneseYen, ShieldCheck, ChevronRight, BarChart3, 
-  AlertCircle, MessageSquare, MapPin, CheckCircle2, UserX, Clock,
-  MoreVertical, Power, AlertTriangle, Users, Calendar, 
-  Search, Eye, Settings, Heart, Filter, BadgeCheck, Building2, History, Sparkles, Siren
+  Activity, ArrowRight, UserCheck, Radio, Globe, Zap, 
+  JapaneseYen, ChevronRight, 
+  AlertCircle, MapPin, 
+  AlertTriangle, Search, Filter
 } from 'lucide-react';
+import AdminLayout from '../../components/AdminLayout';
 import { systemStore } from '../../services/systemState';
 import StatusBadge from '../../components/StatusBadge';
 import { BookingStatus, IncidentSeverity } from '../../types';
@@ -27,7 +26,8 @@ const AdminDashboard: React.FC = () => {
   const autoMatchingBookings = bookings.filter(b => b.therapistId === 'auto' && b.status === BookingStatus.PENDING_PAYMENT);
 
   return (
-    <div className="space-y-10 animate-fade-in text-gray-900 font-sans pb-32">
+    <AdminLayout>
+      <div className="space-y-10 animate-fade-in text-gray-900 font-sans p-8">
       
       {/* 1. 全体メトリクス & 司令部ヘッダー */}
       <div className="flex flex-col lg:flex-row justify-between items-end gap-6 px-4 pt-4">
@@ -82,10 +82,10 @@ const AdminDashboard: React.FC = () => {
         </section>
       )}
 
-      <div className="grid lg:grid-cols-12 gap-10 px-4">
+      <div className="w-full">
          
-         {/* 3. リアルタイム・ライブフィード */}
-         <div className="lg:col-span-8 space-y-10">
+         {/* リアルタイム・ライブフィード */}
+         <div className="space-y-10">
             <div className="bg-white rounded-[64px] shadow-sm border border-gray-100 overflow-hidden group hover:shadow-2xl transition-all duration-700">
                <div className="bg-gray-900 p-10 flex flex-col md:flex-row justify-between items-start md:items-center text-white gap-6">
                   <div className="flex items-center gap-5">
@@ -142,64 +142,9 @@ const AdminDashboard: React.FC = () => {
                </button>
             </div>
          </div>
-
-         {/* 4. ガバナンス・アクションパネル */}
-         <div className="lg:col-span-4 space-y-10">
-            
-            {/* クイックリンク */}
-            <section className="bg-indigo-900 rounded-[64px] p-12 text-white shadow-2xl relative overflow-hidden flex flex-col border-b-[16px] border-indigo-950">
-               <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500 rounded-full blur-[100px] opacity-10"></div>
-               <div className="relative z-10 mb-10">
-                  <h3 className="text-xl font-black tracking-tight flex items-center gap-3"><ShieldCheck size={24} className="text-teal-400" /> ガバナンス管理</h3>
-                  <p className="text-indigo-300 text-[10px] font-black uppercase tracking-widest mt-1">Audit & Talent Governance</p>
-               </div>
-               
-               <div className="relative z-10 space-y-4">
-                  {/* ユーザー・アカウント管理 */}
-                  <GovLink label="一般ユーザー管理" icon={<Users size={18}/>} onClick={() => navigate('/admin/users')} />
-                  <GovLink label="セラピスト管理" icon={<UserCheck size={18}/>} onClick={() => navigate('/admin/therapists')} />
-                  <GovLink label="拠点ホスト管理" icon={<MapPin size={18}/>} onClick={() => navigate('/admin/hosts')} />
-                  <GovLink label="アフィリエイト管理" icon={<Heart size={18}/>} onClick={() => navigate('/admin/affiliates')} />
-                  
-                  {/* 施設・事務所管理 */}
-                  <GovLink label="施設管理（全拠点）" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/site-management')} />
-                  <GovLink label="セラピスト事務所管理" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/office-management')} />
-                  
-                  {/* 予約・決済管理 */}
-                  <GovLink label="予約管理" icon={<Calendar size={18}/>} onClick={() => navigate('/admin/bookings')} />
-                  <GovLink label="決済管理" icon={<JapaneseYen size={18}/>} onClick={() => navigate('/admin/payments')} />
-                  <GovLink label="送金/Stripe監視" icon={<JapaneseYen size={18}/>} onClick={() => navigate('/admin/stripe')} />
-                  
-                  {/* 承認・審査 */}
-                  <GovLink label="メニュー/価格承認" icon={<ClipboardCheck size={18}/>} onClick={() => navigate('/admin/pricing-approvals')} />
-                  <GovLink label="KYC審査" icon={<ShieldCheck size={18}/>} onClick={() => navigate('/admin/kyc-approvals')} />
-                  
-                  {/* システム管理 */}
-                  <GovLink label="配信テンプレート" icon={<MessageSquare size={18}/>} onClick={() => navigate('/admin/emails')} />
-                  <GovLink label="監査ログ・証跡" icon={<History size={18}/>} onClick={() => navigate('/admin/logs')} />
-               </div>
-            </section>
-
-            {/* AI ビジネス最適化 */}
-            <section className="bg-white p-10 rounded-[56px] shadow-sm border border-gray-100 group overflow-hidden relative">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-full blur-3xl opacity-50 group-hover:scale-150 transition-transform duration-1000"></div>
-               <div className="relative z-10">
-                  <div className="flex items-center gap-4 mb-8">
-                     <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center shadow-inner"><Sparkles size={24}/></div>
-                     <h4 className="font-black text-lg tracking-tight">AI 成長戦略提案</h4>
-                  </div>
-                  <p className="text-sm font-bold text-gray-500 leading-relaxed italic border-l-4 border-teal-500/20 pl-6 mb-8">
-                    「港区エリアの平日18:00〜21:00において、供給が需要を24%下回っています。セラピストへ特別インセンティブを適用し改善を推奨します。」
-                  </p>
-                  <button onClick={() => navigate('/admin/marketing')} className="w-full py-5 bg-gray-900 text-white rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl hover:bg-teal-600 transition-all active:scale-95">
-                    マーケティング施策を開く
-                  </button>
-               </div>
-            </section>
-
-         </div>
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 
