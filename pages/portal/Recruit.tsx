@@ -37,7 +37,7 @@ const RecruitPage: React.FC = () => {
             <span className="text-teal-400">アップグレードする。</span>
           </h1>
           <p className="text-gray-400 text-lg md:text-2xl max-w-3xl mx-auto font-medium leading-relaxed">
-            Soothe x CARE CUBE は、技術、空間、安全を統合した次世代のインフラです。<br className="hidden md:block"/>
+            HOGUSY は、技術、空間、安全を統合した次世代のインフラです。<br className="hidden md:block"/>
             あなたの専門性や資産を、新しいウェルネスの形へ。
           </p>
           

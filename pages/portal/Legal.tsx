@@ -15,7 +15,7 @@ const LegalPage: React.FC = () => {
             法的情報
           </h1>
           <p className="text-gray-500 text-lg font-bold">
-            Soothe x CARE CUBE Japan のご利用にあたっての重要事項
+            HOGUSY のご利用にあたっての重要事項
           </p>
         </div>
 
@@ -56,7 +56,7 @@ const LegalPage: React.FC = () => {
             <div className="space-y-8 text-gray-600 leading-relaxed">
               <Section title="第1条（適用範囲）">
                 <p className="font-bold">
-                  本規約は、Soothe x CARE CUBE Japan（以下「当社」）が提供するウェルネスマッチングプラットフォーム（以下「本サービス」）の利用条件を定めるものです。
+                  本規約は、HOGUSY（以下「当社」）が提供するウェルネスマッチングプラットフォーム（以下「本サービス」）の利用条件を定めるものです。
                   ユーザーは、本規約に同意の上、本サービスをご利用いただきます。
                 </p>
               </Section>

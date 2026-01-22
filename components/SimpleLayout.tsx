@@ -17,7 +17,7 @@ const SimpleLayout: React.FC<SimpleLayoutProps> = ({ children, onLogout }) => {
         <div className="max-w-full px-8 py-4 flex items-center justify-between">
           {/* ロゴ */}
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
             <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center font-black text-xl text-white">

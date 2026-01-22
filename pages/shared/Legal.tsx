@@ -55,7 +55,7 @@ const TermsOfService = () => (
   <div className="space-y-12 text-gray-800 text-sm md:text-base">
     <div className="border-b border-gray-100 pb-8 text-center md:text-left">
        <h2 className="text-3xl font-black text-gray-900 tracking-tighter mb-4">サービス利用規約</h2>
-       <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Soothe x CARE CUBE Japan Platform Service Agreement</p>
+       <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">HOGUSY Japan Platform Service Agreement</p>
     </div>
 
     <section className="space-y-4">

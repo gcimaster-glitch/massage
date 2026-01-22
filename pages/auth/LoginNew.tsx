@@ -266,7 +266,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
         <div className="mt-10 text-center pt-6 border-t border-gray-50">
            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-              Soothe x CARE CUBE Japan
+              HOGUSY
            </p>
         </div>
       </div>

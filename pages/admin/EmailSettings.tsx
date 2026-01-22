@@ -7,7 +7,7 @@ const AdminEmailSettings: React.FC = () => {
   const [subject, setSubject] = useState('【Soothe】ご予約が確定しました');
   const [body, setBody] = useState(`{{user_name}} 様
 
-Soothe x CARE CUBEをご利用いただきありがとうございます。
+HOGUSYをご利用いただきありがとうございます。
 以下の予約が確定いたしました。
 
 ■予約内容

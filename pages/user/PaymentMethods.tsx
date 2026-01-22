@@ -80,7 +80,7 @@ const PaymentMethods: React.FC = () => {
 
       <div className="bg-gray-50 p-4 rounded-xl text-xs text-gray-500 space-y-2">
         <p className="font-bold text-gray-700">セキュリティについて</p>
-        <p>クレジットカード情報は、決済代行会社（Stripe）によって安全に管理されています。Soothe x CARE CUBE のサーバーにはカード番号は保存されません。</p>
+        <p>クレジットカード情報は、決済代行会社（Stripe）によって安全に管理されています。HOGUSY のサーバーにはカード番号は保存されません。</p>
       </div>
     </div>
   );
