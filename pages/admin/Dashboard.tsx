@@ -155,7 +155,9 @@ const AdminDashboard: React.FC = () => {
                </div>
                
                <div className="relative z-10 space-y-4">
-                  <GovLink label="ユーザー/KYC審査" icon={<UserCheck size={18}/>} count={8} onClick={() => navigate('/admin/users')} />
+                  <GovLink label="一般ユーザー管理" icon={<Users size={18}/>} onClick={() => navigate('/admin/users')} />
+                  <GovLink label="セラピスト管理" icon={<UserCheck size={18}/>} count={8} onClick={() => navigate('/admin/therapists')} />
+                  <GovLink label="拠点ホスト管理" icon={<MapPin size={18}/>} onClick={() => navigate('/admin/hosts')} />
                   <GovLink label="メニュー/価格承認" icon={<ClipboardCheck size={18}/>} count={3} onClick={() => navigate('/admin/pricing-approvals')} />
                   <GovLink label="健康経営・法人管理" icon={<Building2 size={18}/>} onClick={() => navigate('/admin/corporate')} />
                   {/* Fixed: Replaced Building with Building2 which is correctly imported */}
