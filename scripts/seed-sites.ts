@@ -41,33 +41,38 @@ async function seedSites() {
   console.log('🌱 Starting site data seeding...');
   console.log(`📊 Total sites to insert: ${ALL_SITES.length}`);
 
+  // 管理者トークンを取得（デモログイン）
+  const adminToken = await getAdminToken();
+  if (!adminToken) {
+    console.error('❌ Failed to get admin token');
+    return;
+  }
+
   let successCount = 0;
   let errorCount = 0;
 
   for (const site of ALL_SITES) {
     try {
-      const response = await fetch('/api/sites', {
+      const response = await fetch('http://localhost:3000/api/admin/sites', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
         },
         body: JSON.stringify({
           id: site.id,
           name: site.name,
-          type: site.type,
+          type: site.type || 'CARE_CUBE',
           address: site.address,
-          area: site.area,
-          lat: site.lat,
-          lng: site.lng,
+          area_code: site.area,
+          latitude: site.lat,
+          longitude: site.lng,
           room_count: site.roomCount,
           amenities: JSON.stringify(site.amenities),
           status: site.status,
-          cube_serial: site.cubeSerial,
           image_url: `/sites/${site.id}.jpg`,
           description: `${site.name}は${site.area}に位置する施設です。`,
-          host_id: 'host-default',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          host_id: 'host-default'
         }),
       });
 
@@ -83,12 +88,26 @@ async function seedSites() {
       console.error(`❌ Error inserting ${site.name}:`, error);
       errorCount++;
     }
+    
+    // APIレート制限対策（100ms待機）
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   console.log('\n📊 Seeding Summary:');
   console.log(`✅ Success: ${successCount}`);
   console.log(`❌ Failed: ${errorCount}`);
   console.log(`📦 Total: ${ALL_SITES.length}`);
+}
+
+async function getAdminToken(): Promise<string | null> {
+  try {
+    // デモ管理者トークンを生成（開発環境のみ）
+    const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi1kZW1vIiwiZW1haWwiOiJhZG1pbkBob2d1c3kuY29tIiwicm9sZSI6IkFETUlOIiwidXNlck5hbWUiOiLnt4/nrqHnkIborIUiLCJleHAiOjE3NjkwMDAwMDB9';
+    return mockToken;
+  } catch (error) {
+    console.error('Failed to get admin token:', error);
+    return null;
+  }
 }
 
 // Run the seed function

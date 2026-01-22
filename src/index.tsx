@@ -6,6 +6,7 @@ import mapsApp from './maps-routes'
 import adminApp from './admin-routes'
 import adminComprehensiveApp from './admin-comprehensive-routes'
 import sitesApp from './sites-routes'
+import adminSitesApp from './admin-sites-routes'
 import officesApp from './offices-routes'
 import officeManagementApp from './office-management-routes'
 import earningsManagementApp from './earnings-management-routes'
@@ -83,6 +84,8 @@ app.route('/api/maps', mapsApp)
 // ============================================
 // Mount Admin Routes
 // ============================================
+// Mount Admin Routes
+// ============================================
 app.route('/api/admin', adminApp)
 app.route('/api/admin', adminComprehensiveApp)
 
@@ -90,6 +93,7 @@ app.route('/api/admin', adminComprehensiveApp)
 // Mount Sites Routes
 // ============================================
 app.route('/api/sites', sitesApp)
+app.route('/api/admin/sites', adminSitesApp)
 
 // ============================================
 // Mount Offices Routes
