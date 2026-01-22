@@ -30,12 +30,8 @@
     <meta property="twitter:description" content="HOGUSY（ホグシー）は、あなたの「ほぐしてほしい」を叶えるセラピスト予約プラットフォーム。" />
     <meta property="twitter:image" content="https://hogusy.com/og-image.png" />
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA DISABLED -->
     <meta name="theme-color" content="#14b8a6" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="HOGUSY" />
     
     <title>HOGUSY - ほぐす、を、もっと身近に。</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@400;600;900&display=swap" rel="stylesheet">
@@ -89,57 +85,22 @@
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     
-    <!-- Service Worker Registration (TEMPORARILY DISABLED FOR DEBUGGING) -->
+    <!-- Service Worker & PWA COMPLETELY DISABLED -->
     <script>
-      // TEMPORARILY DISABLED: Service Worker causing white screen issues
-      // Will re-enable after fixing the caching issues
-      /*
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('✅ Service Worker registered:', registration.scope);
-              
-              // Check for updates periodically
-              setInterval(() => {
-                registration.update();
-              }, 60000); // Check every minute
-            })
-            .catch((error) => {
-              console.error('❌ Service Worker registration failed:', error);
-            });
-        });
-      }
-      */
-      
-      // Unregister existing service workers
+      // Force unregister all service workers
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
             registration.unregister();
-            console.log('🔴 Service Worker unregistered');
+            console.log('🔴 Service Worker unregistered:', registration.scope);
           }
         });
       }
-    </script>
       
-    <!-- PWA Install Prompt -->
-    <script>
-      // Handle PWA install prompt
-      let deferredPrompt;
+      // Disable PWA install prompt
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
-        deferredPrompt = e;
-        console.log('💡 PWA install prompt available');
-        
-        // Show install button or banner (implement in React component)
-        window.dispatchEvent(new CustomEvent('pwa-installable', { detail: deferredPrompt }));
-      });
-      
-      // Track PWA installation
-      window.addEventListener('appinstalled', () => {
-        console.log('✅ PWA installed successfully');
-        deferredPrompt = null;
+        return false;
       });
     </script>
   </body>
