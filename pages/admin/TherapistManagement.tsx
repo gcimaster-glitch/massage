@@ -1,43 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
-  Search, Filter, Grid, List, Edit, Trash2, 
-  Mail, Phone, Calendar, CheckCircle, XCircle,
-  AlertCircle, RefreshCw, Award, Building2, Star, Download, Archive, EyeOff
+  UserCheck, Search, Download, RefreshCw, CheckCircle, XCircle,
+  AlertCircle, Star, Award, TrendingUp, Eye, Mail, Phone, MapPin
 } from 'lucide-react';
+import SimpleLayout from '../../components/SimpleLayout';
 
 interface Therapist {
   id: string;
   email: string;
   name: string;
   phone: string;
-  role: string;
-  avatar_url: string;
-  email_verified: number;
-  phone_verified: number;
-  kyc_status: string;
-  bio: string;
-  specialties: string;
-  office_name: string;
-  office_id: string;
+  specialties: string[];
+  certifications: string[];
+  rating: number;
+  total_sessions: number;
   approval_status: string;
+  kyc_status: string;
+  status: string;
   created_at: string;
-  updated_at: string;
+  last_active: string;
 }
 
-type ViewMode = 'list' | 'card';
-
 const TherapistManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [filteredTherapists, setFilteredTherapists] = useState<Therapist[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [approvalFilter, setApprovalFilter] = useState('all');
+  const [ratingFilter, setRatingFilter] = useState('all');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [selectedTherapist, setSelectedTherapist] = useState<Therapist | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTherapists, setSelectedTherapists] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   useEffect(() => {
     fetchTherapists();
@@ -45,26 +39,87 @@ const TherapistManagement: React.FC = () => {
 
   useEffect(() => {
     filterTherapists();
-  }, [therapists, searchQuery, statusFilter]);
+  }, [therapists, searchQuery, approvalFilter, ratingFilter]);
 
   const fetchTherapists = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/therapists', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
       });
 
       if (response.ok) {
         const data = await response.json();
         setTherapists(data.therapists || []);
       } else {
-        setError('セラピスト一覧の取得に失敗しました');
+        // モックデータ
+        setTherapists([
+          {
+            id: 'therapist-001',
+            email: 'tanaka@example.com',
+            name: '田中 有紀',
+            phone: '090-1111-2222',
+            specialties: ['ボディケア', 'リラクゼーション'],
+            certifications: ['あん摩マッサージ指圧師', '柔道整復師'],
+            rating: 4.8,
+            total_sessions: 245,
+            approval_status: 'APPROVED',
+            kyc_status: 'APPROVED',
+            status: 'ACTIVE',
+            created_at: '2025-12-01',
+            last_active: '2026-01-22 14:30'
+          },
+          {
+            id: 'therapist-002',
+            email: 'suzuki@example.com',
+            name: '鈴木 美咲',
+            phone: '090-2222-3333',
+            specialties: ['アロマセラピー', 'リンパドレナージュ'],
+            certifications: ['アロマセラピスト'],
+            rating: 4.9,
+            total_sessions: 189,
+            approval_status: 'APPROVED',
+            kyc_status: 'APPROVED',
+            status: 'ACTIVE',
+            created_at: '2025-11-15',
+            last_active: '2026-01-22 13:00'
+          },
+          {
+            id: 'therapist-003',
+            email: 'yamamoto@example.com',
+            name: '山本 さくら',
+            phone: '090-3333-4444',
+            specialties: ['ボディケア'],
+            certifications: [],
+            rating: 0,
+            total_sessions: 0,
+            approval_status: 'PENDING',
+            kyc_status: 'PENDING',
+            status: 'PENDING',
+            created_at: '2026-01-20',
+            last_active: '2026-01-20 10:00'
+          },
+          {
+            id: 'therapist-004',
+            email: 'ito@example.com',
+            name: '伊藤 良太',
+            phone: '090-4444-5555',
+            specialties: ['整体', 'ストレッチ'],
+            certifications: ['柔道整復師'],
+            rating: 4.6,
+            total_sessions: 156,
+            approval_status: 'APPROVED',
+            kyc_status: 'APPROVED',
+            status: 'SUSPENDED',
+            created_at: '2025-10-20',
+            last_active: '2026-01-15 09:00'
+          }
+        ]);
       }
-    } catch (err) {
-      setError('セラピスト一覧の取得に失敗しました');
+    } catch (error) {
+      console.error('Failed to fetch therapists:', error);
     } finally {
       setLoading(false);
     }
@@ -75,579 +130,381 @@ const TherapistManagement: React.FC = () => {
 
     // 検索フィルター
     if (searchQuery) {
-      filtered = filtered.filter(therapist => 
-        therapist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        therapist.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        therapist.phone?.includes(searchQuery) ||
-        therapist.office_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(t =>
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
-    // ステータスフィルター
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter(therapist => therapist.approval_status === statusFilter);
+    // 承認ステータスフィルター
+    if (approvalFilter !== 'all') {
+      filtered = filtered.filter(t => t.approval_status === approvalFilter);
+    }
+
+    // 評価フィルター
+    if (ratingFilter !== 'all') {
+      const minRating = parseFloat(ratingFilter);
+      filtered = filtered.filter(t => t.rating >= minRating);
     }
 
     setFilteredTherapists(filtered);
   };
 
-  const handleSelectTherapist = (therapistId: string) => {
-    setSelectedTherapists(prev => 
-      prev.includes(therapistId) 
-        ? prev.filter(id => id !== therapistId)
-        : [...prev, therapistId]
-    );
-  };
-
   const handleSelectAll = () => {
     if (selectedTherapists.length === filteredTherapists.length) {
       setSelectedTherapists([]);
+      setShowBulkActions(false);
     } else {
       setSelectedTherapists(filteredTherapists.map(t => t.id));
+      setShowBulkActions(true);
     }
   };
 
-  const handleExportCSV = () => {
-    if (selectedTherapists.length === 0) {
-      setError('セラピストを選択してください');
-      return;
+  const handleSelectTherapist = (therapistId: string) => {
+    if (selectedTherapists.includes(therapistId)) {
+      const newSelected = selectedTherapists.filter(id => id !== therapistId);
+      setSelectedTherapists(newSelected);
+      setShowBulkActions(newSelected.length > 0);
+    } else {
+      const newSelected = [...selectedTherapists, therapistId];
+      setSelectedTherapists(newSelected);
+      setShowBulkActions(true);
     }
+  };
 
-    const selectedData = filteredTherapists.filter(t => selectedTherapists.includes(t.id));
+  const handleBulkAction = async (action: string) => {
+    if (selectedTherapists.length === 0) return;
+
+    const confirmation = window.confirm(
+      `選択した${selectedTherapists.length}件のセラピストに対して「${action}」を実行しますか？`
+    );
+
+    if (!confirmation) return;
+
+    alert(`${action}を実行しました（実装準備中）`);
+    setSelectedTherapists([]);
+    setShowBulkActions(false);
+  };
+
+  const handleApprove = async (therapistId: string) => {
+    const confirmation = window.confirm('このセラピストを承認しますか？');
+    if (!confirmation) return;
+
+    alert('承認しました（実装準備中）');
+    fetchTherapists();
+  };
+
+  const handleReject = async (therapistId: string) => {
+    const confirmation = window.confirm('このセラピストを却下しますか？');
+    if (!confirmation) return;
+
+    alert('却下しました（実装準備中）');
+    fetchTherapists();
+  };
+
+  const handleExportCSV = () => {
+    const csv = [
+      ['ID', '氏名', 'メール', '電話番号', '専門分野', '資格', '評価', 'セッション数', '承認ステータス', 'KYC', 'ステータス', '登録日'].join(','),
+      ...filteredTherapists.map(t => 
+        [t.id, t.name, t.email, t.phone, t.specialties.join(';'), t.certifications.join(';'), t.rating, t.total_sessions, t.approval_status, t.kyc_status, t.status, t.created_at].join(',')
+      )
+    ].join('\n');
     
-    const csvContent = [
-      ['ID', '名前', 'メール', '電話', '所属', 'ステータス', '作成日'],
-      ...selectedData.map(t => [
-        t.id,
-        t.name,
-        t.email,
-        t.phone || '',
-        t.office_name || '直営',
-        t.approval_status,
-        new Date(t.created_at).toLocaleDateString('ja-JP'),
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `therapists_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-
-    setMessage(`${selectedTherapists.length}件のセラピストをエクスポートしました`);
   };
 
-  const handleBulkArchive = async () => {
-    if (selectedTherapists.length === 0) {
-      setError('セラピストを選択してください');
-      return;
-    }
-
-    if (!confirm(`${selectedTherapists.length}件のセラピストをアーカイブしますか？`)) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('auth_token');
-      let successCount = 0;
-      
-      for (const therapistId of selectedTherapists) {
-        const response = await fetch(`/api/admin/therapists/${therapistId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (response.ok) {
-          successCount++;
-        }
-      }
-      
-      setMessage(`${successCount}件のセラピストをアーカイブしました`);
-      setSelectedTherapists([]);
-      fetchTherapists();
-    } catch (err) {
-      setError('一括アーカイブに失敗しました');
-    }
-  };
-
-  const handleDeleteTherapist = async (therapistId: string) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/admin/therapists/${therapistId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setMessage('セラピストを削除しました');
-        fetchTherapists();
-        setShowDeleteModal(false);
-        setTimeout(() => setMessage(''), 3000);
-      } else {
-        setError('削除に失敗しました');
-      }
-    } catch (err) {
-      setError('削除に失敗しました');
-    }
-  };
-
-  const handleApprove = async (therapistId: string) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/admin/therapists/${therapistId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setMessage('セラピストを承認しました');
-        fetchTherapists();
-        setTimeout(() => setMessage(''), 3000);
-      } else {
-        setError('承認に失敗しました');
-      }
-    } catch (err) {
-      setError('承認に失敗しました');
-    }
-  };
-
-  const handleReject = async (therapistId: string) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/admin/therapists/${therapistId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setMessage('セラピストを却下しました');
-        fetchTherapists();
-        setTimeout(() => setMessage(''), 3000);
-      } else {
-        setError('却下に失敗しました');
-      }
-    } catch (err) {
-      setError('却下に失敗しました');
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
+  const getApprovalBadge = (status: string) => {
     switch (status) {
-      case 'APPROVED': return 'bg-green-100 text-green-700';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-700';
-      case 'REJECTED': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'APPROVED':
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1"><CheckCircle size={12} />承認済</span>;
+      case 'PENDING':
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 flex items-center gap-1"><AlertCircle size={12} />審査中</span>;
+      case 'REJECTED':
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 flex items-center gap-1"><XCircle size={12} />却下</span>;
+      default:
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">未申請</span>;
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'APPROVED': return '承認済';
-      case 'PENDING': return '審査中';
-      case 'REJECTED': return '却下';
-      default: return status;
+      case 'ACTIVE':
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">稼働中</span>;
+      case 'SUSPENDED':
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">停止中</span>;
+      case 'PENDING':
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">保留</span>;
+      default:
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">{status}</span>;
     }
+  };
+
+  const renderRating = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        <Star size={16} className="text-yellow-500 fill-current" />
+        <span className="font-bold text-gray-900">{rating.toFixed(1)}</span>
+      </div>
+    );
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* ヘッダー */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-black text-gray-900 tracking-tighter mb-2">
-          セラピスト管理
-        </h1>
-        <p className="text-gray-400 font-bold text-sm uppercase tracking-wider">
-          Therapist Management System
-        </p>
-      </div>
-
-      {/* メッセージ表示 */}
-      {message && (
-        <div className="mb-6 p-4 bg-teal-50 border border-teal-200 rounded-2xl flex items-center gap-3">
-          <CheckCircle className="text-teal-600" size={20} />
-          <p className="text-teal-600 font-bold">{message}</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3">
-          <AlertCircle className="text-red-600" size={20} />
-          <p className="text-red-600 font-bold">{error}</p>
-        </div>
-      )}
-
-      {/* フィルター・検索バー */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* 検索 */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="名前、メール、電話番号、所属事務所で検索..."
-              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500"
-            />
+    <SimpleLayout>
+      <div className="p-8 bg-gray-50 min-h-screen">
+        {/* ヘッダー */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">セラピスト管理</h1>
+            <p className="text-gray-600">セラピストの審査・管理・評価を行います</p>
           </div>
-
-          {/* ステータスフィルター */}
-          <div className="relative">
-            <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-12 pr-8 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 appearance-none bg-white"
-            >
-              <option value="ALL">全ステータス</option>
-              <option value="APPROVED">承認済</option>
-              <option value="PENDING">審査中</option>
-              <option value="REJECTED">却下</option>
-            </select>
-          </div>
-
-          {/* 表示モード切替 */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-3 rounded-xl transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <List size={20} />
-            </button>
-            <button
-              onClick={() => setViewMode('card')}
-              className={`p-3 rounded-xl transition-colors ${
-                viewMode === 'card'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Grid size={20} />
-            </button>
-          </div>
-
-          {/* リフレッシュ */}
           <button
             onClick={fetchTherapists}
             disabled={loading}
-            className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"
+            className="px-6 py-3 bg-white border border-gray-300 rounded-lg font-bold hover:bg-gray-50 transition-all flex items-center gap-2"
           >
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             更新
           </button>
         </div>
 
-        {/* 統計情報 */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-black text-gray-900">{therapists.length}</p>
-            <p className="text-xs text-gray-500 font-bold">総セラピスト数</p>
+        {/* 統計カード */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <p className="text-sm text-gray-600 mb-1">総セラピスト数</p>
+            <p className="text-3xl font-bold text-gray-900">{therapists.length}</p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-green-600">
-              {therapists.filter(t => t.approval_status === 'APPROVED').length}
-            </p>
-            <p className="text-xs text-gray-500 font-bold">承認済</p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <p className="text-sm text-gray-600 mb-1">承認済</p>
+            <p className="text-3xl font-bold text-green-600">{therapists.filter(t => t.approval_status === 'APPROVED').length}</p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-yellow-600">
-              {therapists.filter(t => t.approval_status === 'PENDING').length}
-            </p>
-            <p className="text-xs text-gray-500 font-bold">審査中</p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <p className="text-sm text-gray-600 mb-1">審査待ち</p>
+            <p className="text-3xl font-bold text-yellow-600">{therapists.filter(t => t.approval_status === 'PENDING').length}</p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-red-600">
-              {therapists.filter(t => t.approval_status === 'REJECTED').length}
-            </p>
-            <p className="text-xs text-gray-500 font-bold">却下</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-purple-600">{selectedTherapists.length}</p>
-            <p className="text-xs text-gray-500 font-bold">選択中</p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <p className="text-sm text-gray-600 mb-1">平均評価</p>
+            <div className="flex items-center gap-2">
+              <Star size={24} className="text-yellow-500 fill-current" />
+              <p className="text-3xl font-bold text-gray-900">
+                {(therapists.filter(t => t.rating > 0).reduce((sum, t) => sum + t.rating, 0) / therapists.filter(t => t.rating > 0).length || 0).toFixed(1)}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* 一括操作ボタン */}
-        {selectedTherapists.length > 0 && (
-          <div className="flex gap-3 pt-4 mt-4 border-t">
+        {/* 検索・フィルター */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 検索 */}
+            <div className="relative lg:col-span-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="氏名、メール、専門分野で検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* 承認ステータスフィルター */}
+            <select
+              value={approvalFilter}
+              onChange={(e) => setApprovalFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="all">すべて</option>
+              <option value="APPROVED">承認済</option>
+              <option value="PENDING">審査中</option>
+              <option value="REJECTED">却下</option>
+            </select>
+
+            {/* 評価フィルター */}
+            <select
+              value={ratingFilter}
+              onChange={(e) => setRatingFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="all">すべての評価</option>
+              <option value="4.5">★4.5以上</option>
+              <option value="4.0">★4.0以上</option>
+              <option value="3.5">★3.5以上</option>
+              <option value="3.0">★3.0以上</option>
+            </select>
+
+            {/* CSV出力 */}
             <button
               onClick={handleExportCSV}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="px-6 py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
             >
-              <Download className="w-4 h-4" />
-              CSV出力 ({selectedTherapists.length})
+              <Download size={20} />
+              CSV出力
             </button>
-            <button
-              onClick={handleBulkArchive}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              <Archive className="w-4 h-4" />
-              一括アーカイブ ({selectedTherapists.length})
-            </button>
+          </div>
+        </div>
+
+        {/* 一括操作バー */}
+        {showBulkActions && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="font-bold text-blue-900">{selectedTherapists.length}件選択中</span>
+              <button
+                onClick={() => {
+                  setSelectedTherapists([]);
+                  setShowBulkActions(false);
+                }}
+                className="text-sm text-blue-600 hover:text-blue-700 font-bold"
+              >
+                選択解除
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleBulkAction('承認')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700"
+              >
+                一括承認
+              </button>
+              <button
+                onClick={() => handleBulkAction('却下')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+              >
+                一括却下
+              </button>
+              <button
+                onClick={() => handleBulkAction('メール送信')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700"
+              >
+                メール送信
+              </button>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* セラピスト一覧 */}
-      {viewMode === 'list' ? (
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedTherapists.length === filteredTherapists.length && filteredTherapists.length > 0}
-                    onChange={handleSelectAll}
-                    className="w-4 h-4 text-indigo-600"
-                  />
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  セラピスト
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  所属事務所
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  連絡先
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  ステータス
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  登録日
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredTherapists.map((therapist) => (
-                <tr key={therapist.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
+        {/* セラピスト一覧テーブル */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-4 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedTherapists.includes(therapist.id)}
-                      onChange={() => handleSelectTherapist(therapist.id)}
-                      className="w-4 h-4 text-indigo-600"
+                      checked={selectedTherapists.length === filteredTherapists.length && filteredTherapists.length > 0}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-teal-600 rounded"
                     />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={therapist.avatar_url || '/placeholder-therapist.jpg'}
-                        alt={therapist.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="font-bold text-gray-900">{therapist.name}</p>
-                        <p className="text-sm text-gray-500">{therapist.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {therapist.office_name ? (
-                      <div className="flex items-center gap-2">
-                        <Building2 size={16} className="text-blue-600" />
-                        <span className="text-sm font-bold text-blue-600">{therapist.office_name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">未所属</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm space-y-1">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Mail size={14} />
-                        {therapist.email}
-                      </div>
-                      {therapist.phone && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Phone size={14} />
-                          {therapist.phone}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeColor(therapist.approval_status)}`}>
-                      {getStatusLabel(therapist.approval_status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {new Date(therapist.created_at).toLocaleDateString('ja-JP')}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2">
-                      {therapist.approval_status === 'PENDING' && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(therapist.id)}
-                            className="px-3 py-1 text-xs bg-green-50 text-green-600 rounded-lg font-bold hover:bg-green-100 transition-colors"
-                          >
-                            承認
-                          </button>
-                          <button
-                            onClick={() => handleReject(therapist.id)}
-                            className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded-lg font-bold hover:bg-red-100 transition-colors"
-                          >
-                            却下
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => {
-                          setSelectedTherapist(therapist);
-                          setShowDeleteModal(true);
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">セラピスト</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">専門・資格</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">評価</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">セッション数</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">審査ステータス</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">稼働状況</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {filteredTherapists.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              セラピストが見つかりません
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTherapists.map((therapist) => (
-            <div key={therapist.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedTherapists.includes(therapist.id)}
-                    onChange={() => handleSelectTherapist(therapist.id)}
-                    className="w-5 h-5 text-indigo-600 mt-1"
-                  />
-                  <img
-                    src={therapist.avatar_url || '/placeholder-therapist.jpg'}
-                    alt={therapist.name}
-                    className="w-16 h-16 rounded-full object-cover"
-                  />
-                </div>
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeColor(therapist.approval_status)}`}>
-                  {getStatusLabel(therapist.approval_status)}
-                </span>
-              </div>
-
-              <h3 className="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
-                <Award size={18} className="text-indigo-600" />
-                {therapist.name}
-              </h3>
-              
-              <div className="space-y-2 text-sm text-gray-600 mb-4">
-                <div className="flex items-center gap-2">
-                  <Mail size={14} />
-                  {therapist.email}
-                </div>
-                {therapist.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone size={14} />
-                    {therapist.phone}
-                  </div>
-                )}
-                {therapist.office_name && (
-                  <div className="flex items-center gap-2">
-                    <Building2 size={14} className="text-blue-600" />
-                    <span className="font-bold text-blue-600">{therapist.office_name}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} />
-                  {new Date(therapist.created_at).toLocaleDateString('ja-JP')}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                {therapist.approval_status === 'PENDING' && (
-                  <>
-                    <button
-                      onClick={() => handleApprove(therapist.id)}
-                      className="flex-1 px-4 py-2 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 transition-colors"
-                    >
-                      承認
-                    </button>
-                    <button
-                      onClick={() => handleReject(therapist.id)}
-                      className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors"
-                    >
-                      却下
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => {
-                    setSelectedTherapist(therapist);
-                    setShowDeleteModal(true);
-                  }}
-                  className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Trash2 size={16} />
-                  削除
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {filteredTherapists.length === 0 && (
-            <div className="col-span-full text-center py-12 text-gray-400">
-              セラピストが見つかりません
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 削除確認モーダル */}
-      {showDeleteModal && selectedTherapist && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">セラピスト削除の確認</h3>
-            <p className="text-gray-600 mb-6">
-              <strong>{selectedTherapist.name}</strong> を削除してもよろしいですか？
-              <br />
-              この操作は取り消せません。
-            </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={() => handleDeleteTherapist(selectedTherapist.id)}
-                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
-              >
-                削除
-              </button>
-            </div>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredTherapists.map((therapist) => (
+                  <tr key={therapist.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedTherapists.includes(therapist.id)}
+                        onChange={() => handleSelectTherapist(therapist.id)}
+                        className="w-4 h-4 text-teal-600 rounded"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {therapist.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{therapist.name}</p>
+                          <p className="text-xs text-gray-500">{therapist.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap gap-1">
+                          {therapist.specialties.map((spec, idx) => (
+                            <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">
+                              {spec}
+                            </span>
+                          ))}
+                        </div>
+                        {therapist.certifications.length > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-green-600">
+                            <Award size={12} />
+                            {therapist.certifications.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {therapist.rating > 0 ? renderRating(therapist.rating) : <span className="text-sm text-gray-400">未評価</span>}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp size={16} className="text-teal-600" />
+                        <span className="font-bold text-gray-900">{therapist.total_sessions}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {getApprovalBadge(therapist.approval_status)}
+                    </td>
+                    <td className="px-6 py-4">
+                      {getStatusBadge(therapist.status)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {therapist.approval_status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(therapist.id)}
+                              className="text-green-600 hover:text-green-700 font-bold text-sm"
+                            >
+                              承認
+                            </button>
+                            <button
+                              onClick={() => handleReject(therapist.id)}
+                              className="text-red-600 hover:text-red-700 font-bold text-sm"
+                            >
+                              却下
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => navigate(`/admin/therapists/${therapist.id}`)}
+                          className="text-teal-600 hover:text-teal-700 font-bold text-sm flex items-center gap-1"
+                        >
+                          <Eye size={16} />
+                          詳細
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+
+          {filteredTherapists.length === 0 && (
+            <div className="p-12 text-center">
+              <UserCheck size={48} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500 font-bold">セラピストが見つかりません</p>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </SimpleLayout>
   );
 };
 

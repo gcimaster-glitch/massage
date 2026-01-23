@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Download, Filter, CreditCard, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, Download, Filter, CreditCard, CheckCircle, XCircle, Clock, RefreshCw, DollarSign, AlertTriangle } from 'lucide-react';
 import SimpleLayout from '../../components/SimpleLayout';
 
 const AdminPayments: React.FC = () => {
@@ -91,6 +91,69 @@ const AdminPayments: React.FC = () => {
         );
       default:
         return null;
+    }
+  };
+
+  const handleRefund = async (paymentId: string, amount: number) => {
+    const confirmation = window.confirm(
+      `¥${amount.toLocaleString()}を返金しますか？\n\nこの操作は取り消せません。`
+    );
+
+    if (!confirmation) return;
+
+    try {
+      const response = await fetch('/api/admin/payments/refund', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          payment_id: paymentId,
+          amount: amount
+        })
+      });
+
+      if (response.ok) {
+        alert('返金処理を開始しました。処理には数分かかる場合があります。');
+        // リロードして最新状態を取得
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(`返金処理に失敗しました: ${error.message || '不明なエラー'}`);
+      }
+    } catch (error) {
+      console.error('Refund failed:', error);
+      alert('返金処理中にエラーが発生しました。ネットワーク接続を確認してください。');
+    }
+  };
+
+  const handleRetry = async (paymentId: string) => {
+    const confirmation = window.confirm('決済を再試行しますか？');
+    if (!confirmation) return;
+
+    try {
+      const response = await fetch('/api/admin/payments/retry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          payment_id: paymentId
+        })
+      });
+
+      if (response.ok) {
+        alert('決済を再試行しました');
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(`再試行に失敗しました: ${error.message || '不明なエラー'}`);
+      }
+    } catch (error) {
+      console.error('Retry failed:', error);
+      alert('再試行中にエラーが発生しました');
     }
   };
 
@@ -223,9 +286,29 @@ const AdminPayments: React.FC = () => {
                       <span className="text-sm text-gray-600">{payment.date}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button className="text-sm text-teal-600 hover:text-teal-700 font-bold">
-                        詳細
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {payment.status === 'completed' && (
+                          <button 
+                            onClick={() => handleRefund(payment.id, payment.amount)}
+                            className="text-sm text-orange-600 hover:text-orange-700 font-bold flex items-center gap-1"
+                          >
+                            <RefreshCw size={14} />
+                            返金
+                          </button>
+                        )}
+                        {payment.status === 'failed' && (
+                          <button 
+                            onClick={() => handleRetry(payment.id)}
+                            className="text-sm text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1"
+                          >
+                            <RefreshCw size={14} />
+                            再試行
+                          </button>
+                        )}
+                        <button className="text-sm text-teal-600 hover:text-teal-700 font-bold">
+                          詳細
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
