@@ -36,7 +36,6 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const navItems = [
     { label: 'サービス案内', path: '/about' }, 
-    { label: '事業モデル', path: '/strategy' }, // Updated
     { label: 'マップ検索', path: '/app/map', icon: Map },
     { label: 'セラピスト', path: '/therapists' },
     { label: '料金プラン', path: '/fee' },
@@ -75,6 +74,13 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
               </button>
             ))}
             <div className="h-4 w-px bg-gray-100"></div>
+            {/* 場所で探すボタン */}
+            <button 
+              onClick={() => navigate('/app/sites')}
+              className="bg-teal-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg flex items-center gap-2"
+            >
+              <Map size={14} /> 場所で探す
+            </button>
             {/* ユーザー専用のログイン・サインアップ */}
             {currentUser ? (
               <button 
@@ -165,7 +171,7 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                <h3 className="font-black text-[11px] uppercase tracking-[0.4em] text-teal-600">Explore</h3>
                <ul className="space-y-4 text-sm font-black">
                 <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">サービスについて</Link></li>
-                <li><Link to="/strategy" className="text-gray-400 hover:text-white transition-colors">事業戦略</Link></li>
+                <li><Link to="/strategy" className="text-gray-400 hover:text-white transition-colors">事業モデル</Link></li>
                 <li><Link to="/recruit" className="text-gray-400 hover:text-white transition-colors">採用・パートナー募集</Link></li>
                 <li><Link to="/news" className="text-gray-400 hover:text-white transition-colors">お知らせ</Link></li>
               </ul>
