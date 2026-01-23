@@ -257,18 +257,38 @@ export default function SitesList() {
                 className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition cursor-pointer"
                 onClick={() => navigate(`/app/sites/${site.id}`)}
               >
-                {/* 施設タイプバッジ */}
+                {/* 施設画像 */}
+                <div className="relative h-48 overflow-hidden">
+                  <img 
+                    src={
+                      site.type === 'CHARGE' 
+                        ? '/charge-site.jpg'
+                        : site.type === 'HOTEL'
+                        ? '/business-hotel.jpg'
+                        : 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=600'
+                    }
+                    alt={site.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 left-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getTypeColor(site.type)}`}>
+                      {getTypeLabel(site.type)}
+                    </span>
+                  </div>
+                  {site.distance && (
+                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                      <Navigation size={12} className="text-teal-600" />
+                      {site.distance.toFixed(1)}km
+                    </div>
+                  )}
+                </div>
+
+                {/* 施設タイプバッジ（画像の下） */}
                 <div className={`px-4 py-3 border-b flex items-center justify-between ${getTypeColor(site.type)}`}>
                   <div className="flex items-center gap-2">
                     {getTypeIcon(site.type)}
                     <span className="font-bold text-sm">{getTypeLabel(site.type)}</span>
                   </div>
-                  {site.distance && (
-                    <span className="text-xs font-semibold">
-                      <Navigation size={12} className="inline mr-1" />
-                      {site.distance.toFixed(1)}km
-                    </span>
-                  )}
                 </div>
 
                 <div className="p-4">

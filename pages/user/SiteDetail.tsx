@@ -114,22 +114,42 @@ const SiteDetail: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-12 px-4 h-[500px]">
          <div className="md:col-span-8 rounded-[48px] overflow-hidden shadow-2xl relative group h-full">
             <img 
-              src={`https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200`} 
+              src={
+                site.type === 'CHARGE' 
+                  ? '/charge-site.jpg'
+                  : site.type === 'HOTEL'
+                  ? '/business-hotel.jpg'
+                  : `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200`
+              }
               alt={site.name} 
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
             <div className="absolute bottom-10 left-10 text-white">
-               <span className="bg-teal-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-3 inline-block">Premium Site</span>
+               <span className="bg-teal-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-3 inline-block">
+                 {site.type === 'CHARGE' ? 'Fast Charge Stand' : site.type === 'HOTEL' ? 'Business Hotel' : 'Premium Site'}
+               </span>
                <h1 className="text-4xl font-black tracking-tighter">{site.name}</h1>
             </div>
          </div>
          <div className="hidden md:grid md:col-span-4 grid-rows-2 gap-4 h-full">
             <div className="rounded-[32px] overflow-hidden shadow-xl h-full">
-               <img src="https://picsum.photos/400/400?random=1" className="w-full h-full object-cover" />
+               <img src={
+                 site.type === 'CHARGE' 
+                   ? '/charge-site.jpg'
+                   : site.type === 'HOTEL'
+                   ? '/business-hotel.jpg'
+                   : 'https://picsum.photos/400/400?random=1'
+               } className="w-full h-full object-cover" />
             </div>
             <div className="rounded-[32px] overflow-hidden shadow-xl relative h-full">
-               <img src="https://picsum.photos/400/400?random=2" className="w-full h-full object-cover" />
+               <img src={
+                 site.type === 'CHARGE' 
+                   ? '/charge-site.jpg'
+                   : site.type === 'HOTEL'
+                   ? '/business-hotel.jpg'
+                   : 'https://picsum.photos/400/400?random=2'
+               } className="w-full h-full object-cover" />
                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
                   <span className="text-white text-xs font-black uppercase flex items-center gap-2"><Maximize2 size={16}/> 写真をすべて見る</span>
                </div>
