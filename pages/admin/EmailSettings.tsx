@@ -221,6 +221,7 @@ HOGUSYをご利用いただきありがとうございます。
         </div>
       </div>
       </div>
+      </div>
     </SimpleLayout>
   );
 };
