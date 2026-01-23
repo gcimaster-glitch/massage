@@ -76,13 +76,15 @@ export const MOCK_THERAPISTS = [
     email: 'misaki.tanaka@hogusy.com',
     phone: '090-1234-5678',
     photo: '/therapists/therapist-1.jpg',
+    imageUrl: '/therapists/therapist-1.jpg',
     bio: '看護師資格を持つベテランセラピスト。医療知識を活かした丁寧な施術で、お客様一人ひとりの体調に合わせたケアを提供します。',
     specialties: ['メディカルマッサージ', 'リラクゼーション', 'アロマセラピー'],
     experience: 10,
     rating: 4.9,
     reviewCount: 342,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: 'off1'
   },
   {
     id: 'therapist-2',
@@ -90,13 +92,15 @@ export const MOCK_THERAPISTS = [
     email: 'takeshi.sato@hogusy.com',
     phone: '090-2345-6789',
     photo: '/therapists/therapist-2.jpg',
+    imageUrl: '/therapists/therapist-2.jpg',
     bio: 'スポーツトレーナー出身の男性セラピスト。筋膜リリースとスポーツマッサージで、アスリートから一般の方まで幅広く対応。',
     specialties: ['スポーツマッサージ', '筋膜リリース', 'ストレッチ'],
     experience: 8,
     rating: 4.8,
     reviewCount: 298,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: 'off1'
   },
   {
     id: 'therapist-3',
@@ -104,13 +108,15 @@ export const MOCK_THERAPISTS = [
     email: 'kenji.yamada@hogusy.com',
     phone: '090-3456-7890',
     photo: '/therapists/therapist-3.jpg',
+    imageUrl: '/therapists/therapist-3.jpg',
     bio: '整体院での経験を活かした施術が得意。深層筋へのアプローチで根本から体を改善します。',
     specialties: ['整体', '深層筋マッサージ', '姿勢改善'],
     experience: 12,
     rating: 4.7,
     reviewCount: 134,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: 'off1'
   },
   {
     id: 'therapist-4',
@@ -118,13 +124,15 @@ export const MOCK_THERAPISTS = [
     email: 'yui.kobayashi@hogusy.com',
     phone: '090-4567-8901',
     photo: 'https://www.genspark.ai/api/files/s/kMBUm4hm',
+    imageUrl: 'https://www.genspark.ai/api/files/s/kMBUm4hm',
     bio: '看護師としての経験を活かし、丁寧で安心感のある施術を心がけています。女性のお客様に人気です。',
     specialties: ['リラクゼーション', 'リンパドレナージュ', 'メディカルケア'],
     experience: 6,
     rating: 4.7,
     reviewCount: 234,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: 'off1'
   },
   {
     id: 'therapist-5',
@@ -132,13 +140,15 @@ export const MOCK_THERAPISTS = [
     email: 'ayumi.watanabe@hogusy.com',
     phone: '090-5678-9012',
     photo: 'https://www.genspark.ai/api/files/s/0RIiDbmp',
+    imageUrl: 'https://www.genspark.ai/api/files/s/0RIiDbmp',
     bio: '受付スタッフとしても活躍。お客様とのコミュニケーションを大切にし、心身ともにリラックスできる施術を提供。',
     specialties: ['リラクゼーション', 'ボディケア', 'ヘッドスパ'],
     experience: 4,
     rating: 4.6,
     reviewCount: 187,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: 'off1'
   },
   {
     id: 'therapist-6',
@@ -146,13 +156,15 @@ export const MOCK_THERAPISTS = [
     email: 'hiroki.kato@hogusy.com',
     phone: '090-6789-0123',
     photo: 'https://www.genspark.ai/api/files/s/iLvjbJLH',
+    imageUrl: 'https://www.genspark.ai/api/files/s/iLvjbJLH',
     bio: 'エステティシャン出身の男性セラピスト。美容と健康の両面からアプローチする施術が特徴です。',
     specialties: ['美容整体', 'リンパドレナージュ', 'デトックス'],
     experience: 7,
     rating: 4.7,
     reviewCount: 265,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: null
   },
   {
     id: 'therapist-7',
@@ -160,13 +172,15 @@ export const MOCK_THERAPISTS = [
     email: 'sakura.nakamura@hogusy.com',
     phone: '090-7890-1234',
     photo: 'https://www.genspark.ai/api/files/s/rmby81Es',
+    imageUrl: 'https://www.genspark.ai/api/files/s/rmby81Es',
     bio: '明るく親しみやすい雰囲気が魅力。初めての方でもリラックスして施術を受けていただけます。',
     specialties: ['リラクゼーション', 'アロマセラピー', 'ストレッチ'],
     experience: 5,
     rating: 4.8,
     reviewCount: 213,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: null
   },
   {
     id: 'therapist-8',
@@ -174,13 +188,15 @@ export const MOCK_THERAPISTS = [
     email: 'rina.yamamoto@hogusy.com',
     phone: '090-8901-2345',
     photo: 'https://www.genspark.ai/api/files/s/iqRVJzGE',
+    imageUrl: 'https://www.genspark.ai/api/files/s/iqRVJzGE',
     bio: '笑顔が素敵なセラピスト。お客様の悩みに寄り添った丁寧なカウンセリングと施術を提供。',
     specialties: ['リラクゼーション', 'ボディケア', 'フットケア'],
     experience: 6,
     rating: 4.7,
     reviewCount: 198,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: null
   },
   {
     id: 'therapist-9',
@@ -188,13 +204,15 @@ export const MOCK_THERAPISTS = [
     email: 'yuka.ito@hogusy.com',
     phone: '090-9012-3456',
     photo: 'https://www.genspark.ai/api/files/s/jl395HcH',
+    imageUrl: 'https://www.genspark.ai/api/files/s/jl395HcH',
     bio: '国家資格保有のあん摩マッサージ指圧師。確かな技術で根本から体の不調を改善します。',
     specialties: ['あん摩', '指圧', 'マッサージ'],
     experience: 9,
     rating: 4.9,
     reviewCount: 378,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: null
   },
   {
     id: 'therapist-10',
@@ -202,13 +220,15 @@ export const MOCK_THERAPISTS = [
     email: 'mika.suzuki@hogusy.com',
     phone: '090-0123-4567',
     photo: 'https://www.genspark.ai/api/files/s/hg4hZj91',
+    imageUrl: 'https://www.genspark.ai/api/files/s/hg4hZj91',
     bio: 'ヨガインストラクターとしても活動。呼吸と体のバランスを整える施術が特徴です。',
     specialties: ['ヨガセラピー', 'ストレッチ', 'バランス調整'],
     experience: 7,
     rating: 4.8,
     reviewCount: 289,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: null
   },
   {
     id: 'therapist-11',
@@ -216,13 +236,15 @@ export const MOCK_THERAPISTS = [
     email: 'daichi.takahashi@hogusy.com',
     phone: '090-1234-6789',
     photo: 'https://www.genspark.ai/api/files/s/dlavRDmC',
+    imageUrl: 'https://www.genspark.ai/api/files/s/dlavRDmC',
     bio: '鍼灸師・柔道整復師の資格保有。スポーツ障害や慢性痛の改善を得意としています。',
     specialties: ['鍼灸', '柔道整復', 'スポーツ障害'],
     experience: 11,
     rating: 4.9,
     reviewCount: 423,
     areas: ['渋谷区', '新宿区', '港区'],
-    status: 'APPROVED'
+    status: 'APPROVED',
+    officeId: null
   }
 ];
 
