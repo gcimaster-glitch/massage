@@ -261,7 +261,7 @@ const TherapistManagement: React.FC = () => {
     return (
       <div className="flex items-center gap-1">
         <Star size={16} className="text-yellow-500 fill-current" />
-        <span className="font-bold text-gray-900">{rating.toFixed(1)}</span>
+        <span className="font-bold text-gray-900">{(rating || 0).toFixed(1)}</span>
       </div>
     );
   };
@@ -467,7 +467,7 @@ const TherapistManagement: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <TrendingUp size={16} className="text-teal-600" />
-                        <span className="font-bold text-gray-900">{therapist.total_sessions}</span>
+                        <span className="font-bold text-gray-900">{therapist.total_sessions || 0}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">

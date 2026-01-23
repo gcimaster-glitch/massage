@@ -468,11 +468,11 @@ const AdminBookingLogs: React.FC = () => {
                     <td className="px-6 py-4">
                       <div>
                         <p className="text-sm font-bold text-gray-900">{booking.date}</p>
-                        <p className="text-xs text-gray-500">{booking.time} ({booking.duration}分)</p>
+                        <p className="text-xs text-gray-500">{booking.time} ({booking.duration || 0}分)</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-gray-900">¥{booking.amount.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-gray-900">¥{(booking.amount || 0).toLocaleString()}</span>
                     </td>
                     <td className="px-6 py-4">
                       {getStatusBadge(booking.status)}
