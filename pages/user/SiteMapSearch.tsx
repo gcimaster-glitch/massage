@@ -802,16 +802,20 @@ const SiteMapSearch: React.FC = () => {
                   }`}
                 >
                   <div className="space-y-3">
-                    {/* CHARGE拠点の画像表示 */}
-                    {site.image_url && (
-                      <div className="w-full h-32 rounded-xl overflow-hidden">
-                        <img 
-                          src={site.image_url} 
-                          alt={site.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
+                    {/* 施設画像表示（タイプに応じて） */}
+                    <div className="w-full h-32 rounded-xl overflow-hidden">
+                      <img 
+                        src={
+                          site.type === 'CHARGE' 
+                            ? '/charge-site.jpg'
+                            : site.type === 'HOTEL'
+                            ? '/business-hotel.jpg'
+                            : site.image_url || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=600'
+                        }
+                        alt={site.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     
                     {/* 施設名と距離 */}
                     <div className="flex items-start justify-between gap-2">
@@ -927,10 +931,16 @@ const SiteMapSearch: React.FC = () => {
               </div>
 
               <div className="flex flex-col md:flex-row gap-6">
-                {/* 画像 */}
+                {/* 画像（施設タイプに応じて表示） */}
                 <div className="w-full md:w-80 h-56 rounded-2xl overflow-hidden shadow-lg border-4 border-white flex-shrink-0">
                    <img 
-                     src={`https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=600&h=400`} 
+                     src={
+                       selectedSite.type === 'CHARGE' 
+                         ? '/charge-site.jpg'
+                         : selectedSite.type === 'HOTEL'
+                         ? '/business-hotel.jpg'
+                         : selectedSite.image_url || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=600&h=400'
+                     }
                      className="w-full h-full object-cover" 
                      alt={selectedSite.name}
                    />
