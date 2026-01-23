@@ -77,6 +77,11 @@ import TherapistEarnings from './pages/therapist/Earnings';
 import TherapistSafety from './pages/therapist/Safety';
 import TherapistProfile from './pages/therapist/Profile';
 import TherapistProfileManagement from './pages/therapist/ProfileManagement';
+import TherapistNotifications from './pages/therapist/Notifications';
+import TherapistPersonalSettings from './pages/therapist/PersonalSettings';
+import TherapistTravelSettings from './pages/therapist/TravelSettings';
+import TherapistSessionManagement from './pages/therapist/SessionManagement';
+import TherapistSupport from './pages/therapist/Support';
 import ActiveSession from './pages/therapist/ActiveSession';
 import SessionSummary from './pages/therapist/SessionSummary';
 import BioEditor from './pages/therapist/BioEditor';
@@ -379,6 +384,13 @@ const App: React.FC = () => {
         <Route path="/t/bio" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><BioEditor /></RequireAuth>} />
         <Route path="/t/session/:bookingId" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><ActiveSession /></RequireAuth>} />
         <Route path="/t/session-summary/:bookingId" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><SessionSummary /></RequireAuth>} />
+        
+        {/* New Therapist Portal Pages */}
+        <Route path="/t/notifications" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistNotifications /></RequireAuth>} />
+        <Route path="/t/settings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistPersonalSettings /></RequireAuth>} />
+        <Route path="/t/travel-settings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistTravelSettings /></RequireAuth>} />
+        <Route path="/t/session-management" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSessionManagement /></RequireAuth>} />
+        <Route path="/t/support" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSupport /></RequireAuth>} />
 
         {/* Agency (Office) App */}
         <Route path="/o" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeDashboard /></RequireAuth>} />
