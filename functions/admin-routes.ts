@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
+import { requireAdmin } from './auth-middleware'
 
 type Bindings = {
   DB: D1Database;
+  JWT_SECRET: string;
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -12,21 +14,21 @@ const app = new Hono<{ Bindings: Bindings }>()
  * Preserves master data (master_courses, master_options, master_areas, system_settings)
  */
 app.delete('/mock-data', async (c) => {
-  const { DB } = c.env
+  const { DB, JWT_SECRET } = c.env
 
   if (!DB) {
     return c.json({ error: 'Database not configured' }, 500)
   }
 
-  try {
-    // Verify admin authentication (JWT or session)
-    // TODO: Add proper admin authentication check
-    const authHeader = c.req.header('Authorization')
-    if (!authHeader) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
+  // 管理者認証チェック（強化版）
+  const authHeader = c.req.header('Authorization')
+  const authResult = await requireAdmin(authHeader, JWT_SECRET)
+  
+  if (!authResult.success) {
+    return c.json({ error: authResult.error || 'Unauthorized' }, 401)
+  }
 
-    // Delete in correct order (respecting foreign keys)
+  try {
     const deletions = [
       // 1. Delete dependent tables first
       { table: 'admin_logs', description: 'Admin logs' },

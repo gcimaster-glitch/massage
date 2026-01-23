@@ -51,12 +51,35 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>()
 
 // ============================================
-// Middleware
+// Middleware - CORS設定（セキュリティ強化）
 // ============================================
+// 許可するオリジンのリスト
+const ALLOWED_ORIGINS = [
+  'https://hogusy.com',
+  'https://www.hogusy.com',
+  'https://hogusy.pages.dev',
+  // 開発環境用（本番では削除推奨）
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+]
+
 app.use('/api/*', cors({
-  origin: '*',
+  origin: (origin) => {
+    // オリジンが許可リストに含まれているかチェック
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return origin || 'https://hogusy.com'
+    }
+    // Cloudflare Pages のプレビューURLを許可（*.hogusy.pages.dev）
+    if (origin.endsWith('.hogusy.pages.dev')) {
+      return origin
+    }
+    // 許可されていないオリジンの場合はnullを返す
+    return null
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // Cookieを使用する場合
+  maxAge: 86400, // プリフライトリクエストのキャッシュ時間（24時間）
 }))
 
 // ============================================
