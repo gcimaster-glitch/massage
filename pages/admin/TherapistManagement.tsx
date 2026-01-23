@@ -133,7 +133,7 @@ const TherapistManagement: React.FC = () => {
       filtered = filtered.filter(t =>
         t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
+        (Array.isArray(t.specialties) && t.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
       );
     }
 
@@ -207,7 +207,20 @@ const TherapistManagement: React.FC = () => {
     const csv = [
       ['ID', '氏名', 'メール', '電話番号', '専門分野', '資格', '評価', 'セッション数', '承認ステータス', 'KYC', 'ステータス', '登録日'].join(','),
       ...filteredTherapists.map(t => 
-        [t.id, t.name, t.email, t.phone, t.specialties.join(';'), t.certifications.join(';'), t.rating, t.total_sessions, t.approval_status, t.kyc_status, t.status, t.created_at].join(',')
+        [
+          t.id, 
+          t.name, 
+          t.email, 
+          t.phone, 
+          Array.isArray(t.specialties) ? t.specialties.join(';') : '', 
+          Array.isArray(t.certifications) ? t.certifications.join(';') : '', 
+          t.rating, 
+          t.total_sessions, 
+          t.approval_status, 
+          t.kyc_status, 
+          t.status, 
+          t.created_at
+        ].join(',')
       )
     ].join('\n');
     
@@ -434,13 +447,13 @@ const TherapistManagement: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         <div className="flex flex-wrap gap-1">
-                          {therapist.specialties.map((spec, idx) => (
+                          {Array.isArray(therapist.specialties) && therapist.specialties.map((spec, idx) => (
                             <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">
                               {spec}
                             </span>
                           ))}
                         </div>
-                        {therapist.certifications.length > 0 && (
+                        {Array.isArray(therapist.certifications) && therapist.certifications.length > 0 && (
                           <div className="flex items-center gap-1 text-xs text-green-600">
                             <Award size={12} />
                             {therapist.certifications.join(', ')}
