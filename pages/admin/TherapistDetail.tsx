@@ -209,25 +209,25 @@ const TherapistDetail: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm p-8 mb-6">
             <div className="flex items-start gap-6">
               <div className="w-24 h-24 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold flex-shrink-0">
-                {therapist.name.charAt(0)}
+                {therapist.name ? therapist.name.charAt(0) : 'T'}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold text-gray-900">{therapist.name}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900">{therapist.name || 'セラピスト'}</h1>
                   {getApprovalBadge(therapist.approval_status)}
                   {getStatusBadge(therapist.status)}
                 </div>
                 <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
                   <div className="flex items-center gap-1">
                     <Mail size={16} />
-                    <span>{therapist.email}</span>
+                    <span>{therapist.email || '-'}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Phone size={16} />
-                    <span>{therapist.phone}</span>
+                    <span>{therapist.phone || '-'}</span>
                   </div>
                 </div>
-                <p className="text-gray-700 leading-relaxed">{therapist.bio}</p>
+                <p className="text-gray-700 leading-relaxed">{therapist.bio || '自己紹介文はありません'}</p>
               </div>
             </div>
           </div>
@@ -329,11 +329,11 @@ const TherapistDetail: React.FC = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">登録日</span>
-                  <span className="font-bold text-gray-900">{therapist.created_at}</span>
+                  <span className="font-bold text-gray-900">{therapist.created_at || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">最終ログイン</span>
-                  <span className="font-bold text-gray-900">{therapist.last_active}</span>
+                  <span className="font-bold text-gray-900">{therapist.last_active || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">KYC審査</span>
