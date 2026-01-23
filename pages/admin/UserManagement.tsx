@@ -430,40 +430,22 @@ const UserManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail size={14} className="text-gray-400" />
-                          <span className="text-gray-900">{user.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone size={14} className="text-gray-400" />
-                          <span className="text-gray-600">{user.phone}</span>
-                        </div>
+                      <div className="space-y-1 text-sm">
+                        <div className="text-gray-900">{user.email}</div>
+                        <div className="text-gray-600">{user.phone}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="space-y-1">
+                      <div className="flex items-center gap-3">
                         {user.email_verified ? (
-                          <div className="flex items-center gap-1 text-xs text-green-600">
-                            <CheckCircle size={12} />
-                            メール認証済
-                          </div>
+                          <Mail size={20} className="text-green-600" title="メール認証済" />
                         ) : (
-                          <div className="flex items-center gap-1 text-xs text-red-600">
-                            <XCircle size={12} />
-                            メール未認証
-                          </div>
+                          <Mail size={20} className="text-gray-300" title="メール未認証" />
                         )}
                         {user.phone_verified ? (
-                          <div className="flex items-center gap-1 text-xs text-green-600">
-                            <CheckCircle size={12} />
-                            電話認証済
-                          </div>
+                          <Phone size={20} className="text-green-600" title="電話認証済" />
                         ) : (
-                          <div className="flex items-center gap-1 text-xs text-red-600">
-                            <XCircle size={12} />
-                            電話未認証
-                          </div>
+                          <Phone size={20} className="text-gray-300" title="電話未認証" />
                         )}
                       </div>
                     </td>
