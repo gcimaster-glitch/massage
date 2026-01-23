@@ -162,6 +162,26 @@ export default function SitesList() {
       {/* ヘッダー */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* ロゴとHOMEボタン */}
+          <div className="flex items-center justify-between mb-4">
+            <button 
+              onClick={() => navigate('/')}
+              className="flex items-center gap-3 hover:opacity-80 transition"
+            >
+              <div className="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-black text-xl">H</span>
+              </div>
+              <span className="text-2xl font-black text-gray-900">HOGUSY</span>
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-semibold"
+            >
+              <Home size={20} />
+              HOME
+            </button>
+          </div>
+
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -306,7 +326,13 @@ export default function SitesList() {
                     )}
                   </div>
 
-                  <button className="mt-4 w-full bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 transition font-semibold">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/app/sites/${site.id}`);
+                    }}
+                    className="mt-4 w-full bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 transition font-semibold"
+                  >
                     この施設で予約
                   </button>
                 </div>
