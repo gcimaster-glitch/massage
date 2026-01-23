@@ -17,6 +17,8 @@ import {
   createJWT,
   verifyJWT,
 } from './auth-helpers'
+import { checkRateLimit, RATE_LIMITS } from './rate-limit'
+import { validateEmail, validatePassword } from './validation'
 
 type Bindings = {
   DB: D1Database
@@ -643,15 +645,39 @@ authApp.get('/verify-email', async (c) => {
 })
 
 // ============================================
-// Email/Password Login
+// Email/Password Login（セキュリティ強化版）
 // ============================================
 authApp.post('/login', async (c) => {
+  const ipAddress = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')?.split(',')[0] || 'unknown';
+
   try {
     const body = await c.req.json()
     const { email, password } = body
 
-    if (!email || !password) {
-      return c.json({ error: 'メールアドレスとパスワードを入力してください' }, 400)
+    // 入力バリデーション
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      return c.json({ error: emailValidation.error }, 400);
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return c.json({ error: passwordValidation.error }, 400);
+    }
+
+    // レート制限チェック（5回/分）
+    const rateLimitResult = await checkRateLimit(
+      c.env.DB,
+      ipAddress,
+      '/api/auth/login',
+      RATE_LIMITS.LOGIN
+    );
+
+    if (!rateLimitResult.allowed) {
+      return c.json({ 
+        error: RATE_LIMITS.LOGIN.message,
+        retryAfter: rateLimitResult.retryAfter
+      }, 429);
     }
 
     if (!c.env.DB) {
