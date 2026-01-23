@@ -109,6 +109,7 @@ import AdminIncidentDetail from './pages/admin/IncidentDetail';
 import AdminUserManagement from './pages/admin/UserManagement';
 import AdminUserDetail from './pages/admin/UserDetail';
 import AdminTherapistManagement from './pages/admin/TherapistManagement';
+import AdminTherapistDetail from './pages/admin/TherapistDetail';
 import AdminHostManagement from './pages/admin/HostManagement';
 import AdminPayouts from './pages/admin/Payouts';
 import AdminPayments from './pages/admin/Payments';
@@ -405,6 +406,7 @@ const App: React.FC = () => {
         <Route path="/admin/users" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminUserManagement /></RequireAuth>} />
         <Route path="/admin/users/:id" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminUserDetail /></RequireAuth>} />
         <Route path="/admin/therapists" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminTherapistManagement /></RequireAuth>} />
+        <Route path="/admin/therapists/:id" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminTherapistDetail /></RequireAuth>} />
         <Route path="/admin/hosts" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminHostManagement /></RequireAuth>} />
         <Route path="/admin/incidents" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminIncidents /></RequireAuth>} />
         <Route path="/admin/incident/:id" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminIncidentDetail /></RequireAuth>} />
