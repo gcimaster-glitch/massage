@@ -371,6 +371,9 @@ authApp.post('/register', async (c) => {
           if (c.env.RESEND_API_KEY) {
             const verificationUrl = `${c.req.header('origin') || 'https://hogusy.com'}/api/auth/verify-email?token=${verificationToken}`
             
+            console.log('📧 [OAuth] Sending verification email to:', email);
+            console.log('🔗 [OAuth] Verification URL:', verificationUrl);
+            
             try {
               const resendResponse = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
@@ -379,7 +382,7 @@ authApp.post('/register', async (c) => {
                   'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                  from: 'HOGUSY <noreply@hogusy.com>',
+                  from: 'HOGUSY <onboarding@resend.dev>',
                   to: email,
                   subject: '【HOGUSY】メールアドレスの確認',
                   html: `
@@ -406,10 +409,14 @@ authApp.post('/register', async (c) => {
               })
 
               if (!resendResponse.ok) {
-                console.error('Failed to send verification email:', await resendResponse.text())
+                const errorText = await resendResponse.text();
+                console.error('❌ [OAuth] Failed to send verification email:', resendResponse.status, errorText);
+              } else {
+                const responseData = await resendResponse.json();
+                console.log('✅ [OAuth] Email sent successfully:', responseData);
               }
             } catch (emailError) {
-              console.error('Email sending error:', emailError)
+              console.error('❌ [OAuth] Email sending error:', emailError)
             }
           }
 
@@ -458,15 +465,18 @@ authApp.post('/register', async (c) => {
       // Send verification email via Resend
       const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
       
+      console.log('📧 Sending verification email to:', email);
+      console.log('🔗 Verification URL:', verificationUrl);
+      
       try {
-        await fetch('https://api.resend.com/emails', {
+        const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'HOGUSY <noreply@hogusy.com>',
+            from: 'HOGUSY <onboarding@resend.dev>',
             to: [email],
             subject: '【HOGUSY】メールアドレスの認証をお願いします',
             html: `
@@ -528,8 +538,17 @@ authApp.post('/register', async (c) => {
             `
           })
         });
+        
+        // Check email response
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text();
+          console.error('❌ Email sending failed:', emailResponse.status, errorText);
+        } else {
+          const responseData = await emailResponse.json();
+          console.log('✅ Email sent successfully:', responseData);
+        }
       } catch (emailError) {
-        console.error('Email sending error:', emailError);
+        console.error('❌ Email sending error:', emailError);
         // メール送信失敗してもユーザー登録は成功とする
       }
 
