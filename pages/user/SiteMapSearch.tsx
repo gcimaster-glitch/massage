@@ -806,8 +806,12 @@ const SiteMapSearch: React.FC = () => {
                     <div className="w-full h-32 rounded-xl overflow-hidden">
                       <img 
                         src={
-                          site.type === 'CHARGE' 
+                          site.type === 'CARE_CUBE' 
+                            ? '/care-cube-site.jpg'
+                            : site.type === 'CHARGE' 
                             ? '/charge-site.jpg'
+                            : site.type === 'HOGUSY'
+                            ? '/hogusy-site.jpg'
                             : site.type === 'HOTEL'
                             ? '/business-hotel.jpg'
                             : site.image_url || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=600'
@@ -935,8 +939,12 @@ const SiteMapSearch: React.FC = () => {
                 <div className="w-full md:w-80 h-56 rounded-2xl overflow-hidden shadow-lg border-4 border-white flex-shrink-0">
                    <img 
                      src={
-                       selectedSite.type === 'CHARGE' 
+                       selectedSite.type === 'CARE_CUBE' 
+                         ? '/care-cube-site.jpg'
+                         : selectedSite.type === 'CHARGE' 
                          ? '/charge-site.jpg'
+                         : selectedSite.type === 'HOGUSY'
+                         ? '/hogusy-site.jpg'
                          : selectedSite.type === 'HOTEL'
                          ? '/business-hotel.jpg'
                          : selectedSite.image_url || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=600&h=400'

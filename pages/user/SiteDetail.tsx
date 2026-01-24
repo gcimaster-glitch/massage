@@ -115,8 +115,12 @@ const SiteDetail: React.FC = () => {
          <div className="md:col-span-8 rounded-[48px] overflow-hidden shadow-2xl relative group h-full">
             <img 
               src={
-                site.type === 'CHARGE' 
+                site.type === 'CARE_CUBE' 
+                  ? '/care-cube-site.jpg'
+                  : site.type === 'CHARGE' 
                   ? '/charge-site.jpg'
+                  : site.type === 'HOGUSY'
+                  ? '/hogusy-site.jpg'
                   : site.type === 'HOTEL'
                   ? '/business-hotel.jpg'
                   : `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200`
@@ -127,7 +131,7 @@ const SiteDetail: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
             <div className="absolute bottom-10 left-10 text-white">
                <span className="bg-teal-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-3 inline-block">
-                 {site.type === 'CHARGE' ? 'Fast Charge Stand' : site.type === 'HOTEL' ? 'Business Hotel' : 'Premium Site'}
+                 {site.type === 'CARE_CUBE' ? 'CARE CUBE' : site.type === 'CHARGE' ? 'Fast Charge Stand' : site.type === 'HOGUSY' ? 'HOGUSY' : site.type === 'HOTEL' ? 'Business Hotel' : 'Premium Site'}
                </span>
                <h1 className="text-4xl font-black tracking-tighter">{site.name}</h1>
             </div>
@@ -135,8 +139,12 @@ const SiteDetail: React.FC = () => {
          <div className="hidden md:grid md:col-span-4 grid-rows-2 gap-4 h-full">
             <div className="rounded-[32px] overflow-hidden shadow-xl h-full">
                <img src={
-                 site.type === 'CHARGE' 
+                 site.type === 'CARE_CUBE' 
+                   ? '/care-cube-site.jpg'
+                   : site.type === 'CHARGE' 
                    ? '/charge-site.jpg'
+                   : site.type === 'HOGUSY'
+                   ? '/hogusy-site.jpg'
                    : site.type === 'HOTEL'
                    ? '/business-hotel.jpg'
                    : 'https://picsum.photos/400/400?random=1'
@@ -144,8 +152,12 @@ const SiteDetail: React.FC = () => {
             </div>
             <div className="rounded-[32px] overflow-hidden shadow-xl relative h-full">
                <img src={
-                 site.type === 'CHARGE' 
+                 site.type === 'CARE_CUBE' 
+                   ? '/care-cube-site.jpg'
+                   : site.type === 'CHARGE' 
                    ? '/charge-site.jpg'
+                   : site.type === 'HOGUSY'
+                   ? '/hogusy-site.jpg'
                    : site.type === 'HOTEL'
                    ? '/business-hotel.jpg'
                    : 'https://picsum.photos/400/400?random=2'

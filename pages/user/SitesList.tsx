@@ -281,8 +281,12 @@ export default function SitesList() {
                 <div className="relative h-48 overflow-hidden">
                   <img 
                     src={
-                      site.type === 'CHARGE' 
+                      site.type === 'CARE_CUBE' 
+                        ? '/care-cube-site.jpg'
+                        : site.type === 'CHARGE' 
                         ? '/charge-site.jpg'
+                        : site.type === 'HOGUSY'
+                        ? '/hogusy-site.jpg'
                         : site.type === 'HOTEL'
                         ? '/business-hotel.jpg'
                         : 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=600'
