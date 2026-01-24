@@ -21,9 +21,6 @@ const requireAdmin = async (c: any, next: any) => {
   c.set('role', authResult.user.role);
   await next();
 };
-    return null;
-  }
-}
 
 // ============================================
 // ユーザー管理

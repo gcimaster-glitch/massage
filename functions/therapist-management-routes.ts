@@ -22,13 +22,6 @@ const requireAuth = async (c: any, next: any) => {
   await next();
 };
 
-    return payload;
-  } catch (error) {
-    console.error('JWT verify error:', error);
-    return null;
-  }
-}
-
 // ============================================
 // プロフィール管理
 // ============================================
