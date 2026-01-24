@@ -85,6 +85,11 @@ import TherapistSupport from './pages/therapist/Support';
 import ActiveSession from './pages/therapist/ActiveSession';
 import SessionSummary from './pages/therapist/SessionSummary';
 import BioEditor from './pages/therapist/BioEditor';
+import BankSettings from './pages/therapist/settings/BankSettings';
+import ServiceSettings from './pages/therapist/settings/ServiceSettings';
+import OptionSettings from './pages/therapist/settings/OptionSettings';
+import PricingSettings from './pages/therapist/settings/PricingSettings';
+import QualificationSettings from './pages/therapist/settings/QualificationSettings';
 
 // --- Host ---
 import HostDashboard from './pages/host/HostDashboard';
@@ -388,6 +393,11 @@ const App: React.FC = () => {
         {/* New Therapist Portal Pages */}
         <Route path="/t/notifications" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistNotifications /></RequireAuth>} />
         <Route path="/t/settings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistPersonalSettings /></RequireAuth>} />
+        <Route path="/t/settings/bank" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><BankSettings /></RequireAuth>} />
+        <Route path="/t/settings/services" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><ServiceSettings /></RequireAuth>} />
+        <Route path="/t/settings/options" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><OptionSettings /></RequireAuth>} />
+        <Route path="/t/settings/pricing" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><PricingSettings /></RequireAuth>} />
+        <Route path="/t/settings/qualifications" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><QualificationSettings /></RequireAuth>} />
         <Route path="/t/travel-settings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistTravelSettings /></RequireAuth>} />
         <Route path="/t/session-management" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSessionManagement /></RequireAuth>} />
         <Route path="/t/support" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSupport /></RequireAuth>} />
