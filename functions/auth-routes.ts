@@ -382,7 +382,7 @@ authApp.post('/register', async (c) => {
                   'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                  from: 'HOGUSY <onboarding@resend.dev>',
+                  from: 'HOGUSY <noreply@hogusy.com>',
                   to: email,
                   subject: '【HOGUSY】メールアドレスの確認',
                   html: `
@@ -476,7 +476,7 @@ authApp.post('/register', async (c) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'HOGUSY <onboarding@resend.dev>',
+            from: 'HOGUSY <noreply@hogusy.com>',
             to: [email],
             subject: '【HOGUSY】メールアドレスの認証をお願いします',
             html: `
