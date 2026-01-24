@@ -12,9 +12,17 @@ const BookingNewFlow: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // URLパラメータから therapistId, siteId を取得
+    // URLパラメータから therapistId, siteId, type を取得
     const therapistId = searchParams.get('therapistId');
     const siteId = searchParams.get('siteId');
+    const type = searchParams.get('type') || 'ONSITE';
+
+    // therapistId === 'auto' の場合は自動割り当てページへ
+    if (therapistId === 'auto') {
+      console.log('🔄 Redirecting to auto-assign booking');
+      navigate(`/app/booking/auto-assign?type=${type}`, { replace: true });
+      return;
+    }
 
     // therapistId がある場合は指名予約
     if (therapistId) {

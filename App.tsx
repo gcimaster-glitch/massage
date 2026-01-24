@@ -43,6 +43,7 @@ import SiteDetail from './pages/user/SiteDetail';
 import TherapistDetail from './pages/user/TherapistDetail';
 import BookingNew from './pages/user/BookingNew';
 import BookingNewFlow from './pages/user/BookingNewFlow';
+import AutoAssignBooking from './pages/user/AutoAssignBooking';
 import BookingDetail from './pages/user/BookingDetail';
 import BookingReview from './pages/user/BookingReview';
 import BookingSuccess from './pages/user/BookingSuccess';
@@ -356,6 +357,7 @@ const App: React.FC = () => {
         
         {/* Legacy Booking Routes (kept for compatibility) */}
         <Route path="/app/booking/new" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNewFlow /></RequireAuth>} />
+        <Route path="/app/booking/auto-assign" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><AutoAssignBooking /></RequireAuth>} />
         <Route path="/app/booking/new-old" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNew onAutoLogin={handleLogin} /></RequireAuth>} />
         <Route path="/app/booking/success" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingSuccess /></RequireAuth>} />
         <Route path="/app/booking/:bookingId" element={<RequireAuth allowedRoles={[Role.USER, Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><BookingDetail /></RequireAuth>} />
