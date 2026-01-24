@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   MapPin, ArrowRight, JapaneseYen, Clock, Zap, Home, Building2, 
   ChevronRight, ShieldAlert, Timer, CheckCircle, FileText, 
-  UserCheck, Info, Upload, Award, Camera, ShieldCheck 
+  UserCheck, Info, Upload, Award, Camera, ShieldCheck,
+  Bell, Settings, Plane, LifeBuoy, Calendar, ClipboardList
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
@@ -80,6 +81,49 @@ const TherapistDashboard: React.FC = () => {
          <StatItem label="当月の報酬額" val="¥142,500" icon={<JapaneseYen/>} color="text-teal-600" />
          <StatItem label="予約リクエスト" val={bookings.filter(b => b.status === BookingStatus.CONFIRMED).length} icon={<Clock/>} color="text-indigo-600" />
          <StatItem label="安全スコア" val="98%" icon={<ShieldCheck/>} color="text-teal-600" />
+      </div>
+
+      {/* クイックアクションメニュー */}
+      <div className="px-4 space-y-6">
+        <h2 className="text-2xl font-black tracking-tighter">クイックアクション</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <QuickActionCard 
+            icon={<Bell size={24} />} 
+            label="お知らせ" 
+            onClick={() => navigate('/t/notifications')}
+            color="bg-blue-50 text-blue-600"
+          />
+          <QuickActionCard 
+            icon={<Settings size={24} />} 
+            label="個人設定" 
+            onClick={() => navigate('/t/settings')}
+            color="bg-gray-50 text-gray-600"
+          />
+          <QuickActionCard 
+            icon={<Plane size={24} />} 
+            label="出張設定" 
+            onClick={() => navigate('/t/travel-settings')}
+            color="bg-teal-50 text-teal-600"
+          />
+          <QuickActionCard 
+            icon={<ClipboardList size={24} />} 
+            label="施術管理" 
+            onClick={() => navigate('/t/session-management')}
+            color="bg-purple-50 text-purple-600"
+          />
+          <QuickActionCard 
+            icon={<Calendar size={24} />} 
+            label="カレンダー" 
+            onClick={() => navigate('/t/calendar')}
+            color="bg-indigo-50 text-indigo-600"
+          />
+          <QuickActionCard 
+            icon={<LifeBuoy size={24} />} 
+            label="サポート" 
+            onClick={() => navigate('/t/support')}
+            color="bg-orange-50 text-orange-600"
+          />
+        </div>
       </div>
 
       {/* 予約リスト連動 */}
@@ -185,5 +229,17 @@ const TherapistKYCFlow = ({ status, onSubmit }: { status: string, onSubmit: (d: 
     </div>
   );
 };
+
+const QuickActionCard = ({ icon, label, onClick, color }: { icon: React.ReactNode, label: string, onClick: () => void, color: string }) => (
+  <button
+    onClick={onClick}
+    className={`${color} p-6 rounded-3xl flex flex-col items-center justify-center gap-3 hover:scale-105 transition-all shadow-sm hover:shadow-md group`}
+  >
+    <div className="group-hover:scale-110 transition-transform">
+      {icon}
+    </div>
+    <span className="text-xs font-black">{label}</span>
+  </button>
+);
 
 export default TherapistDashboard;
