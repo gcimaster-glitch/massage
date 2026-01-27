@@ -114,7 +114,7 @@ const RecruitPage: React.FC = () => {
             <div className="grid lg:grid-cols-2 gap-20 items-center relative z-10">
                <div className="order-2 lg:order-1">
                   <div className="rounded-[64px] overflow-hidden shadow-2xl aspect-video border-8 border-white/5">
-                     <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200" className="w-full h-full object-cover" alt="CARE CUBE Booth" />
+                     <img src="/care-cube-lobby.jpg" className="w-full h-full object-cover" alt="CARE CUBE Booth" />
                   </div>
                </div>
                <div className="space-y-10 order-1 lg:order-2">
