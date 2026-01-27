@@ -1,12 +1,29 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PortalLayout from './PortalLayout';
-import { CheckCircle, ArrowRight, User, Building2, Briefcase, ChevronRight, Zap, ShieldCheck, Heart, Sparkles, Award, TrendingUp } from 'lucide-react';
+import { CheckCircle, ArrowRight, User, Building2, Briefcase, ChevronRight, Zap, ShieldCheck, Heart, Sparkles, Award, TrendingUp, ChevronLeft } from 'lucide-react';
 
 const RecruitPage: React.FC = () => {
   const { hash } = useLocation();
   const navigate = useNavigate();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const careCubeImages = [
+    { src: '/care-cube-lobby.jpg', alt: 'CARE CUBE - ホテルロビー' },
+    { src: '/care-cube-office-1.jpg', alt: 'CARE CUBE - オフィス設置例1' },
+    { src: '/care-cube-office-2.jpg', alt: 'CARE CUBE - オフィス設置例2' },
+    { src: '/care-cube-ryokan-1.jpg', alt: 'CARE CUBE - 旅館設置例1' },
+    { src: '/care-cube-ryokan-2.jpg', alt: 'CARE CUBE - 旅館設置例2' },
+  ];
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % careCubeImages.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + careCubeImages.length) % careCubeImages.length);
+  };
 
   useEffect(() => {
     if (hash) {
@@ -113,8 +130,49 @@ const RecruitPage: React.FC = () => {
             <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
             <div className="grid lg:grid-cols-2 gap-20 items-center relative z-10">
                <div className="order-2 lg:order-1">
-                  <div className="rounded-[64px] overflow-hidden shadow-2xl aspect-video border-8 border-white/5">
-                     <img src="/care-cube-lobby.jpg" className="w-full h-full object-cover" alt="CARE CUBE Booth" />
+                  <div className="relative rounded-[64px] overflow-hidden shadow-2xl aspect-video border-8 border-white/5 group">
+                     {/* メイン画像 */}
+                     <img 
+                       src={careCubeImages[currentImageIndex].src} 
+                       className="w-full h-full object-cover transition-all duration-500" 
+                       alt={careCubeImages[currentImageIndex].alt} 
+                     />
+                     
+                     {/* 左矢印ボタン */}
+                     <button
+                       onClick={prevImage}
+                       className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                     >
+                       <ChevronLeft size={24} />
+                     </button>
+                     
+                     {/* 右矢印ボタン */}
+                     <button
+                       onClick={nextImage}
+                       className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                     >
+                       <ChevronRight size={24} />
+                     </button>
+                     
+                     {/* インジケーター（ドット） */}
+                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                       {careCubeImages.map((_, index) => (
+                         <button
+                           key={index}
+                           onClick={() => setCurrentImageIndex(index)}
+                           className={`w-2 h-2 rounded-full transition-all ${
+                             index === currentImageIndex 
+                               ? 'bg-white w-6' 
+                               : 'bg-white/40 hover:bg-white/60'
+                           }`}
+                         />
+                       ))}
+                     </div>
+                     
+                     {/* 画像カウンター */}
+                     <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
+                       {currentImageIndex + 1} / {careCubeImages.length}
+                     </div>
                   </div>
                </div>
                <div className="space-y-10 order-1 lg:order-2">
