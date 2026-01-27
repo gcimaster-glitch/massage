@@ -15,6 +15,10 @@ const RecruitPage: React.FC = () => {
     { src: '/care-cube-office-2.jpg', alt: 'CARE CUBE - オフィス設置例2' },
     { src: '/care-cube-ryokan-1.jpg', alt: 'CARE CUBE - 旅館設置例1' },
     { src: '/care-cube-ryokan-2.jpg', alt: 'CARE CUBE - 旅館設置例2' },
+    { src: '/care-cube-spa.jpg', alt: 'CARE CUBE - スパ・温泉施設' },
+    { src: '/care-cube-retail.jpg', alt: 'CARE CUBE - 商業施設' },
+    { src: '/care-cube-station.jpg', alt: 'CARE CUBE - 駅ナカ設置例' },
+    { src: '/care-cube-corporate.jpg', alt: 'CARE CUBE - 企業オフィス' },
   ];
 
   const nextImage = () => {
