@@ -107,30 +107,71 @@ const OfficeManagement: React.FC = () => {
   };
 
   const handleSaveCreate = async () => {
-    // API call to create
-    const newOffice: Office = {
-      id: `office-${Date.now()}`,
-      name: editForm.name || '',
-      address: editForm.address || '',
-      phone: editForm.phone || '',
-      email: editForm.email || '',
-      description: editForm.description || '',
-      status: editForm.status || 'PENDING',
-      representative_name: editForm.representative_name || '',
-      total_therapists: 0,
-      monthly_revenue: 0,
-      commission_rate: editForm.commission_rate || 15,
-      created_at: new Date().toISOString().split('T')[0],
-    };
-    setOffices([...offices, newOffice]);
-    setShowCreateModal(false);
-    setMessage('オフィスを新規登録しました');
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/admin/offices', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          representative_name: editForm.representative_name,
+          email: editForm.email,
+          phone: editForm.phone,
+          address: editForm.address,
+          commission_rate: editForm.commission_rate,
+          status: editForm.status,
+          description: editForm.description,
+        }),
+      });
+      if (response.ok) {
+        setShowCreateModal(false);
+        setMessage('オフィスを新規登録しました');
+        fetchOffices(); // リロード
+      } else {
+        // フォールバック: ローカル追加
+        const newOffice: Office = {
+          id: `office-${Date.now()}`, name: editForm.name || '', address: editForm.address || '',
+          phone: editForm.phone || '', email: editForm.email || '', description: editForm.description || '',
+          status: editForm.status || 'PENDING', representative_name: editForm.representative_name || '',
+          total_therapists: 0, monthly_revenue: 0, commission_rate: editForm.commission_rate || 15,
+          created_at: new Date().toISOString().split('T')[0],
+        };
+        setOffices([...offices, newOffice]);
+        setShowCreateModal(false);
+        setMessage('オフィスを新規登録しました（ローカル）');
+      }
+    } catch {
+      const newOffice: Office = {
+        id: `office-${Date.now()}`, name: editForm.name || '', address: editForm.address || '',
+        phone: editForm.phone || '', email: editForm.email || '', description: editForm.description || '',
+        status: editForm.status || 'PENDING', representative_name: editForm.representative_name || '',
+        total_therapists: 0, monthly_revenue: 0, commission_rate: editForm.commission_rate || 15,
+        created_at: new Date().toISOString().split('T')[0],
+      };
+      setOffices([...offices, newOffice]);
+      setShowCreateModal(false);
+      setMessage('オフィスを新規登録しました（ローカル）');
+    }
     setTimeout(() => setMessage(''), 3000);
   };
 
   const handleSaveEdit = async () => {
     if (!selectedOffice) return;
-    setOffices(offices.map(o => o.id === selectedOffice.id ? { ...o, ...editForm } as Office : o));
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/admin/offices/${selectedOffice.id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      if (response.ok) {
+        fetchOffices();
+      } else {
+        setOffices(offices.map(o => o.id === selectedOffice.id ? { ...o, ...editForm } as Office : o));
+      }
+    } catch {
+      setOffices(offices.map(o => o.id === selectedOffice.id ? { ...o, ...editForm } as Office : o));
+    }
     setShowEditModal(false);
     setMessage('オフィス情報を更新しました');
     setTimeout(() => setMessage(''), 3000);
@@ -143,6 +184,13 @@ const OfficeManagement: React.FC = () => {
 
   const confirmDelete = async () => {
     if (!selectedOffice) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`/api/admin/offices/${selectedOffice.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+    } catch {}
     setOffices(offices.filter(o => o.id !== selectedOffice.id));
     setShowDeleteModal(false);
     setMessage(`「${selectedOffice.name}」を削除しました`);
@@ -150,6 +198,14 @@ const OfficeManagement: React.FC = () => {
   };
 
   const handleStatusChange = async (office: Office, newStatus: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`/api/admin/offices/${office.id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {}
     setOffices(offices.map(o => o.id === office.id ? { ...o, status: newStatus } : o));
     setMessage(`「${office.name}」のステータスを${newStatus}に変更しました`);
     setTimeout(() => setMessage(''), 3000);

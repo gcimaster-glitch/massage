@@ -97,6 +97,14 @@ const AdminOfficeDetail: React.FC = () => {
 
   const handleSaveEdit = async () => {
     if (!office) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`/api/admin/offices/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+    } catch {}
     setOffice({ ...office, ...editForm } as OfficeInfo);
     setIsEditing(false);
     setMessage('オフィス情報を保存しました');

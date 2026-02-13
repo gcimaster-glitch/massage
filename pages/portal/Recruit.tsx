@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PortalLayout from './PortalLayout';
-import { CheckCircle, ArrowRight, User, Building2, Briefcase, ChevronRight, Zap, ShieldCheck, Heart, Sparkles, Award, TrendingUp, ChevronLeft } from 'lucide-react';
+import { CheckCircle, ArrowRight, User, Building2, Briefcase, ChevronRight, Zap, ShieldCheck, Heart, Sparkles, Award, TrendingUp, ChevronLeft, Users, Handshake } from 'lucide-react';
 
 const RecruitPage: React.FC = () => {
   const { hash } = useLocation();
@@ -63,8 +63,8 @@ const RecruitPage: React.FC = () => {
           </p>
           
           <div className="flex flex-wrap justify-center gap-4 pt-10">
-             <button onClick={() => scrollToSection('therapist')} className="bg-white text-slate-900 px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-teal-400 hover:text-white transition-all shadow-2xl active:scale-95 flex items-center gap-3">
-               <User size={20} /> セラピスト募集
+             <button onClick={() => scrollToSection('office')} className="bg-white text-slate-900 px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-teal-400 hover:text-white transition-all shadow-2xl active:scale-95 flex items-center gap-3">
+               <Briefcase size={20} /> セラピストオフィス募集
              </button>
              <button onClick={() => scrollToSection('host')} className="bg-white/10 text-white border border-white/20 px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all backdrop-blur-sm flex items-center gap-3">
                <Building2 size={20} /> 施設ホスト募集
@@ -76,37 +76,49 @@ const RecruitPage: React.FC = () => {
       {/* Trust Statistics */}
       <section className="py-20 border-b border-gray-100">
          <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
-            <StatItem label="提携セラピスト" val="1,200+" sub="名" />
+            <StatItem label="提携オフィス" val="120+" sub="社" />
+            <StatItem label="登録セラピスト" val="1,200+" sub="名" />
             <StatItem label="設置ブース (CUBE)" val="450+" sub="拠点" />
             <StatItem label="平均還元率" val="70" sub="%" />
-            <StatItem label="安全事故発生率" val="0.01" sub="%" />
          </div>
       </section>
 
       <div className="max-w-7xl mx-auto px-4 py-32 space-y-48">
         
-        {/* 1. Therapist Section */}
-        <section id="therapist" className="scroll-mt-32">
+        {/* 1. Office / Agency Section — NEW: セラピストはオフィス経由で活動 */}
+        <section id="office" className="scroll-mt-32">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
             <div className="space-y-10">
                <div>
-                  <span className="bg-teal-50 text-teal-600 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-6 inline-block border border-teal-100">For Professionals</span>
+                  <span className="bg-teal-50 text-teal-600 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-6 inline-block border border-teal-100">For Therapist Offices & Agencies</span>
                   <h2 className="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
-                    店舗リスクなしで、<br/>
-                    <span className="text-teal-600 underline decoration-teal-500/20 underline-offset-8">プロとしてのキャリアを。</span>
+                    あなたの事務所を、<br/>
+                    <span className="text-teal-600 underline decoration-teal-500/20 underline-offset-8">全国区のブランドへ。</span>
                   </h2>
                </div>
                <p className="text-gray-500 text-xl font-bold leading-relaxed italic">
-                 「出張」と「CARE CUBE」のハイブリッド。24時間、都内全域があなたの職場になります。
+                 セラピストの採用・管理・配信を、HOGUSYプラットフォーム上で一元化。<br/>
+                 集客も、決済も、安全管理も、すべて本部がサポートします。
                </p>
                <div className="grid sm:grid-cols-2 gap-8">
-                  <BenefitCard icon={<TrendingUp />} title="業界最高水準の報酬" desc="売上の65%〜75%を還元。指名料は全額セラピストの収益となります。" />
-                  <BenefitCard icon={<ShieldCheck />} title="Gemini ライブ安全監視" desc="施術中はAIが常に音声をモニタリング。万が一のトラブルを未然に防ぎます。" />
-                  <BenefitCard icon={<Zap />} title="集客はプラットフォーム任せ" desc="独自のアルゴリズムで、あなたのスキルに最適な顧客を自動マッチング。" />
-                  <BenefitCard icon={<Award />} title="国家資格者優遇" desc="あん摩マッサージ指圧師、柔道整復師等の保有者は優先的に案件を配信。" />
+                  <BenefitCard icon={<Users />} title="セラピスト管理機能" desc="所属セラピストの稼働管理、シフト管理、給与計算を自動化。管理コストを大幅削減。" />
+                  <BenefitCard icon={<ShieldCheck />} title="Gemini ライブ安全監視" desc="全施術にAI音声モニタリングを標準装備。あなたの大切なセラピストを守ります。" />
+                  <BenefitCard icon={<Zap />} title="集客はプラットフォーム任せ" desc="HOGUSYのアルゴリズムが最適な顧客を自動マッチング。営業活動は不要です。" />
+                  <BenefitCard icon={<TrendingUp />} title="高い還元率" desc="オフィス手数料＋セラピスト取り分で、業界最高水準の70%以上を還元。" />
                </div>
-               <button onClick={() => navigate('/auth/signup/therapist')} className="bg-slate-900 text-white px-12 py-6 rounded-[32px] font-black text-lg hover:bg-teal-600 transition-all shadow-2xl active:scale-95 flex items-center gap-4">
-                 セラピストとして登録する <ArrowRight size={24} />
+
+               <div className="bg-teal-50 border border-teal-100 rounded-[32px] p-8 space-y-4">
+                  <h4 className="font-black text-teal-800 text-lg flex items-center gap-2"><Handshake size={20} /> こんな事業者の方に最適です</h4>
+                  <ul className="space-y-2 text-sm font-bold text-teal-700">
+                     <li className="flex items-center gap-2"><CheckCircle size={16} className="text-teal-500 flex-shrink-0" /> 複数のセラピストを雇用・管理している事務所</li>
+                     <li className="flex items-center gap-2"><CheckCircle size={16} className="text-teal-500 flex-shrink-0" /> 独立開業したいセラピストチーム</li>
+                     <li className="flex items-center gap-2"><CheckCircle size={16} className="text-teal-500 flex-shrink-0" /> 地域のマッサージ・整体サロンのオーナー</li>
+                     <li className="flex items-center gap-2"><CheckCircle size={16} className="text-teal-500 flex-shrink-0" /> フリーランスセラピスト（個人事務所として登録可能）</li>
+                  </ul>
+               </div>
+
+               <button onClick={() => navigate('/auth/signup/office')} className="bg-slate-900 text-white px-12 py-6 rounded-[32px] font-black text-lg hover:bg-teal-600 transition-all shadow-2xl active:scale-95 flex items-center gap-4">
+                 オフィスとして登録する <ArrowRight size={24} />
                </button>
             </div>
             <div className="relative">
@@ -115,13 +127,13 @@ const RecruitPage: React.FC = () => {
                   <img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&q=80&w=1000" className="w-full h-full object-cover" alt="Therapist working" />
                   <div className="absolute bottom-12 left-12 right-12 bg-white/95 backdrop-blur-xl p-8 rounded-[48px] shadow-2xl">
                      <div className="flex items-center gap-4 mb-3">
-                        <div className="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-black text-xl">優</div>
+                        <div className="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-black text-xl">鈴</div>
                         <div>
-                           <p className="font-black text-slate-900">田中 有紀 <span className="text-xs font-bold text-gray-400 ml-2">歴12年</span></p>
-                           <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest">Premium Partner</p>
+                           <p className="font-black text-slate-900">リラクゼーション東京 <span className="text-xs font-bold text-gray-400 ml-2">セラピスト12名</span></p>
+                           <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest">Certified Office Partner</p>
                         </div>
                      </div>
-                     <p className="text-xs font-bold text-gray-500 italic">「CARE CUBEがあるから、店舗を持たずに自分の名前で勝負できるようになりました。」</p>
+                     <p className="text-xs font-bold text-gray-500 italic">「HOGUSYに加盟してから、集客の心配がなくなりました。セラピストの管理も格段にラクに。」</p>
                   </div>
                </div>
             </div>
@@ -203,28 +215,28 @@ const RecruitPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 3. Office / Franchise Section */}
+        {/* 3. Area Partner / Franchise Section */}
         <section id="fc" className="scroll-mt-32">
            <div className="max-w-4xl mx-auto text-center space-y-12">
-              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[32px] flex items-center justify-center mx-auto shadow-inner"><Briefcase size={40}/></div>
+              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[32px] flex items-center justify-center mx-auto shadow-inner"><Award size={40}/></div>
               <div>
-                 <h2 className="text-5xl font-black text-slate-900 tracking-tighter">事務所・エージェンシー加盟</h2>
-                 <p className="text-gray-400 font-bold uppercase tracking-[0.4em] mt-4 text-xs">Build your own wellness network</p>
+                 <h2 className="text-5xl font-black text-slate-900 tracking-tighter">エリア・独占パートナー</h2>
+                 <p className="text-gray-400 font-bold uppercase tracking-[0.4em] mt-4 text-xs">Exclusive area partnership</p>
               </div>
               <p className="text-gray-500 text-xl font-bold leading-relaxed max-w-2xl mx-auto">
-                地域の雇用を創出し、セラピストのマネジメントを通じて安定したストック収入を構築。
-                本部のオペレーションシステムをそのまま活用できます。
+                特定エリアのCARE CUBE展開権を保有し、地域密着型の高収益モデルを構築。
+                セラピストオフィスとして加盟後、エリアパートナーへのアップグレードも可能です。
               </p>
               <div className="grid md:grid-cols-2 gap-6">
                  <div className="bg-white p-10 rounded-[56px] border border-gray-100 shadow-sm text-left group hover:shadow-xl transition-all">
-                    <h4 className="text-2xl font-black text-slate-900 mb-4 group-hover:text-indigo-600 transition-colors">認定オフィス制度</h4>
-                    <p className="text-sm text-gray-500 font-bold leading-relaxed mb-8">複数のセラピストを抱える事業者向け。管理画面を提供し、稼働と給与計算を自動化します。</p>
-                    <button onClick={() => navigate('/auth/signup/office')} className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">More Details <ArrowRight size={14}/></button>
+                    <h4 className="text-2xl font-black text-slate-900 mb-4 group-hover:text-indigo-600 transition-colors">フリーランス歓迎</h4>
+                    <p className="text-sm text-gray-500 font-bold leading-relaxed mb-8">個人のセラピストも「1人オフィス」として登録可能。管理画面で自分のスケジュール・料金・実績を一元管理できます。</p>
+                    <button onClick={() => navigate('/auth/signup/office')} className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">個人で登録する <ArrowRight size={14}/></button>
                  </div>
                  <div className="bg-indigo-900 p-10 rounded-[56px] shadow-2xl text-left relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-[80px] opacity-10"></div>
-                    <h4 className="text-2xl font-black text-white mb-4">エリア・独占パートナー</h4>
-                    <p className="text-sm text-indigo-200 font-bold leading-relaxed mb-8">特定エリアのCARE CUBE展開権を保有。地域密着型の高収益モデルを構築します。</p>
+                    <h4 className="text-2xl font-black text-white mb-4">エリア独占プラン</h4>
+                    <p className="text-sm text-indigo-200 font-bold leading-relaxed mb-8">特定エリアのCARE CUBE展開権を独占。地域に根ざした安定収益を構築します。</p>
                     <button className="bg-white text-indigo-900 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-teal-400 group-hover:text-white transition-all">事業説明会を予約</button>
                  </div>
               </div>
