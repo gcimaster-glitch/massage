@@ -8,7 +8,8 @@ import {
   MapPin, Settings, LogOut, LayoutDashboard, JapaneseYen,
   PieChart, BarChart3, Building2, UserPlus, HelpCircle,
   Activity, ClipboardCheck, Megaphone, Palette, Map as MapIcon,
-  Gift, CreditCard, Siren, Zap, Users, MessageSquare
+  Gift, CreditCard, Siren, Zap, Users, MessageSquare,
+  Crown, UserCheck, Hotel, Handshake
 } from 'lucide-react';
 import { Role } from '../../types';
 
@@ -156,28 +157,36 @@ export const MENU_CONFIG: MenuConfig = {
   ],
 
   // ============================================
-  // 管理者 (ADMIN)
+  // 総管理者 (ADMIN) — 神権限：全データCRUDアクセス
   // ============================================
   [Role.ADMIN]: [
     {
-      title: 'メイン',
+      title: '総合ダッシュボード',
       items: [
-        { label: 'ダッシュボード', path: '/admin', icon: LayoutDashboard, description: '全体概要' },
-        { label: 'ユーザー管理', path: '/admin/users', icon: Users, description: 'ユーザー一覧' },
-        { label: '施設管理', path: '/admin/site-management', icon: Building2, description: '施設一覧' },
-        { label: '予約管理', path: '/admin/logs', icon: ClipboardCheck, description: '予約ログ' },
+        { label: 'ダッシュボード', path: '/admin', icon: LayoutDashboard, description: 'プラットフォーム全体概要' },
+      ]
+    },
+    {
+      title: 'データ管理（全CRUD）',
+      items: [
+        { label: 'ユーザー管理', path: '/admin/users', icon: Users, description: '全ユーザーの閲覧・編集・削除' },
+        { label: 'セラピスト管理', path: '/admin/therapists', icon: UserCheck, description: '全セラピストの閲覧・編集・削除' },
+        { label: 'オフィス管理', path: '/admin/offices', icon: Briefcase, description: '全セラピストオフィスの管理' },
+        { label: '拠点ホスト管理', path: '/admin/hosts', icon: Hotel, description: '全拠点ホストの閲覧・編集・削除' },
+        { label: '施設管理', path: '/admin/site-management', icon: Building2, description: '全施設の閲覧・編集・削除' },
+        { label: '予約管理', path: '/admin/logs', icon: ClipboardCheck, description: '全予約の閲覧・編集・キャンセル' },
       ]
     },
     {
       title: '財務・売上',
       items: [
-        { label: '売上・支払い', path: '/admin/payouts', icon: JapaneseYen, description: '精算管理' },
-        { label: '売上設定', path: '/admin/revenue-config', icon: Settings, description: '収益設定' },
+        { label: '売上・支払い', path: '/admin/payouts', icon: JapaneseYen, description: '全精算の管理' },
+        { label: '売上配分設定', path: '/admin/revenue-config', icon: Settings, description: '収益配分ルール' },
         { label: 'Stripe管理', path: '/admin/stripe', icon: CreditCard, description: '決済管理' },
       ]
     },
     {
-      title: 'システム',
+      title: 'システム・安全',
       items: [
         { label: 'アナリティクス', path: '/admin/analytics', icon: BarChart3, description: 'データ分析' },
         { label: 'インシデント管理', path: '/admin/incidents', icon: ShieldAlert, description: 'インシデント' },

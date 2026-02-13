@@ -33,6 +33,8 @@ const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showResend, setShowResend] = useState(false);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   // Handle OAuth callback
   useEffect(() => {
@@ -114,6 +116,12 @@ const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'ログインに失敗しました');
+        
+        // メール未認証エラーの場合、再送ボタンを表示
+        if (response.status === 403 && (errorData.error?.includes('未認証') || errorData.error?.includes('not verified'))) {
+          setShowResend(true);
+        }
+        
         setIsSubmitting(false);
       }
     } catch (err) {
@@ -122,9 +130,48 @@ const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     }
   };
 
+  // Handle Resend Verification
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError('メールアドレスを入力してください');
+      return;
+    }
+    
+    setResendStatus('sending');
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setResendStatus('sent');
+        setError('');
+      } else {
+        setResendStatus('error');
+        setError(data.error || 'メール送信に失敗しました');
+      }
+    } catch (e) {
+      setResendStatus('error');
+      setError('通信エラーが発生しました');
+    }
+  };
+
   // Handle Google OAuth
   const handleGoogleLogin = () => {
-    window.location.href = `/api/auth/oauth/google?role=${role}&redirectPath=${redirectPath}`;
+    // 開発環境と本番環境で適切なURLを構築
+    const isDev = window.location.hostname === 'localhost';
+    
+    // リダイレクトパスにトークン処理用パスを指定する場合
+    // const callbackPath = '/auth/callback';
+    
+    // 現在のページまたは指定されたリダイレクト先
+    const targetRedirect = redirectPath || '/app';
+    
+    window.location.href = `/api/auth/oauth/google?role=${role}&redirect=${targetRedirect}`;
   };
 
   return (
@@ -184,7 +231,26 @@ const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
 
               {error && (
                 <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
-                  <p className="text-sm font-bold text-red-600">{error}</p>
+                  <p className="text-sm font-bold text-red-600 mb-2">{error}</p>
+                  
+                  {showResend && (
+                    <div className="mt-2 pt-2 border-t border-red-200">
+                      {resendStatus === 'sent' ? (
+                        <p className="text-sm text-teal-600 font-bold">
+                          ✅ 確認メールを再送しました。メールボックスをご確認ください。
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendVerification}
+                          disabled={resendStatus === 'sending'}
+                          className="text-sm text-teal-600 font-bold underline hover:text-teal-800 disabled:opacity-50"
+                        >
+                          {resendStatus === 'sending' ? '送信中...' : '認証メールを再送する'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

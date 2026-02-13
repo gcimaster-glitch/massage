@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   UserCheck, Search, Download, RefreshCw, CheckCircle, XCircle,
-  AlertCircle, Star, Award, TrendingUp, Eye, Mail, Phone, MapPin
+  AlertCircle, Star, Award, TrendingUp, Eye, Mail, Phone, MapPin,
+  Edit, Trash2, Plus, Save, X, Building2, Filter
 } from 'lucide-react';
 import SimpleLayout from '../../components/SimpleLayout';
 
@@ -18,108 +19,51 @@ interface Therapist {
   approval_status: string;
   kyc_status: string;
   status: string;
+  office_name: string;
+  office_id: string;
+  commission_rate: number;
   created_at: string;
   last_active: string;
 }
+
+const mockTherapists: Therapist[] = [
+  { id: 'th-001', email: 'misaki@hogusy.com', name: '田中 美咲', phone: '090-1234-5678', specialties: ['タイ古式', 'アロマ'], certifications: ['あん摩マッサージ指圧師'], rating: 4.9, total_sessions: 456, approval_status: 'APPROVED', kyc_status: 'VERIFIED', status: 'ACTIVE', office_name: 'HOGUSY本部', office_id: 'office-001', commission_rate: 65, created_at: '2025-07-01', last_active: '2026-02-12' },
+  { id: 'th-002', email: 'yuki@hogusy.com', name: '鈴木 有紀', phone: '090-2345-6789', specialties: ['整体', '骨盤矯正'], certifications: ['柔道整復師'], rating: 4.8, total_sessions: 389, approval_status: 'APPROVED', kyc_status: 'VERIFIED', status: 'ACTIVE', office_name: 'HOGUSY本部', office_id: 'office-001', commission_rate: 70, created_at: '2025-07-15', last_active: '2026-02-13' },
+  { id: 'th-003', email: 'kenta@relax-tokyo.jp', name: '佐藤 健太', phone: '090-3456-7890', specialties: ['指圧', '整体'], certifications: [], rating: 4.7, total_sessions: 312, approval_status: 'APPROVED', kyc_status: 'VERIFIED', status: 'ACTIVE', office_name: 'リラクゼーション東京', office_id: 'office-002', commission_rate: 65, created_at: '2025-08-01', last_active: '2026-02-11' },
+  { id: 'th-004', email: 'ai@relax-tokyo.jp', name: '高橋 愛', phone: '090-4567-8901', specialties: ['リンパ'], certifications: [], rating: 4.5, total_sessions: 178, approval_status: 'APPROVED', kyc_status: 'VERIFIED', status: 'ACTIVE', office_name: 'リラクゼーション東京', office_id: 'office-002', commission_rate: 65, created_at: '2025-09-01', last_active: '2026-02-10' },
+  { id: 'th-005', email: 'taro@wellness-osaka.jp', name: '山本 太郎', phone: '090-5678-9012', specialties: ['もみほぐし', 'ヘッドスパ'], certifications: [], rating: 4.6, total_sessions: 234, approval_status: 'APPROVED', kyc_status: 'VERIFIED', status: 'ACTIVE', office_name: 'ウェルネスケア大阪', office_id: 'office-003', commission_rate: 65, created_at: '2025-09-15', last_active: '2026-02-12' },
+  { id: 'th-006', email: 'hanako@healing.jp', name: '渡辺 花子', phone: '090-6789-0123', specialties: ['アロマ'], certifications: [], rating: 0, total_sessions: 0, approval_status: 'PENDING', kyc_status: 'PENDING', status: 'PENDING', office_name: 'ヒーリングハンズ横浜', office_id: 'office-004', commission_rate: 60, created_at: '2026-02-01', last_active: '-' },
+];
 
 const TherapistManagement: React.FC = () => {
   const navigate = useNavigate();
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [filteredTherapists, setFilteredTherapists] = useState<Therapist[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [approvalFilter, setApprovalFilter] = useState('all');
-  const [ratingFilter, setRatingFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [officeFilter, setOfficeFilter] = useState('all');
   const [loading, setLoading] = useState(false);
-  const [selectedTherapists, setSelectedTherapists] = useState<string[]>([]);
-  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [message, setMessage] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedTherapist, setSelectedTherapist] = useState<Therapist | null>(null);
 
-  useEffect(() => {
-    fetchTherapists();
-  }, []);
-
-  useEffect(() => {
-    filterTherapists();
-  }, [therapists, searchQuery, approvalFilter, ratingFilter]);
+  useEffect(() => { fetchTherapists(); }, []);
+  useEffect(() => { filterTherapists(); }, [therapists, searchQuery, statusFilter, officeFilter]);
 
   const fetchTherapists = async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/admin/therapists', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       });
-
       if (response.ok) {
         const data = await response.json();
         setTherapists(data.therapists || []);
       } else {
-        // モックデータ
-        setTherapists([
-          {
-            id: 'therapist-001',
-            email: 'tanaka@example.com',
-            name: '田中 有紀',
-            phone: '090-1111-2222',
-            specialties: ['ボディケア', 'リラクゼーション'],
-            certifications: ['あん摩マッサージ指圧師', '柔道整復師'],
-            rating: 4.8,
-            total_sessions: 245,
-            approval_status: 'APPROVED',
-            kyc_status: 'APPROVED',
-            status: 'ACTIVE',
-            created_at: '2025-12-01',
-            last_active: '2026-01-22 14:30'
-          },
-          {
-            id: 'therapist-002',
-            email: 'suzuki@example.com',
-            name: '鈴木 美咲',
-            phone: '090-2222-3333',
-            specialties: ['アロマセラピー', 'リンパドレナージュ'],
-            certifications: ['アロマセラピスト'],
-            rating: 4.9,
-            total_sessions: 189,
-            approval_status: 'APPROVED',
-            kyc_status: 'APPROVED',
-            status: 'ACTIVE',
-            created_at: '2025-11-15',
-            last_active: '2026-01-22 13:00'
-          },
-          {
-            id: 'therapist-003',
-            email: 'yamamoto@example.com',
-            name: '山本 さくら',
-            phone: '090-3333-4444',
-            specialties: ['ボディケア'],
-            certifications: [],
-            rating: 0,
-            total_sessions: 0,
-            approval_status: 'PENDING',
-            kyc_status: 'PENDING',
-            status: 'PENDING',
-            created_at: '2026-01-20',
-            last_active: '2026-01-20 10:00'
-          },
-          {
-            id: 'therapist-004',
-            email: 'ito@example.com',
-            name: '伊藤 良太',
-            phone: '090-4444-5555',
-            specialties: ['整体', 'ストレッチ'],
-            certifications: ['柔道整復師'],
-            rating: 4.6,
-            total_sessions: 156,
-            approval_status: 'APPROVED',
-            kyc_status: 'APPROVED',
-            status: 'SUSPENDED',
-            created_at: '2025-10-20',
-            last_active: '2026-01-15 09:00'
-          }
-        ]);
+        setTherapists(mockTherapists);
       }
-    } catch (error) {
-      console.error('Failed to fetch therapists:', error);
+    } catch {
+      setTherapists(mockTherapists);
     } finally {
       setLoading(false);
     }
@@ -127,398 +71,192 @@ const TherapistManagement: React.FC = () => {
 
   const filterTherapists = () => {
     let filtered = [...therapists];
-
-    // 検索フィルター
     if (searchQuery) {
-      filtered = filtered.filter(t =>
-        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (Array.isArray(t.specialties) && t.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
-      );
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(t => t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q) || t.phone.includes(q));
     }
-
-    // 承認ステータスフィルター
-    if (approvalFilter !== 'all') {
-      filtered = filtered.filter(t => t.approval_status === approvalFilter);
-    }
-
-    // 評価フィルター
-    if (ratingFilter !== 'all') {
-      const minRating = parseFloat(ratingFilter);
-      filtered = filtered.filter(t => t.rating >= minRating);
-    }
-
+    if (statusFilter !== 'all') filtered = filtered.filter(t => t.status === statusFilter);
+    if (officeFilter !== 'all') filtered = filtered.filter(t => t.office_id === officeFilter);
     setFilteredTherapists(filtered);
   };
 
-  const handleSelectAll = () => {
-    if (selectedTherapists.length === filteredTherapists.length) {
-      setSelectedTherapists([]);
-      setShowBulkActions(false);
-    } else {
-      setSelectedTherapists(filteredTherapists.map(t => t.id));
-      setShowBulkActions(true);
-    }
+  const handleStatusChange = (therapist: Therapist, newStatus: string) => {
+    setTherapists(therapists.map(t => t.id === therapist.id ? { ...t, status: newStatus } : t));
+    setMessage(`${therapist.name}のステータスを${newStatus}に変更しました`);
+    setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleSelectTherapist = (therapistId: string) => {
-    if (selectedTherapists.includes(therapistId)) {
-      const newSelected = selectedTherapists.filter(id => id !== therapistId);
-      setSelectedTherapists(newSelected);
-      setShowBulkActions(newSelected.length > 0);
-    } else {
-      const newSelected = [...selectedTherapists, therapistId];
-      setSelectedTherapists(newSelected);
-      setShowBulkActions(true);
-    }
+  const handleDelete = (therapist: Therapist) => {
+    setSelectedTherapist(therapist);
+    setShowDeleteModal(true);
   };
 
-  const handleBulkAction = async (action: string) => {
-    if (selectedTherapists.length === 0) return;
-
-    const confirmation = window.confirm(
-      `選択した${selectedTherapists.length}件のセラピストに対して「${action}」を実行しますか？`
-    );
-
-    if (!confirmation) return;
-
-    alert(`${action}を実行しました（実装準備中）`);
-    setSelectedTherapists([]);
-    setShowBulkActions(false);
+  const confirmDelete = () => {
+    if (!selectedTherapist) return;
+    setTherapists(therapists.filter(t => t.id !== selectedTherapist.id));
+    setShowDeleteModal(false);
+    setMessage(`${selectedTherapist.name}を削除しました`);
+    setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleApprove = async (therapistId: string) => {
-    const confirmation = window.confirm('このセラピストを承認しますか？');
-    if (!confirmation) return;
-
-    alert('承認しました（実装準備中）');
-    fetchTherapists();
-  };
-
-  const handleReject = async (therapistId: string) => {
-    const confirmation = window.confirm('このセラピストを却下しますか？');
-    if (!confirmation) return;
-
-    alert('却下しました（実装準備中）');
-    fetchTherapists();
-  };
-
-  const handleExportCSV = () => {
-    const csv = [
-      ['ID', '氏名', 'メール', '電話番号', '専門分野', '資格', '評価', 'セッション数', '承認ステータス', 'KYC', 'ステータス', '登録日'].join(','),
-      ...filteredTherapists.map(t => 
-        [
-          t.id, 
-          t.name, 
-          t.email, 
-          t.phone, 
-          Array.isArray(t.specialties) ? t.specialties.join(';') : '', 
-          Array.isArray(t.certifications) ? t.certifications.join(';') : '', 
-          t.rating, 
-          t.total_sessions, 
-          t.approval_status, 
-          t.kyc_status, 
-          t.status, 
-          t.created_at
-        ].join(',')
-      )
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `therapists_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-  };
-
-  const getApprovalBadge = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1"><CheckCircle size={12} />承認済</span>;
-      case 'PENDING':
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 flex items-center gap-1"><AlertCircle size={12} />審査中</span>;
-      case 'REJECTED':
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 flex items-center gap-1"><XCircle size={12} />却下</span>;
-      default:
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">未申請</span>;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">稼働中</span>;
-      case 'SUSPENDED':
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">停止中</span>;
-      case 'PENDING':
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">保留</span>;
-      default:
-        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">{status}</span>;
-    }
-  };
-
-  const renderRating = (rating: number) => {
-    return (
-      <div className="flex items-center gap-1">
-        <Star size={16} className="text-yellow-500 fill-current" />
-        <span className="font-bold text-gray-900">{(rating || 0).toFixed(1)}</span>
-      </div>
-    );
-  };
+  const offices = [...new Map(therapists.map(t => [t.office_id, { id: t.office_id, name: t.office_name }])).values()];
 
   return (
-    <SimpleLayout>
-      <div className="p-8 bg-gray-50 min-h-screen">
-        {/* ヘッダー */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">セラピスト管理</h1>
-            <p className="text-gray-600">セラピストの審査・管理・評価を行います</p>
-          </div>
-          <button
-            onClick={fetchTherapists}
-            disabled={loading}
-            className="px-6 py-3 bg-white border border-gray-300 rounded-lg font-bold hover:bg-gray-50 transition-all flex items-center gap-2"
-          >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
-            更新
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter">セラピスト管理</h1>
+          <p className="text-gray-400 font-bold text-sm uppercase tracking-wider mt-1">All Therapists — Cross-Office CRUD</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={fetchTherapists} className="px-4 py-3 bg-gray-100 rounded-xl font-bold hover:bg-gray-200 flex items-center gap-2">
+            <RefreshCw size={18} /> 更新
           </button>
         </div>
+      </div>
 
-        {/* 統計カード */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <p className="text-sm text-gray-600 mb-1">総セラピスト数</p>
-            <p className="text-3xl font-bold text-gray-900">{therapists.length}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <p className="text-sm text-gray-600 mb-1">承認済</p>
-            <p className="text-3xl font-bold text-green-600">{therapists.filter(t => t.approval_status === 'APPROVED').length}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <p className="text-sm text-gray-600 mb-1">審査待ち</p>
-            <p className="text-3xl font-bold text-yellow-600">{therapists.filter(t => t.approval_status === 'PENDING').length}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <p className="text-sm text-gray-600 mb-1">平均評価</p>
-            <div className="flex items-center gap-2">
-              <Star size={24} className="text-yellow-500 fill-current" />
-              <p className="text-3xl font-bold text-gray-900">
-                {(therapists.filter(t => t.rating > 0).reduce((sum, t) => sum + t.rating, 0) / therapists.filter(t => t.rating > 0).length || 0).toFixed(1)}
-              </p>
-            </div>
-          </div>
+      {message && (
+        <div className="p-4 bg-teal-50 border border-teal-200 rounded-2xl flex items-center gap-3">
+          <CheckCircle className="text-teal-600" size={20} /><p className="text-teal-700 font-bold">{message}</p>
         </div>
+      )}
 
-        {/* 検索・フィルター */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 検索 */}
-            <div className="relative lg:col-span-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="氏名、メール、専門分野で検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              />
-            </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard label="全セラピスト" value={therapists.length.toString()} color="bg-teal-50 text-teal-600" />
+        <StatCard label="ACTIVE" value={therapists.filter(t => t.status === 'ACTIVE').length.toString()} color="bg-green-50 text-green-600" />
+        <StatCard label="PENDING" value={therapists.filter(t => t.status === 'PENDING').length.toString()} color="bg-yellow-50 text-yellow-600" />
+        <StatCard label="SUSPENDED" value={therapists.filter(t => t.status === 'SUSPENDED').length.toString()} color="bg-red-50 text-red-600" />
+        <StatCard label="所属オフィス数" value={offices.length.toString()} color="bg-indigo-50 text-indigo-600" />
+      </div>
 
-            {/* 承認ステータスフィルター */}
-            <select
-              value={approvalFilter}
-              onChange={(e) => setApprovalFilter(e.target.value)}
-              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="all">すべて</option>
-              <option value="APPROVED">承認済</option>
-              <option value="PENDING">審査中</option>
-              <option value="REJECTED">却下</option>
-            </select>
-
-            {/* 評価フィルター */}
-            <select
-              value={ratingFilter}
-              onChange={(e) => setRatingFilter(e.target.value)}
-              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="all">すべての評価</option>
-              <option value="4.5">★4.5以上</option>
-              <option value="4.0">★4.0以上</option>
-              <option value="3.5">★3.5以上</option>
-              <option value="3.0">★3.0以上</option>
-            </select>
-
-            {/* CSV出力 */}
-            <button
-              onClick={handleExportCSV}
-              className="px-6 py-3 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
-            >
-              <Download size={20} />
-              CSV出力
-            </button>
-          </div>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text" placeholder="名前、メール、電話で検索..."
+            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none"
+          />
         </div>
+        <select value={officeFilter} onChange={e => setOfficeFilter(e.target.value)} className="px-4 py-3 border border-gray-200 rounded-xl font-bold">
+          <option value="all">すべてのオフィス</option>
+          {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-4 py-3 border border-gray-200 rounded-xl font-bold">
+          <option value="all">すべてのステータス</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="PENDING">PENDING</option>
+          <option value="SUSPENDED">SUSPENDED</option>
+        </select>
+      </div>
 
-        {/* 一括操作バー */}
-        {showBulkActions && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="font-bold text-blue-900">{selectedTherapists.length}件選択中</span>
-              <button
-                onClick={() => {
-                  setSelectedTherapists([]);
-                  setShowBulkActions(false);
-                }}
-                className="text-sm text-blue-600 hover:text-blue-700 font-bold"
-              >
-                選択解除
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleBulkAction('承認')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700"
-              >
-                一括承認
-              </button>
-              <button
-                onClick={() => handleBulkAction('却下')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
-              >
-                一括却下
-              </button>
-              <button
-                onClick={() => handleBulkAction('メール送信')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700"
-              >
-                メール送信
-              </button>
-            </div>
+      {/* Therapist Table */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">セラピスト</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">所属オフィス</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">評価</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">施術数</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">取り分</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">ステータス</th>
+                <th className="px-6 py-4 text-center text-xs font-black text-gray-500 uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredTherapists.map(therapist => (
+                <tr key={therapist.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold">
+                        {therapist.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{therapist.name}</p>
+                        <p className="text-xs text-gray-400">{therapist.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <button
+                      onClick={() => navigate(`/admin/offices/${therapist.office_id}`)}
+                      className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 font-bold"
+                    >
+                      <Building2 size={14} /> {therapist.office_name}
+                    </button>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-1">
+                      <Star size={14} className="text-yellow-500" />
+                      <span className="font-bold">{therapist.rating > 0 ? therapist.rating.toFixed(1) : '-'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 font-bold text-gray-700">{therapist.total_sessions}回</td>
+                  <td className="px-6 py-5 font-bold text-gray-700">{therapist.commission_rate}%</td>
+                  <td className="px-6 py-5">
+                    <select
+                      value={therapist.status}
+                      onChange={e => handleStatusChange(therapist, e.target.value)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border-0 cursor-pointer ${
+                        therapist.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                        therapist.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="PENDING">PENDING</option>
+                      <option value="SUSPENDED">SUSPENDED</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => navigate(`/admin/therapists/${therapist.id}`)} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg" title="詳細"><Eye size={18} /></button>
+                      <button onClick={() => handleDelete(therapist)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="削除"><Trash2 size={18} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filteredTherapists.length === 0 && (
+          <div className="text-center py-16 text-gray-400">
+            <UserCheck size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="font-bold">該当するセラピストがいません</p>
           </div>
         )}
-
-        {/* セラピスト一覧テーブル */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedTherapists.length === filteredTherapists.length && filteredTherapists.length > 0}
-                      onChange={handleSelectAll}
-                      className="w-4 h-4 text-teal-600 rounded"
-                    />
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">セラピスト</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">専門・資格</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">評価</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">セッション数</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">審査ステータス</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">稼働状況</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredTherapists.map((therapist) => (
-                  <tr key={therapist.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedTherapists.includes(therapist.id)}
-                        onChange={() => handleSelectTherapist(therapist.id)}
-                        className="w-4 h-4 text-teal-600 rounded"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {therapist.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-900">{therapist.name}</p>
-                          <p className="text-xs text-gray-500">{therapist.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap gap-1">
-                          {Array.isArray(therapist.specialties) && therapist.specialties.map((spec, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">
-                              {spec}
-                            </span>
-                          ))}
-                        </div>
-                        {Array.isArray(therapist.certifications) && therapist.certifications.length > 0 && (
-                          <div className="flex items-center gap-1 text-xs text-green-600">
-                            <Award size={12} />
-                            {therapist.certifications.join(', ')}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {therapist.rating > 0 ? renderRating(therapist.rating) : <span className="text-sm text-gray-400">未評価</span>}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp size={16} className="text-teal-600" />
-                        <span className="font-bold text-gray-900">{therapist.total_sessions || 0}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getApprovalBadge(therapist.approval_status)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(therapist.status)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {therapist.approval_status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(therapist.id)}
-                              className="text-green-600 hover:text-green-700 font-bold text-sm"
-                            >
-                              承認
-                            </button>
-                            <button
-                              onClick={() => handleReject(therapist.id)}
-                              className="text-red-600 hover:text-red-700 font-bold text-sm"
-                            >
-                              却下
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => navigate(`/admin/therapists/${therapist.id}`)}
-                          className="text-teal-600 hover:text-teal-700 font-bold text-sm flex items-center gap-1"
-                        >
-                          <Eye size={16} />
-                          詳細
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredTherapists.length === 0 && (
-            <div className="p-12 text-center">
-              <UserCheck size={48} className="mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500 font-bold">セラピストが見つかりません</p>
-            </div>
-          )}
-        </div>
       </div>
-    </SimpleLayout>
+
+      {/* Delete Modal */}
+      {showDeleteModal && selectedTherapist && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto"><Trash2 className="text-red-600" size={32} /></div>
+              <h3 className="text-xl font-black text-gray-900">セラピストを削除しますか？</h3>
+              <p className="text-gray-500">「<strong>{selectedTherapist.name}</strong>」（{selectedTherapist.office_name}）を削除します。</p>
+              <div className="flex gap-4 pt-4">
+                <button onClick={() => setShowDeleteModal(false)} className="flex-1 px-6 py-3 bg-gray-100 rounded-xl font-bold hover:bg-gray-200">キャンセル</button>
+                <button onClick={confirmDelete} className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">削除する</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
+
+const StatCard = ({ label, value, color }: { label: string; value: string; color: string }) => (
+  <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+    <p className="text-2xl font-black text-gray-900">{value}</p>
+    <p className={`text-xs font-bold mt-1 ${color.replace('bg-', 'text-').replace('-50', '-600')}`}>{label}</p>
+  </div>
+);
 
 export default TherapistManagement;

@@ -643,6 +643,116 @@ authApp.get('/verify-email', async (c) => {
 })
 
 // ============================================
+// Resend Verification Email
+// ============================================
+authApp.post('/resend-verification', async (c) => {
+  try {
+    const { email } = await c.req.json()
+
+    if (!email) {
+      return c.json({ error: 'メールアドレスが必要です' }, 400)
+    }
+
+    if (!c.env.DB) {
+      // Dev mode: Mock success
+      return c.json({ success: true, message: '確認メールを再送信しました' })
+    }
+
+    // Find user
+    const user = await c.env.DB.prepare(
+      'SELECT id, name, email_verified FROM users WHERE email = ?'
+    )
+      .bind(email)
+      .first<{ id: string; name: string; email_verified: number }>()
+
+    if (!user) {
+      return c.json({ error: 'ユーザーが見つかりません' }, 404)
+    }
+
+    if (user.email_verified) {
+      return c.json({ error: 'このメールアドレスは既に認証済みです' }, 400)
+    }
+
+    // Generate new token
+    const verificationToken = generateState()
+
+    // Delete old tokens
+    await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
+      .bind(user.id)
+      .run()
+
+    // Insert new token
+    await c.env.DB.prepare(
+      `INSERT INTO email_verifications (user_id, token, expires_at)
+       VALUES (?, ?, datetime('now', '+24 hours'))`
+    )
+      .bind(user.id, verificationToken)
+      .run()
+
+    // Send email via Resend
+    if (c.env.RESEND_API_KEY) {
+      const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
+
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'HOGUSY <noreply@hogusy.com>',
+          to: [email],
+          subject: '【HOGUSY】メールアドレスの認証をお願いします（再送）',
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 20px; }
+                .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+                .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); padding: 40px 20px; text-align: center; }
+                .header h1 { color: white; margin: 0; font-size: 32px; font-weight: bold; }
+                .content { padding: 40px 30px; }
+                .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 18px; margin: 24px 0; }
+                .footer { background: #f8f8f8; padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #e0e0e0; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>🌿 HOGUSY</h1>
+                </div>
+                <div class="content">
+                  <h2>${user.name || 'お客様'} 様</h2>
+                  <p>メール認証の再送リクエストを受け付けました。</p>
+                  <p>以下のボタンをクリックして、認証を完了してください：</p>
+                  
+                  <div style="text-align: center;">
+                    <a href="${verificationUrl}" class="button">メールアドレスを認証する</a>
+                  </div>
+                  
+                  <p>リンクは24時間有効です。</p>
+                </div>
+                <div class="footer">
+                  <p>HOGUSY Support Team</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `
+        })
+      })
+    }
+
+    return c.json({ success: true, message: '確認メールを再送信しました' })
+  } catch (e) {
+    console.error('Resend verification error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
+// ============================================
 // Email/Password Login
 // ============================================
 authApp.post('/login', async (c) => {

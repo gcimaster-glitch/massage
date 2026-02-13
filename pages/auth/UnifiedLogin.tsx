@@ -33,7 +33,11 @@ const userTypes: UserTypeOption[] = [
   }
 ];
 
-const UnifiedLogin: React.FC = () => {
+interface UnifiedLoginProps {
+  onLogin?: (role: Role, name?: string) => void;
+}
+
+const UnifiedLogin: React.FC<UnifiedLoginProps> = ({ onLogin }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -43,6 +47,37 @@ const UnifiedLogin: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showResend, setShowResend] = useState(false);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError('メールアドレスを入力してください');
+      return;
+    }
+    
+    setResendStatus('sending');
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setResendStatus('sent');
+        setError('');
+      } else {
+        setResendStatus('error');
+        setError(data.error || 'メール送信に失敗しました');
+      }
+    } catch (e) {
+      setResendStatus('error');
+      setError('通信エラーが発生しました');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +99,13 @@ const UnifiedLogin: React.FC = () => {
         
         // Store user info
         if (data.user) {
-          localStorage.setItem('currentUser', JSON.stringify(data.user));
+          const user = { role: data.user.role as Role, displayName: data.user.name };
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          
+          // Update app state
+          if (onLogin) {
+            onLogin(user.role, user.displayName);
+          }
         }
 
         // Redirect based on role
@@ -82,6 +123,11 @@ const UnifiedLogin: React.FC = () => {
         }
       } else {
         setError(data.error || 'ログインに失敗しました');
+        
+        // メール未認証エラーの場合、再送ボタンを表示
+        if (res.status === 403 && (data.error?.includes('未認証') || data.error?.includes('not verified'))) {
+          setShowResend(true);
+        }
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -172,9 +218,30 @@ const UnifiedLogin: React.FC = () => {
             {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-6">
               {error && (
-                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-center gap-3">
-                  <AlertCircle size={20} className="text-red-600 flex-shrink-0" />
-                  <p className="text-sm font-bold text-red-900">{error}</p>
+                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle size={20} className="text-red-600 flex-shrink-0" />
+                    <p className="text-sm font-bold text-red-900">{error}</p>
+                  </div>
+                  
+                  {showResend && (
+                    <div className="ml-8 pt-2 border-t border-red-200">
+                      {resendStatus === 'sent' ? (
+                        <p className="text-sm text-teal-600 font-bold">
+                          ✅ 確認メールを再送しました。メールボックスをご確認ください。
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendVerification}
+                          disabled={resendStatus === 'sending'}
+                          className="text-sm text-teal-600 font-bold underline hover:text-teal-800 disabled:opacity-50"
+                        >
+                          {resendStatus === 'sending' ? '送信中...' : '認証メールを再送する'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -34,7 +34,7 @@ const AdminRevenueConfig: React.FC = () => {
            </div>
 
            <div className="space-y-6">
-              <RateInput label="直属セラピスト (Standard)" value={config.therapistPercentage} onChange={v => setConfig({...config, therapistPercentage: v})} />
+              <RateInput label="セラピスト標準配分 (Standard)" value={config.therapistPercentage} onChange={v => setConfig({...config, therapistPercentage: v})} />
               <RateInput label="施設ホスト" value={config.hostPercentage} onChange={v => setConfig({...config, hostPercentage: v})} />
               <RateInput label="アフィリエイター" value={config.affiliatePercentage} onChange={v => setConfig({...config, affiliatePercentage: v})} />
               <div className="bg-gray-50 p-6 rounded-[32px] border border-gray-100">
@@ -90,8 +90,8 @@ const AdminRevenueConfig: React.FC = () => {
                 </div>
               ))}
               <p className="text-[10px] text-gray-400 font-bold px-6 leading-relaxed">
-                 ※ ここに登録されていない直属セラピストには、左記の「標準配分」が自動適用されます。
-                 提携事務所所属者の配分は事務所側で管理されます。
+                 ※ ここに登録されていないセラピストには、左記の「標準配分」が自動適用されます。
+                 各オフィス所属セラピストの配分は、オフィス側の設定と併せて計算されます。
               </p>
            </div>
         </section>
