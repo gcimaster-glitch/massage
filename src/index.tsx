@@ -705,8 +705,8 @@ app.post('/api/payments/create-session', async (c) => {
     },
     body: new URLSearchParams({
       'mode': 'payment',
-      'success_url': `${new URL(c.req.url).origin}/#/app/booking/success?id=${bookingId}`,
-      'cancel_url': `${new URL(c.req.url).origin}/#/app/booking/new`,
+      'success_url': `${new URL(c.req.url).origin}/app/booking/success?id=${bookingId}`,
+      'cancel_url': `${new URL(c.req.url).origin}/app/booking/new`,
       'line_items[0][price_data][currency]': 'jpy',
       'line_items[0][price_data][product_data][name]': 'HOGUSY Wellness Session',
       'line_items[0][price_data][unit_amount]': amount.toString(),

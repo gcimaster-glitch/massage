@@ -97,7 +97,7 @@
   - ✅ verifyJWT インポート追加
 
 **デプロイURL**: https://3391c4dc.hogusy.pages.dev  
-**ソーシャルアカウント設定**: https://3391c4dc.hogusy.pages.dev/#/app/account/social  
+**ソーシャルアカウント設定**: https://3391c4dc.hogusy.pages.dev/app/account/social  
 **検証済み**: ✅ Google登録完全動作、トークン発行、ユーザー作成、ログイン成功
 
 ### ✅ Phase L: 完全なユーザー登録システム （**完了🎉**）
@@ -131,7 +131,7 @@
   - ✅ Google OAuth との統合
 
 **デプロイURL**: https://0883db8f.hogusy.pages.dev
-**登録ページ**: https://0883db8f.hogusy.pages.dev/#/auth/signup-user
+**登録ページ**: https://0883db8f.hogusy.pages.dev/auth/signup-user
 **検証済み**: 新規登録、メール認証、ログイン、エラーハンドリング
 
 ### ✅ Phase K: 高度なフィルター機能 + お気に入り + 予約最適化 （**完了🎉**）
@@ -431,7 +431,7 @@ npm run dev:d1
 ### 6. ブラウザで確認
 ```
 http://localhost:3000
-http://localhost:3000/#/strategy  # 事業戦略ページ
+http://localhost:3000/strategy  # 事業戦略ページ
 http://localhost:3000/api/health  # API Health Check
 ```
 
@@ -584,7 +584,7 @@ webapp/
 ### 🚀 本番環境（公開中！）
 - **🌐 本番サイト**: https://hogusy.pages.dev
 - **🆕 最新デプロイ**: https://827613c2.hogusy.pages.dev
-- **📝 事業戦略ページ**: https://hogusy.pages.dev/#/strategy
+- **📝 事業戦略ページ**: https://hogusy.pages.dev/strategy
 - **🔧 API Health Check**: https://hogusy.pages.dev/api/health
 - **👥 セラピストAPI**: https://hogusy.pages.dev/api/therapists
 - **🏢 施設API**: https://hogusy.pages.dev/api/sites
@@ -593,7 +593,7 @@ webapp/
 
 ### 🛠️ 開発環境
 - **🚀 開発サーバー**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai
-- **📝 Strategy ページ**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai/#/strategy
+- **📝 Strategy ページ**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai/strategy
 - **🔧 API Health Check**: https://3000-i5p7tkvsvj3ulos6jliw6-d0b9e1e2.sandbox.novita.ai/api/health
 
 ### 📚 ドキュメント・リソース
