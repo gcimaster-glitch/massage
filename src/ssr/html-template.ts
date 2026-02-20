@@ -21,6 +21,7 @@ export function htmlHead(opts: {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   <title>${opts.title}</title>
   <meta name="description" content="${opts.description}" />
   <meta name="keywords" content="マッサージ,セラピスト,出張マッサージ,リラクゼーション,ほぐし,HOGUSY,ホグシー,CARE CUBE" />
