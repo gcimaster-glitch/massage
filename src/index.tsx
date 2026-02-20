@@ -21,6 +21,7 @@ import bookingsRoutesApp from './bookings-routes'
 import schedulesRoutesApp from './schedules-routes'
 import paymentApp from './routes/payment-routes'
 import emailApp from './routes/email-routes'
+import publicPagesApp from './ssr/public-pages'
 
 // ============================================
 // Type Definitions
@@ -1815,5 +1816,11 @@ app.get('/api/admin/mock-data/status', async (c) => {
     return c.json({ error: 'モックデータの状態確認に失敗しました', details: String(e) }, 500)
   }
 })
+
+// ============================================
+// SSR Public Pages（SEO対応のサーバーサイドHTML）
+// LAMPでいう各.phpファイルに相当
+// ============================================
+app.route('', publicPagesApp)
 
 export default app

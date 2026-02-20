@@ -1,11 +1,22 @@
 {
   "version": 1,
   "include": [
-    "/api/*"
+    "/api/*",
+    "/",
+    "/recruit",
+    "/about",
+    "/legal",
+    "/commercial-transaction"
   ],
   "exclude": [
     "/assets/*",
     "/static/*",
-    "/_worker.js"
+    "/_worker.js",
+    "/*.jpg",
+    "/*.png",
+    "/*.svg",
+    "/*.ico",
+    "/*.xml",
+    "/*.txt"
   ]
 }
