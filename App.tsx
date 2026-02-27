@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import Login from './pages/auth/Login';
 import UnifiedLogin from './pages/auth/UnifiedLogin';
 import UnifiedRegister from './pages/auth/UnifiedRegister';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -22,9 +21,6 @@ import SignupTherapist from './pages/auth/SignupTherapist';
 import SignupHost from './pages/auth/SignupHost';
 import SignupOffice from './pages/auth/SignupOffice';
 
-// --- Index List (Development Only) ---
-import IndexList from './pages/IndexList';
-import DevLogin from './pages/dev/DevLogin';
 
 // --- Portal (Public) ---
 import PortalHome from './pages/portal/PortalHome';
@@ -151,6 +147,20 @@ import CommercialTransaction from './pages/shared/CommercialTransaction';
 
 import { Role } from './types';
 
+// ============================================
+// 開発専用コンポーネント（本番ビルドでは動的importで除外）
+// import.meta.env.DEV は Vite が本番ビルド時に false に置換し、
+// ツリーシェイキングによりバンドルから完全に除去される
+// ============================================
+const IS_DEV = import.meta.env.DEV;
+const IndexList = IS_DEV
+  ? React.lazy(() => import('./pages/IndexList'))
+  : null;
+const DevLogin = IS_DEV
+  ? React.lazy(() => import('./pages/dev/DevLogin'))
+  : null;
+
+
 // MAPからの予約リダイレクト
 const RedirectToSiteDetail: React.FC = () => {
   const { siteId } = useParams<{ siteId: string }>();
@@ -249,9 +259,15 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Development Only - Index List */}
-        <Route path="/indexlist" element={<IndexList />} />
-        <Route path="/dev/login" element={<DevLogin onLogin={handleLogin} />} />
+        {/* Development Only - 本番環境では / にリダイレクト */}
+        {IS_DEV && IndexList && (
+          <Route path="/indexlist" element={<React.Suspense fallback={null}><IndexList /></React.Suspense>} />
+        )}
+        {IS_DEV && DevLogin && (
+          <Route path="/dev/login" element={<React.Suspense fallback={null}><DevLogin onLogin={handleLogin} /></React.Suspense>} />
+        )}
+        {!IS_DEV && <Route path="/dev/login" element={<Navigate to="/" replace />} />}
+        {!IS_DEV && <Route path="/indexlist" element={<Navigate to="/" replace />} />}
         
         {/* Public Portal */}
         <Route path="/" element={<PortalHome />} />
