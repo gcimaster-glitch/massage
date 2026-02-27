@@ -66,9 +66,9 @@ officesApp.get('/:id', async (c) => {
     
     // 事務所情報
     const { results: offices } = await c.env.DB.prepare(`
-      SELECT to.*
-      FROM therapist_offices to
-      WHERE to.id = ?
+      SELECT tof.*
+      FROM therapist_offices tof
+      WHERE tof.id = ?
     `).bind(id).all()
     
     if (offices.length === 0) {

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
+import { requireAuth as requireAuthentication } from './auth-middleware';
 
 type Bindings = {
   DB: D1Database;
@@ -8,50 +9,19 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// JWT認証ミドルウェア
+// JWT認証ミドルウェア（統一版）
 const requireAuth = async (c: any, next: any) => {
   const authHeader = c.req.header('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return c.json({ error: '認証が必要です' }, 401);
+  const authResult = await requireAuthentication(authHeader, c.env.JWT_SECRET);
+  
+  if (!authResult.success) {
+    return c.json({ error: authResult.error || '認証が必要です' }, 401);
   }
 
-  const token = authHeader.substring(7);
-  try {
-    const payload = await verifyJWT(token, c.env.JWT_SECRET);
-    if (!payload) {
-      return c.json({ error: '無効なトークンです' }, 401);
-    }
-    c.set('userId', payload.userId);
-    c.set('role', payload.role);
-    await next();
-  } catch (error) {
-    return c.json({ error: '認証に失敗しました' }, 401);
-  }
+  c.set('userId', authResult.user.userId);
+  c.set('role', authResult.user.role);
+  await next();
 };
-
-// JWT検証関数
-async function verifyJWT(token: string, secret: string) {
-  try {
-    const [headerB64, payloadB64, signature] = token.split('.');
-    const payload = JSON.parse(
-      decodeURIComponent(
-        atob(payloadB64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      )
-    );
-
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
-      return null;
-    }
-
-    return payload;
-  } catch (error) {
-    console.error('JWT verify error:', error);
-    return null;
-  }
-}
 
 // ============================================
 // 事務所管理（管理者向け）

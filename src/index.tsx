@@ -14,7 +14,7 @@ import therapistEditApp from './therapist-edit-routes'
 import therapistManagementApp from './therapist-management-routes'
 import imageApp from './image-routes'
 import userManagementApp from './user-management-routes'
-import sitesRoutesApp from './sites-routes'
+// sitesRoutesApp は sitesApp と同一のため削除済み
 import therapistsRoutesApp from './therapists-routes'
 import areasRoutesApp from './areas-routes'
 import bookingsRoutesApp from './bookings-routes'
@@ -54,10 +54,21 @@ const app = new Hono<{ Bindings: Bindings }>()
 // ============================================
 // Middleware
 // ============================================
+// CORS設定: 本番では環境変数 ALLOWED_ORIGINS で制限、開発時は '*'
 app.use('/api/*', cors({
-  origin: '*',
+  origin: (origin, c) => {
+    const allowedOrigins = (c.env as any).ALLOWED_ORIGINS
+      ? (c.env as any).ALLOWED_ORIGINS.split(',').map((s: string) => s.trim())
+      : ['https://hogusy.com', 'https://www.hogusy.com']
+    // 開発環境またはoriginが許可リストに含まれる場合は許可
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      return origin || '*'
+    }
+    return allowedOrigins[0]
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }))
 
 // ============================================
@@ -126,10 +137,7 @@ app.route('/api/images', imageApp)
 // ============================================
 app.route('/api/admin/users', userManagementApp)
 
-// ============================================
-// Mount Public Sites Routes
-// ============================================
-app.route('/api/sites', sitesRoutesApp)
+// /api/sites は sitesApp で登録済み（重複削除）
 
 // ============================================
 // Mount Public Therapists Routes
@@ -182,7 +190,12 @@ app.post('/api/auth/kyc', async (c) => {
   
   try {
     const token = authHeader.replace('Bearer ', '')
-    const payload = JSON.parse(atob(token))
+    // verifyJWT は jose ライブラリを使用した安全な検証
+    const { verifyJWT } = await import('./auth-helpers')
+    const payload = await verifyJWT(token, c.env.JWT_SECRET)
+    if (!payload) {
+      return c.json({ error: 'Invalid or expired token' }, 401)
+    }
     
     const { id_type, id_number, document_data } = await c.req.json()
     
@@ -863,7 +876,12 @@ app.get('/api/user/payments', async (c) => {
   
   try {
     const token = authHeader.replace('Bearer ', '')
-    const payload = JSON.parse(atob(token))
+    // verifyJWT は jose ライブラリを使用した安全な検証
+    const { verifyJWT } = await import('./auth-helpers')
+    const payload = await verifyJWT(token, c.env.JWT_SECRET)
+    if (!payload) {
+      return c.json({ error: 'Invalid or expired token' }, 401)
+    }
     const userId = payload.userId
     
     if (!c.env.DB) {
@@ -927,7 +945,12 @@ app.get('/api/bookings/:id/receipt', async (c) => {
   
   try {
     const token = authHeader.replace('Bearer ', '')
-    const payload = JSON.parse(atob(token))
+    // verifyJWT は jose ライブラリを使用した安全な検証
+    const { verifyJWT } = await import('./auth-helpers')
+    const payload = await verifyJWT(token, c.env.JWT_SECRET)
+    if (!payload) {
+      return c.json({ error: 'Invalid or expired token' }, 401)
+    }
     const userId = payload.userId
     
     if (!c.env.DB) {
@@ -1193,452 +1216,12 @@ app.get('/api/storage/upload-url', async (c) => {
 })
 
 // ============================================
-// Therapist Routes
+// 以下のルートは app.route() で登録済みのため削除（重複防止）
+// /api/therapists → therapistsRoutesApp + therapistManagementApp
+// /api/sites → sitesApp
+// /api/offices → officesApp
+// /api/therapists/search → therapistsRoutesApp
 // ============================================
-app.get('/api/therapists', async (c) => {
-  try {
-    if (!c.env.DB) {
-      // モックデータ（開発環境用）
-      return c.json([
-        {
-          id: 't1',
-          name: '田中 有紀',
-          rating: 4.9,
-          review_count: 120,
-          specialties: ['LICENSED', 'RELAXATION'],
-          approved_areas: ['SHINJUKU', 'SHIBUYA']
-        },
-        {
-          id: 't2',
-          name: '佐藤 花子',
-          rating: 4.8,
-          review_count: 85,
-          specialties: ['HEAD', 'RECOVERY'],
-          approved_areas: ['SHINJUKU']
-        }
-      ])
-    }
-    
-    const { results } = await c.env.DB.prepare(`
-      SELECT u.id, u.name, u.avatar_url, tp.rating, tp.review_count, tp.specialties, tp.approved_areas, tp.bio
-      FROM users u
-      JOIN therapist_profiles tp ON u.id = tp.user_id
-      WHERE u.role = 'THERAPIST'
-      LIMIT 50
-    `).all()
-    
-    // Map avatar URLs to local static files
-    const therapistsWithLocalImages = results.map((t: any) => ({
-      ...t,
-      avatar_url: `/therapists/${t.id}.jpg`
-    }))
-    
-    return c.json(therapistsWithLocalImages)
-  } catch (e) {
-    // エラーが発生した場合もモックデータを返す
-    return c.json([
-      {
-        id: 't1',
-        name: '田中 有紀',
-        rating: 4.9,
-        review_count: 120,
-        specialties: ['LICENSED', 'RELAXATION'],
-        approved_areas: ['SHINJUKU', 'SHIBUYA']
-      }
-    ])
-  }
-})
-
-app.get('/api/therapists/:id', async (c) => {
-  const id = c.req.param('id')
-  
-  try {
-    if (!c.env.DB) {
-      // モックデータ（開発環境用）
-      return c.json({
-        id: 't1',
-        name: '田中 有紀',
-        rating: 4.9,
-        review_count: 120,
-        specialties: ['LICENSED', 'RELAXATION'],
-        approved_areas: ['SHINJUKU', 'SHIBUYA'],
-        bio: 'プロフェッショナルなセラピストです。',
-        imageUrl: 'https://images.unsplash.com/photo-1622902046580-2b47f47f0871?auto=format&fit=crop&q=80&w=800&h=800'
-      })
-    }
-    
-    const { results } = await c.env.DB.prepare(`
-      SELECT u.*, tp.*
-      FROM users u
-      JOIN therapist_profiles tp ON u.id = tp.user_id
-      WHERE u.id = ?
-    `).bind(id).all()
-    
-    return c.json(results[0] || null)
-  } catch (e) {
-    // エラーが発生した場合もモックデータを返す
-    return c.json({
-      id,
-      name: '田中 有紀',
-      rating: 4.9,
-      review_count: 120
-    })
-  }
-})
-
-// セラピストのメニュー取得
-app.get('/api/therapists/:id/menu', async (c) => {
-  const therapistId = c.req.param('id')
-  
-  try {
-    if (!c.env.DB) {
-      // モックデータ（開発環境用）
-      return c.json({
-        courses: [
-          {
-            id: 'course-1',
-            name: '整体コース（60分）',
-            duration: 60,
-            base_price: 8000,
-            description: '全身の疲れをほぐす整体コース',
-          },
-          {
-            id: 'course-2',
-            name: 'リラクゼーション（90分）',
-            duration: 90,
-            base_price: 12000,
-            description: 'じっくりとリラックスできるコース',
-          },
-          {
-            id: 'course-3',
-            name: 'ショートコース（30分）',
-            duration: 30,
-            base_price: 5000,
-            description: '肩・首を集中的にほぐすコース',
-          },
-        ],
-        options: [
-          {
-            id: 'option-1',
-            name: 'ヘッドマッサージ追加',
-            duration: 15,
-            base_price: 2000,
-            description: '頭皮をほぐしてリフレッシュ',
-          },
-          {
-            id: 'option-2',
-            name: 'フットケア追加',
-            duration: 15,
-            base_price: 1500,
-            description: '足裏をじっくりほぐす',
-          },
-          {
-            id: 'option-3',
-            name: 'アロマオイル',
-            duration: 0,
-            base_price: 1000,
-            description: 'リラックス効果のあるアロマオイル',
-          },
-        ],
-      })
-    }
-    
-    // DB実装
-    // 本番DBでは user_id が therapist_profiles の主キー
-    const therapistProfileId = therapistId // user_id をそのまま使用
-    
-    // 1. コースを取得（therapist_menu と master_courses を JOIN）
-    const { results: courses } = await c.env.DB.prepare(`
-      SELECT 
-        mc.id,
-        mc.name,
-        mc.duration,
-        tm.price as base_price,
-        mc.description
-      FROM therapist_menu tm
-      JOIN master_courses mc ON tm.master_course_id = mc.id
-      WHERE tm.therapist_id = ? AND tm.is_available = 1
-      ORDER BY tm.price
-    `).bind(therapistProfileId).all()
-    
-    // 2. オプションを取得（therapist_options と master_options を JOIN）
-    const { results: options } = await c.env.DB.prepare(`
-      SELECT 
-        mo.id,
-        mo.name,
-        mo.duration,
-        topt.price as base_price,
-        mo.description
-      FROM therapist_options topt
-      JOIN master_options mo ON topt.master_option_id = mo.id
-      WHERE topt.therapist_id = ? AND topt.is_available = 1
-      ORDER BY topt.price
-    `).bind(therapistProfileId).all()
-    
-    return c.json({
-      courses: courses || [],
-      options: options || [],
-    })
-  } catch (e) {
-    console.error('メニュー取得エラー:', e)
-    // エラー時はモックデータを返す
-    return c.json({
-      courses: [
-        {
-          id: 'course-1',
-          name: '整体コース（60分）',
-          duration: 60,
-          base_price: 8000,
-          description: '全身の疲れをほぐす整体コース',
-        },
-        {
-          id: 'course-2',
-          name: 'リラクゼーション（90分）',
-          duration: 90,
-          base_price: 12000,
-          description: 'じっくりとリラックスできるコース',
-        },
-      ],
-      options: [
-        {
-          id: 'option-1',
-          name: 'ヘッドマッサージ追加',
-          duration: 15,
-          base_price: 2000,
-          description: '頭皮をほぐしてリフレッシュ',
-        },
-      ],
-    })
-  }
-})
-
-// ============================================
-// Sites Routes (施設一覧・検索)
-// ============================================
-app.get('/api/sites', async (c) => {
-  const area = c.req.query('area')
-  const type = c.req.query('type')
-  const search = c.req.query('search')
-  const status = c.req.query('status') || 'APPROVED' // デフォルトは稼働中のみ
-  
-  try {
-    if (!c.env.DB) {
-      return c.json({ sites: [] })
-    }
-    
-    // Check if we're using area or area_code
-    const { results: schemaCheck } = await c.env.DB.prepare(
-      "SELECT sql FROM sqlite_master WHERE type='table' AND name='sites'"
-    ).all()
-    
-    const useAreaCode = schemaCheck.length > 0 && 
-                        schemaCheck[0].sql.includes('area_code')
-    
-    const areaColumn = useAreaCode ? 's.area_code' : 's.area'
-    const latColumn = useAreaCode ? 's.latitude' : 's.lat'
-    const lngColumn = useAreaCode ? 's.longitude' : 's.lng'
-    
-    let query = `
-      SELECT s.id, s.name, s.type, s.address, ${areaColumn} as area, 
-             ${latColumn} as lat, ${lngColumn} as lng, s.host_id, s.status,
-             u.name as host_name
-      FROM sites s
-      LEFT JOIN users u ON s.host_id = u.id
-      WHERE 1=1
-    `
-    const params: any[] = []
-    
-    // ステータスフィルター（重要！）
-    if (status && status !== 'ALL') {
-      query += ' AND s.status = ?'
-      params.push(status)
-    }
-    
-    if (area) {
-      query += ` AND ${areaColumn} = ?`
-      params.push(area)
-    }
-    
-    if (type) {
-      query += ' AND s.type = ?'
-      params.push(type)
-    }
-    
-    if (search) {
-      query += ' AND (s.name LIKE ? OR s.address LIKE ?)'
-      params.push(`%${search}%`, `%${search}%`)
-    }
-    
-    query += ' ORDER BY s.name LIMIT 100'
-    
-    const { results } = await c.env.DB.prepare(query).bind(...params).all()
-    return c.json({ sites: results })
-  } catch (e) {
-    console.error('Sites API error:', e)
-    return c.json({ sites: [], error: e.message }, 500)
-  }
-})
-
-app.get('/api/sites/:id', async (c) => {
-  const id = c.req.param('id')
-  
-  try {
-    if (!c.env.DB) {
-      return c.json({ error: 'Database not available' }, 503)
-    }
-    
-    // Check schema
-    const { results: schemaCheck } = await c.env.DB.prepare(
-      "SELECT sql FROM sqlite_master WHERE type='table' AND name='sites'"
-    ).all()
-    
-    const useAreaCode = schemaCheck.length > 0 && 
-                        schemaCheck[0].sql.includes('area_code')
-    
-    const areaColumn = useAreaCode ? 's.area_code' : 's.area'
-    const latColumn = useAreaCode ? 's.latitude' : 's.lat'
-    const lngColumn = useAreaCode ? 's.longitude' : 's.lng'
-    
-    const { results } = await c.env.DB.prepare(`
-      SELECT s.id, s.name, s.type, s.address, ${areaColumn} as area,
-             ${latColumn} as lat, ${lngColumn} as lng, s.host_id,
-             u.name as host_name, u.email as host_email, u.phone as host_phone
-      FROM sites s
-      LEFT JOIN users u ON s.host_id = u.id
-      WHERE s.id = ?
-    `).bind(id).all()
-    
-    if (results.length === 0) {
-      return c.json({ error: 'Site not found' }, 404)
-    }
-    
-    return c.json(results[0])
-  } catch (e) {
-    console.error('Site detail error:', e)
-    return c.json({ error: 'Internal server error' }, 500)
-  }
-})
-
-// ============================================
-// Offices Routes (事務所一覧・詳細)
-// ============================================
-app.get('/api/offices', async (c) => {
-  try {
-    if (!c.env.DB) {
-      return c.json([])
-    }
-    
-    const { results } = await c.env.DB.prepare(`
-      SELECT o.id, o.name, o.area_code as area, o.manager_name, o.contact_email,
-             o.commission_rate, o.therapist_count, o.status,
-             u.name as owner_name
-      FROM offices o
-      LEFT JOIN users u ON o.user_id = u.id
-      WHERE o.status = 'APPROVED'
-      ORDER BY o.therapist_count DESC
-    `).all()
-    
-    return c.json(results)
-  } catch (e) {
-    console.error('Offices API error:', e)
-    return c.json([], 500)
-  }
-})
-
-app.get('/api/offices/:id', async (c) => {
-  const id = c.req.param('id')
-  
-  try {
-    if (!c.env.DB) {
-      return c.json({ error: 'Database not available' }, 503)
-    }
-    
-    // 事務所情報
-    const { results: offices } = await c.env.DB.prepare(`
-      SELECT o.*, u.name as owner_name, u.email as owner_email, u.phone as owner_phone
-      FROM offices o
-      LEFT JOIN users u ON o.user_id = u.id
-      WHERE o.id = ?
-    `).bind(id).all()
-    
-    if (offices.length === 0) {
-      return c.json({ error: 'Office not found' }, 404)
-    }
-    
-    // 所属セラピスト一覧
-    const { results: therapists } = await c.env.DB.prepare(`
-      SELECT u.id, u.name, u.avatar_url, tp.rating, tp.review_count,
-             tp.specialties, tp.approved_areas
-      FROM therapist_profiles tp
-      JOIN users u ON tp.user_id = u.id
-      WHERE tp.office_id = ?
-      ORDER BY tp.rating DESC, tp.review_count DESC
-    `).bind(id).all()
-    
-    return c.json({
-      ...offices[0],
-      therapists
-    })
-  } catch (e) {
-    console.error('Office detail error:', e)
-    return c.json({ error: 'Internal server error' }, 500)
-  }
-})
-
-// ============================================
-// Therapists Search with Filters
-// ============================================
-app.get('/api/therapists/search', async (c) => {
-  const area = c.req.query('area')
-  const officeId = c.req.query('officeId')
-  const specialty = c.req.query('specialty')
-  const minRating = c.req.query('minRating')
-  
-  try {
-    if (!c.env.DB) {
-      return c.json([])
-    }
-    
-    let query = `
-      SELECT u.id, u.name, u.avatar_url, tp.rating, tp.review_count,
-             tp.specialties, tp.approved_areas, tp.office_id,
-             o.name as office_name
-      FROM users u
-      JOIN therapist_profiles tp ON u.id = tp.user_id
-      LEFT JOIN therapist_offices o ON tp.office_id = o.id
-      WHERE u.role = 'THERAPIST' AND tp.is_active = TRUE
-    `
-    const params: any[] = []
-    
-    if (officeId) {
-      query += ' AND tp.office_id = ?'
-      params.push(officeId)
-    }
-    
-    if (minRating) {
-      query += ' AND tp.rating >= ?'
-      params.push(parseFloat(minRating))
-    }
-    
-    if (area) {
-      query += ' AND tp.approved_areas LIKE ?'
-      params.push(`%${area}%`)
-    }
-    
-    if (specialty) {
-      query += ' AND tp.specialties LIKE ?'
-      params.push(`%${specialty}%`)
-    }
-    
-    query += ' ORDER BY tp.rating DESC, tp.review_count DESC LIMIT 50'
-    
-    const { results } = await c.env.DB.prepare(query).bind(...params).all()
-    return c.json(results)
-  } catch (e) {
-    console.error('Therapist search error:', e)
-    return c.json([], 500)
-  }
-})
 
 // ============================================
 // Mock Data Management Routes (Admin only)

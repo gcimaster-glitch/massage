@@ -16,7 +16,11 @@ import {
   getUserInfo,
   createJWT,
   verifyJWT,
+  hashPassword,
+  verifyPassword,
 } from './auth-helpers'
+import { checkRateLimit, RATE_LIMITS } from './rate-limit'
+import { validateEmail, validatePassword } from './validation'
 
 type Bindings = {
   DB: D1Database
@@ -217,7 +221,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
         .run()
 
       // Generate JWT
-      const jwt = createJWT(
+      const jwt = await createJWT(
         {
           userId: user.id,
           email: user.email,
@@ -250,7 +254,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       avatar_url: providerUser.avatar_url,
     }
 
-    const jwt = createJWT(
+    const jwt = await createJWT(
       {
         userId: mockUser.id,
         email: mockUser.email,
@@ -320,17 +324,12 @@ authApp.post('/register', async (c) => {
         
         // Update existing user instead of deleting
         try {
-          // Hash password
-          const encoder = new TextEncoder()
-          const data = encoder.encode(password)
-          const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-          const hashArray = Array.from(new Uint8Array(hashBuffer))
-          const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+          // Hash password (PBKDF2 + salt)
+          const passwordHash = await hashPassword(password)
 
           console.log(`🔍 Attempting to update user: ${existingUserId}`)
           console.log(`  - name: ${name}`)
           console.log(`  - phone: ${phone || '(empty)'}`)
-          console.log(`  - passwordHash length: ${passwordHash.length}`)
 
           // Update user with new password and info
           const updateResult = await c.env.DB.prepare(
@@ -369,6 +368,9 @@ authApp.post('/register', async (c) => {
           if (c.env.RESEND_API_KEY) {
             const verificationUrl = `${c.req.header('origin') || 'https://hogusy.com'}/api/auth/verify-email?token=${verificationToken}`
             
+            console.log('📧 [OAuth] Sending verification email to:', email);
+            console.log('🔗 [OAuth] Verification URL:', verificationUrl);
+            
             try {
               const resendResponse = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
@@ -404,10 +406,14 @@ authApp.post('/register', async (c) => {
               })
 
               if (!resendResponse.ok) {
-                console.error('Failed to send verification email:', await resendResponse.text())
+                const errorText = await resendResponse.text();
+                console.error('❌ [OAuth] Failed to send verification email:', resendResponse.status, errorText);
+              } else {
+                const responseData = await resendResponse.json();
+                console.log('✅ [OAuth] Email sent successfully:', responseData);
               }
             } catch (emailError) {
-              console.error('Email sending error:', emailError)
+              console.error('❌ [OAuth] Email sending error:', emailError)
             }
           }
 
@@ -427,11 +433,8 @@ authApp.post('/register', async (c) => {
       }
 
       // Hash password using Web Crypto API
-      const encoder = new TextEncoder()
-      const data = encoder.encode(password)
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-      const hashArray = Array.from(new Uint8Array(hashBuffer))
-      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+      // Hash password (PBKDF2 + salt)
+      const passwordHash = await hashPassword(password)
 
       // Generate user ID and verification token
       const userId = generateUserId()
@@ -456,8 +459,11 @@ authApp.post('/register', async (c) => {
       // Send verification email via Resend
       const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
       
+      console.log('📧 Sending verification email to:', email);
+      console.log('🔗 Verification URL:', verificationUrl);
+      
       try {
-        await fetch('https://api.resend.com/emails', {
+        const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
@@ -526,8 +532,17 @@ authApp.post('/register', async (c) => {
             `
           })
         });
+        
+        // Check email response
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text();
+          console.error('❌ Email sending failed:', emailResponse.status, errorText);
+        } else {
+          const responseData = await emailResponse.json();
+          console.log('✅ Email sent successfully:', responseData);
+        }
       } catch (emailError) {
-        console.error('Email sending error:', emailError);
+        console.error('❌ Email sending error:', emailError);
         // メール送信失敗してもユーザー登録は成功とする
       }
 
@@ -619,7 +634,7 @@ authApp.get('/verify-email', async (c) => {
       .run()
 
     // Create JWT token
-    const jwt = createJWT(
+    const jwt = await createJWT(
       {
         userId: user.id,
         email: user.email,
@@ -643,132 +658,46 @@ authApp.get('/verify-email', async (c) => {
 })
 
 // ============================================
-// Resend Verification Email
-// ============================================
-authApp.post('/resend-verification', async (c) => {
-  try {
-    const { email } = await c.req.json()
-
-    if (!email) {
-      return c.json({ error: 'メールアドレスが必要です' }, 400)
-    }
-
-    if (!c.env.DB) {
-      // Dev mode: Mock success
-      return c.json({ success: true, message: '確認メールを再送信しました' })
-    }
-
-    // Find user
-    const user = await c.env.DB.prepare(
-      'SELECT id, name, email_verified FROM users WHERE email = ?'
-    )
-      .bind(email)
-      .first<{ id: string; name: string; email_verified: number }>()
-
-    if (!user) {
-      return c.json({ error: 'ユーザーが見つかりません' }, 404)
-    }
-
-    if (user.email_verified) {
-      return c.json({ error: 'このメールアドレスは既に認証済みです' }, 400)
-    }
-
-    // Generate new token
-    const verificationToken = generateState()
-
-    // Delete old tokens
-    await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?')
-      .bind(user.id)
-      .run()
-
-    // Insert new token
-    await c.env.DB.prepare(
-      `INSERT INTO email_verifications (user_id, token, expires_at)
-       VALUES (?, ?, datetime('now', '+24 hours'))`
-    )
-      .bind(user.id, verificationToken)
-      .run()
-
-    // Send email via Resend
-    if (c.env.RESEND_API_KEY) {
-      const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
-
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'HOGUSY <noreply@hogusy.com>',
-          to: [email],
-          subject: '【HOGUSY】メールアドレスの認証をお願いします（再送）',
-          html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 20px; }
-                .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-                .header { background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); padding: 40px 20px; text-align: center; }
-                .header h1 { color: white; margin: 0; font-size: 32px; font-weight: bold; }
-                .content { padding: 40px 30px; }
-                .button { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 18px; margin: 24px 0; }
-                .footer { background: #f8f8f8; padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #e0e0e0; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <h1>🌿 HOGUSY</h1>
-                </div>
-                <div class="content">
-                  <h2>${user.name || 'お客様'} 様</h2>
-                  <p>メール認証の再送リクエストを受け付けました。</p>
-                  <p>以下のボタンをクリックして、認証を完了してください：</p>
-                  
-                  <div style="text-align: center;">
-                    <a href="${verificationUrl}" class="button">メールアドレスを認証する</a>
-                  </div>
-                  
-                  <p>リンクは24時間有効です。</p>
-                </div>
-                <div class="footer">
-                  <p>HOGUSY Support Team</p>
-                </div>
-              </div>
-            </body>
-            </html>
-          `
-        })
-      })
-    }
-
-    return c.json({ success: true, message: '確認メールを再送信しました' })
-  } catch (e) {
-    console.error('Resend verification error:', e)
-    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
-  }
-})
-
-// ============================================
-// Email/Password Login
+// Email/Password Login（セキュリティ強化版）
 // ============================================
 authApp.post('/login', async (c) => {
+  const ipAddress = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')?.split(',')[0] || 'unknown';
+
   try {
     const body = await c.req.json()
     const { email, password } = body
 
-    if (!email || !password) {
-      return c.json({ error: 'メールアドレスとパスワードを入力してください' }, 400)
+    // 入力バリデーション
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      return c.json({ error: emailValidation.error }, 400);
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return c.json({ error: passwordValidation.error }, 400);
+    }
+
+    // レート制限チェック（5回/分）
+    const rateLimitResult = await checkRateLimit(
+      c.env.DB,
+      ipAddress,
+      '/api/auth/login',
+      RATE_LIMITS.LOGIN
+    );
+
+    if (!rateLimitResult.allowed) {
+      return c.json({ 
+        error: RATE_LIMITS.LOGIN.message,
+        retryAfter: rateLimitResult.retryAfter
+      }, 429);
     }
 
     if (!c.env.DB) {
       // Development mode - mock login
       return c.json({
         success: true,
-        token: createJWT(
+        token: await createJWT(
           {
             userId: 'dev-user',
             email: email,
@@ -788,34 +717,26 @@ authApp.post('/login', async (c) => {
     }
 
     try {
-      // Hash password for comparison
-      const encoder = new TextEncoder()
-      const data = encoder.encode(password)
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-      const hashArray = Array.from(new Uint8Array(hashBuffer))
-      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-
-      // Find user by email and password (try both hashed and plain for demo accounts)
-      let results: any = await c.env.DB.prepare(
-        'SELECT id, email, name, role, avatar_url, email_verified FROM users WHERE email = ? AND password_hash = ?'
+      // ユーザーをメールで取得し、verifyPasswordでハッシュを比較（旧形式互換対応済み）
+      const { results: userResults } = await c.env.DB.prepare(
+        'SELECT id, email, name, role, avatar_url, email_verified, password_hash FROM users WHERE email = ?'
       )
-        .bind(email, passwordHash)
+        .bind(email)
         .all()
 
-      // If no results with hashed password, try plain password for demo accounts
-      if (results.results.length === 0) {
-        results = await c.env.DB.prepare(
-          'SELECT id, email, name, role, avatar_url, email_verified FROM users WHERE email = ? AND password_hash = ?'
-        )
-          .bind(email, password)
-          .all()
+      let user: any = null
+      if (userResults.length > 0) {
+        const candidate = userResults[0] as any
+        const storedHash = candidate.password_hash as string
+        const isValid = await verifyPassword(password, storedHash)
+        if (isValid) {
+          user = candidate
+        }
       }
 
-      if (results.results.length === 0) {
+      if (!user) {
         return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401)
       }
-
-      const user = results.results[0] as any
 
       // Skip email verification for admin accounts
       if (user.role !== 'ADMIN' && !user.email_verified) {
@@ -834,7 +755,7 @@ authApp.post('/login', async (c) => {
         .run()
 
       // Create JWT
-      const jwt = createJWT(
+      const jwt = await createJWT(
         {
           userId: user.id,
           email: user.email,
@@ -881,7 +802,7 @@ authApp.get('/me', async (c) => {
     
     let decoded
     try {
-      decoded = verifyJWT(token, c.env.JWT_SECRET)
+      decoded = await verifyJWT(token, c.env.JWT_SECRET)
     } catch (jwtError) {
       console.error('JWT verification failed:', jwtError)
       return c.json({ error: '無効なトークンです' }, 401)
@@ -956,7 +877,7 @@ authApp.get('/link/:provider', async (c) => {
     }
 
     const token = authHeader.substring(7)
-    const decoded = verifyJWT(token, c.env.JWT_SECRET)
+    const decoded = await verifyJWT(token, c.env.JWT_SECRET)
     
     if (!decoded) {
       return c.redirect(`/?error=invalid_token`)
@@ -1012,7 +933,7 @@ authApp.delete('/link/:provider', async (c) => {
     }
 
     const token = authHeader.substring(7)
-    const decoded = verifyJWT(token, c.env.JWT_SECRET)
+    const decoded = await verifyJWT(token, c.env.JWT_SECRET)
     
     if (!decoded) {
       return c.json({ error: '無効なトークンです' }, 401)
@@ -1068,7 +989,7 @@ authApp.post('/register', async (c) => {
         created_at: new Date().toISOString(),
       }
       
-      const token = createJWT({ userId: mockUser.id, role: mockUser.role }, c.env.JWT_SECRET)
+      const token = await createJWT({ userId: mockUser.id, role: mockUser.role }, c.env.JWT_SECRET)
       
       return c.json({ 
         success: true,
@@ -1087,8 +1008,8 @@ authApp.post('/register', async (c) => {
       return c.json({ error: 'このメールアドレスは既に登録されています' }, 400)
     }
 
-    // Hash password (simple hash for demo - use bcrypt in production)
-    const passwordHash = btoa(password) // Base64 encode (replace with bcrypt)
+    // Hash password (PBKDF2 + salt)
+    const passwordHash = await hashPassword(password)
 
     // Create new user
     const userId = generateUserId()
@@ -1103,7 +1024,7 @@ authApp.post('/register', async (c) => {
     ).bind(userId).first()
 
     // Generate JWT token
-    const token = createJWT({ userId: user.id, role: user.role }, c.env.JWT_SECRET)
+    const token = await createJWT({ userId: user.id, role: user.role }, c.env.JWT_SECRET)
 
     console.log('✅ User registered:', email)
 

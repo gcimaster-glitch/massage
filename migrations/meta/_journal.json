@@ -6,5 +6,69 @@
   {
     "tag": "0002_add_missing_tables",
     "breakingChanges": []
+  },
+  {
+    "tag": "0004_therapist_edit_system",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0005_email_verification",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0007_oauth_link_support",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0008_add_user_archive",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0009_therapist_schedules",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0014_insert_master_data",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0020_add_password_hash",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0021_insert_therapist_profiles",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0030_add_site_image_url",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0031_add_site_types",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0033_add_therapist_menu_tables",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0034_add_office_management_tables",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0035_add_earnings_management_tables",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0036_insert_80_sites",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0037_add_password_reset_tokens",
+    "breakingChanges": []
+  },
+  {
+    "tag": "0038_security_hardening",
+    "breakingChanges": []
   }
 ]

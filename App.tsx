@@ -134,7 +134,7 @@ import AdminAnalytics from './pages/admin/Analytics';
 import AdminPricingApprovals from './pages/admin/AdminPricingApprovals';
 import AdminKYCApprovals from './pages/admin/KYCApprovals';
 import AdminOfficeManagement from './pages/admin/OfficeManagement';
-import AdminTherapistOfficeManagement from './pages/admin/OfficeManagement';
+// AdminTherapistOfficeManagement は AdminOfficeManagement と同一ファイルのため削除（重複import）
 import AdminOfficeDetail from './pages/admin/OfficeDetail';
 import AdminSiteManagement from './pages/admin/SiteManagement';
 import AdminCorporateDashboard from './pages/admin/CorporateDashboard';
@@ -145,7 +145,7 @@ import ImageUpload from './pages/admin/ImageUpload';
 
 // --- Shared ---
 import Chat from './pages/shared/Chat';
-import Notifications from './pages/shared/Notifications';
+// import Notifications from './pages/shared/Notifications'; // 未使用のため削除
 import Legal from './pages/shared/Legal';
 import CommercialTransaction from './pages/shared/CommercialTransaction';
 
@@ -448,7 +448,7 @@ const App: React.FC = () => {
         <Route path="/admin/kyc-approvals" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminKYCApprovals /></RequireAuth>} />
         <Route path="/admin/offices" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminOfficeManagement /></RequireAuth>} />
         <Route path="/admin/offices/:id" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminOfficeDetail /></RequireAuth>} />
-        <Route path="/admin/office-management" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminTherapistOfficeManagement /></RequireAuth>} />
+        <Route path="/admin/office-management" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminOfficeManagement /></RequireAuth>} />
         <Route path="/admin/site-management" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSiteManagement /></RequireAuth>} />
         <Route path="/admin/corporate" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminCorporateDashboard /></RequireAuth>} />
         <Route path="/admin/support" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSupportInbox /></RequireAuth>} />

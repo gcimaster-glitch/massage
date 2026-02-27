@@ -36,15 +36,26 @@
     
     <title>HOGUSY - ほぐす、を、もっと身近に。</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@400;600;900&display=swap" rel="stylesheet">
-    <!-- Google Maps JavaScript API (async for better performance) -->
+    <!-- Google Maps JavaScript API -->
+    <!-- APIキーはVite環境変数 VITE_GOOGLE_MAPS_API_KEY から注入（ハードコード禁止） -->
     <script>
-      // Preconnect to Google Maps API for faster loading
-      const preconnect = document.createElement('link');
-      preconnect.rel = 'preconnect';
-      preconnect.href = 'https://maps.googleapis.com';
-      document.head.appendChild(preconnect);
+      (function() {
+        // Preconnect for faster loading
+        var preconnect = document.createElement('link');
+        preconnect.rel = 'preconnect';
+        preconnect.href = 'https://maps.googleapis.com';
+        document.head.appendChild(preconnect);
+        // APIキーをVite環境変数から取得（ビルド時に置換される）
+        var apiKey = '__VITE_GOOGLE_MAPS_API_KEY__';
+        if (apiKey && apiKey !== '__VITE_GOOGLE_MAPS_API_KEY__') {
+          var script = document.createElement('script');
+          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places,geometry&language=ja&region=JP&loading=async';
+          script.async = true;
+          script.defer = true;
+          document.head.appendChild(script);
+        }
+      })();
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDylazvHgE2QljKoCFQbFNowoNINsbJYuA&libraries=places,geometry&language=ja&region=JP&loading=async" async defer></script>
     <style>
       :root {
         --brand-teal: #14b8a6;

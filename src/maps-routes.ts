@@ -15,8 +15,11 @@ const mapsApp = new Hono<{ Bindings: Bindings }>()
 // Get Maps API Key (for client-side usage)
 // ============================================
 mapsApp.get('/config', (c) => {
+  if (!c.env.GOOGLE_MAPS_API_KEY) {
+    return c.json({ error: 'Google Maps API key not configured' }, 503)
+  }
   return c.json({
-    apiKey: c.env.GOOGLE_MAPS_API_KEY || 'AIzaSyBcWxZJaMaHa6ux_lHQJz_-731SY00DMRM',
+    apiKey: c.env.GOOGLE_MAPS_API_KEY,
     libraries: ['places', 'geometry'],
     language: 'ja',
     region: 'JP'
@@ -29,7 +32,7 @@ mapsApp.get('/config', (c) => {
 mapsApp.post('/search', async (c) => {
   const { query, location, radius = 5000, type = 'spa' } = await c.req.json()
   
-  const apiKey = c.env.GOOGLE_MAPS_API_KEY || 'AIzaSyBcWxZJaMaHa6ux_lHQJz_-731SY00DMRM'
+  const apiKey = c.env.GOOGLE_MAPS_API_KEY
   
   try {
     // Text Search API
@@ -62,7 +65,7 @@ mapsApp.post('/search', async (c) => {
 // ============================================
 mapsApp.get('/place/:placeId', async (c) => {
   const placeId = c.req.param('placeId')
-  const apiKey = c.env.GOOGLE_MAPS_API_KEY || 'AIzaSyBcWxZJaMaHa6ux_lHQJz_-731SY00DMRM'
+  const apiKey = c.env.GOOGLE_MAPS_API_KEY
   
   try {
     const url = new URL('https://maps.googleapis.com/maps/api/place/details/json')
@@ -85,7 +88,7 @@ mapsApp.get('/place/:placeId', async (c) => {
 // ============================================
 mapsApp.post('/geocode', async (c) => {
   const { address, latlng } = await c.req.json()
-  const apiKey = c.env.GOOGLE_MAPS_API_KEY || 'AIzaSyBcWxZJaMaHa6ux_lHQJz_-731SY00DMRM'
+  const apiKey = c.env.GOOGLE_MAPS_API_KEY
   
   try {
     const url = new URL('https://maps.googleapis.com/maps/api/geocode/json')
@@ -120,7 +123,7 @@ mapsApp.post('/nearby', async (c) => {
     return c.json({ error: 'Location (lat, lng) is required' }, 400)
   }
   
-  const apiKey = c.env.GOOGLE_MAPS_API_KEY || 'AIzaSyBcWxZJaMaHa6ux_lHQJz_-731SY00DMRM'
+  const apiKey = c.env.GOOGLE_MAPS_API_KEY
   
   try {
     const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json')
