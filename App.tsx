@@ -9,7 +9,6 @@ import ResetPassword from './pages/auth/ResetPassword';
 import TherapistLP from './pages/partner/TherapistLP';
 import HostLP from './pages/partner/HostLP';
 import OfficeLP from './pages/partner/OfficeLP';
-import LoginUser from './pages/auth/LoginUser';
 import LoginTherapist from './pages/auth/LoginTherapist';
 import LoginOffice from './pages/auth/LoginOffice';
 import LoginHost from './pages/auth/LoginHost';
@@ -32,12 +31,9 @@ import TherapistListPage from './pages/portal/TherapistList';
 import FeeStructure from './pages/portal/FeeStructure';
 
 // --- User (Client) ---
-import UserHome from './pages/user/UserHome';
-import UserHomeNew from './pages/user/UserHomeNew';
 import UserDashboard from './pages/user/UserDashboard';
 import SiteDetail from './pages/user/SiteDetail';
 import TherapistDetail from './pages/user/TherapistDetail';
-import BookingNew from './pages/user/BookingNew';
 import BookingNewFlow from './pages/user/BookingNewFlow';
 import AutoAssignBooking from './pages/user/AutoAssignBooking';
 import BookingDetail from './pages/user/BookingDetail';
@@ -286,7 +282,7 @@ const App: React.FC = () => {
         
         {/* User Login & Registration */}
         <Route path="/login" element={<UnifiedLogin onLogin={handleLogin} />} />
-        <Route path="/signup" element={<SignupUser />} />
+        <Route path="/signup" element={<Navigate to="/auth/signup/user" replace />} />
         
         {/* Therapist Login & Registration */}
         <Route path="/therapist/login" element={<LoginTherapist onLogin={handleLogin} />} />
@@ -307,9 +303,8 @@ const App: React.FC = () => {
         <Route path="/affiliate/login" element={<LoginAffiliate onLogin={handleLogin} />} />
         
         {/* NEW Unified Auth Routes */}
-        <Route path="/auth/login" element={<UnifiedLogin onLogin={handleLogin} />} />
+        <Route path="/auth/login" element={<Navigate to="/login" replace />} />
         <Route path="/auth/register" element={<UnifiedRegister />} />
-        <Route path="/auth/register/user" element={<UnifiedRegister />} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />
         
@@ -319,22 +314,21 @@ const App: React.FC = () => {
         <Route path="/office-lp" element={<OfficeLP />} />
         
         {/* Legacy Auth Routes (kept for compatibility) */}
-        <Route path="/auth/login/user" element={<LoginUser onLogin={handleLogin} />} />
-        <Route path="/auth/login/therapist" element={<LoginTherapist onLogin={handleLogin} />} />
-        <Route path="/auth/login/office" element={<LoginOffice onLogin={handleLogin} />} />
-        <Route path="/auth/login/host" element={<LoginHost onLogin={handleLogin} />} />
-        <Route path="/auth/login/affiliate" element={<LoginAffiliate onLogin={handleLogin} />} />
-        <Route path="/auth/login/admin" element={<LoginAdmin onLogin={handleLogin} />} />
+        <Route path="/auth/login/user" element={<Navigate to="/login" replace />} />
+        <Route path="/auth/login/therapist" element={<Navigate to="/therapist/login" replace />} />
+        <Route path="/auth/login/office" element={<Navigate to="/office/login" replace />} />
+        <Route path="/auth/login/host" element={<Navigate to="/host/login" replace />} />
+        <Route path="/auth/login/affiliate" element={<Navigate to="/affiliate/login" replace />} />
+        <Route path="/auth/login/admin" element={<Navigate to="/admin/login" replace />} />
         <Route path="/auth/register-select" element={<RegisterSelect />} />
         <Route path="/auth/signup/user" element={<SignupUser />} />
-        <Route path="/auth/signup/therapist" element={<SignupTherapist />} />
-        <Route path="/auth/signup/host" element={<SignupHost />} />
-        <Route path="/auth/signup/office" element={<SignupOffice />} />
+        <Route path="/auth/signup/therapist" element={<Navigate to="/therapist/join" replace />} />
+        <Route path="/auth/signup/host" element={<Navigate to="/host/join" replace />} />
+        <Route path="/auth/signup/office" element={<Navigate to="/office/join" replace />} />
 
         {/* User App - Public pages (no auth required) */}
         <Route path="/app" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserDashboard onLogout={handleLogout} /></RequireAuth>} />
-        <Route path="/app/home-old" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserHome /></RequireAuth>} />
-        <Route path="/app/home-new" element={<UserHomeNew currentUser={currentUser} />} />
+        <Route path="/app/home-new" element={<Navigate to="/app" replace />} />
         <Route path="/app/map" element={<SiteMapSearch />} />
         <Route path="/app/sites" element={<SitesList />} />
         <Route path="/app/site/:siteId" element={<SiteDetail />} />
@@ -375,7 +369,6 @@ const App: React.FC = () => {
         {/* Legacy Booking Routes (kept for compatibility) */}
         <Route path="/app/booking/new" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNewFlow /></RequireAuth>} />
         <Route path="/app/booking/auto-assign" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><AutoAssignBooking /></RequireAuth>} />
-        <Route path="/app/booking/new-old" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNew onAutoLogin={handleLogin} /></RequireAuth>} />
         <Route path="/app/booking/success" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingSuccess /></RequireAuth>} />
         <Route path="/app/booking/:bookingId" element={<RequireAuth allowedRoles={[Role.USER, Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><BookingDetail /></RequireAuth>} />
         <Route path="/app/booking/:bookingId/chat" element={<RequireAuth allowedRoles={[Role.USER, Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><Chat /></RequireAuth>} />
@@ -464,7 +457,7 @@ const App: React.FC = () => {
         <Route path="/admin/kyc-approvals" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminKYCApprovals /></RequireAuth>} />
         <Route path="/admin/offices" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminOfficeManagement /></RequireAuth>} />
         <Route path="/admin/offices/:id" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminOfficeDetail /></RequireAuth>} />
-        <Route path="/admin/office-management" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminOfficeManagement /></RequireAuth>} />
+        <Route path="/admin/office-management" element={<Navigate to="/admin/offices" replace />} />
         <Route path="/admin/site-management" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSiteManagement /></RequireAuth>} />
         <Route path="/admin/corporate" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminCorporateDashboard /></RequireAuth>} />
         <Route path="/admin/support" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminSupportInbox /></RequireAuth>} />

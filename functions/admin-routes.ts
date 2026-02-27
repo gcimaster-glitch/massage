@@ -90,8 +90,8 @@ app.delete('/users', async (c) => {
         console.log('✅ Proceeding with non-therapist users only:', nonTherapistUserIds)
         userIds.splice(0, userIds.length, ...nonTherapistUserIds)
       }
-    } catch (error: any) {
-      console.error('⚠️ Failed to check therapist_profiles:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to check therapist_profiles:', (error as Error).message)
     }
 
     // 3. email_verifications
@@ -101,8 +101,8 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted email_verifications:', emailVerificationsResult.meta.changes)
       totalDeleted += emailVerificationsResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('⚠️ Failed to delete email_verifications:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to delete email_verifications:', (error as Error).message)
     }
 
     // 4. social_accounts
@@ -112,8 +112,8 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted social_accounts:', socialAccountsResult.meta.changes)
       totalDeleted += socialAccountsResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('⚠️ Failed to delete social_accounts:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to delete social_accounts:', (error as Error).message)
     }
 
     // 5. booking_items (must delete before bookings)
@@ -123,8 +123,8 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted booking_items:', bookingItemsResult.meta.changes)
       totalDeleted += bookingItemsResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('⚠️ Failed to delete booking_items:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to delete booking_items:', (error as Error).message)
     }
 
     // 6. bookings
@@ -134,8 +134,8 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted bookings:', bookingsResult.meta.changes)
       totalDeleted += bookingsResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('⚠️ Failed to delete bookings:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to delete bookings:', (error as Error).message)
     }
 
     // 7. reviews (if exists)
@@ -145,8 +145,8 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted reviews:', reviewsResult.meta.changes)
       totalDeleted += reviewsResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('⚠️ Failed to delete reviews:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to delete reviews:', (error as Error).message)
     }
 
     // 8. payments (if exists)
@@ -156,8 +156,8 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted payments:', paymentsResult.meta.changes)
       totalDeleted += paymentsResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('⚠️ Failed to delete payments:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to delete payments:', (error as Error).message)
     }
 
     // 9. notifications (if exists)
@@ -167,8 +167,8 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted notifications:', notificationsResult.meta.changes)
       totalDeleted += notificationsResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('⚠️ Failed to delete notifications:', error.message)
+    } catch (error: unknown) {
+      console.error('⚠️ Failed to delete notifications:', (error as Error).message)
     }
 
     // 10. users (finally)
@@ -178,11 +178,11 @@ app.delete('/users', async (c) => {
       ).bind(...userIds).run()
       console.log('✅ Deleted users:', usersResult.meta.changes)
       totalDeleted += usersResult.meta.changes || 0
-    } catch (error: any) {
-      console.error('❌ Failed to delete users:', error.message)
+    } catch (error: unknown) {
+      console.error('❌ Failed to delete users:', (error as Error).message)
       return c.json({
         error: 'Failed to delete users',
-        message: error.message,
+        message: (error as Error).message,
         partialSuccess: true,
         deletedRelatedRecords: totalDeleted
       }, 500)
@@ -195,11 +195,11 @@ app.delete('/users', async (c) => {
       deletedUserIds: userIds,
       totalRecordsDeleted: totalDeleted
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Failed to delete users:', error)
     return c.json({
       error: 'Failed to delete users',
-      message: error.message,
+      message: (error as Error).message,
       details: error.stack
     }, 500)
   }
@@ -244,10 +244,10 @@ app.get('/stats', async (c) => {
       stats,
       timestamp: new Date().toISOString()
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     return c.json({
       error: 'Failed to get stats',
-      message: error.message
+      message: (error as Error).message
     }, 500)
   }
 })

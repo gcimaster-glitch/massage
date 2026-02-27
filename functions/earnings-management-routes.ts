@@ -10,7 +10,7 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 // JWT認証ミドルウェア（統一版）
-const requireAuth = async (c: any, next: any) => {
+const requireAuth = async (c: Parameters<typeof app.get>[1], next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization');
   const authResult = await requireAuthentication(authHeader, c.env.JWT_SECRET);
   
@@ -53,7 +53,7 @@ app.get('/my-earnings', requireAuth, async (c) => {
       WHERE te.therapist_profile_id = ?
     `;
 
-    const params: any[] = [therapistProfile.id];
+    const params: (string | number | null)[] = [therapistProfile.id];
 
     if (year && month) {
       query += ` AND strftime('%Y', te.booking_date) = ? AND strftime('%m', te.booking_date) = ?`;
@@ -133,7 +133,7 @@ app.get('/all-earnings', requireAuth, async (c) => {
       WHERE 1=1
     `;
 
-    const params: any[] = [];
+    const params: (string | number | null)[] = [];
 
     if (year && month) {
       query += ` AND strftime('%Y', te.booking_date) = ? AND strftime('%m', te.booking_date) = ?`;

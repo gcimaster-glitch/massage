@@ -3,6 +3,7 @@
 // ============================================
 import { Hono } from 'hono'
 import { verifyJWT } from './auth-helpers'
+import { checkRateLimit, RATE_LIMITS } from './rate-limit'
 
 type Bindings = {
   DB: D1Database
@@ -27,6 +28,22 @@ kycApp.post('/', async (c) => {
     const payload = await verifyJWT(token, c.env.JWT_SECRET)
     if (!payload) {
       return c.json({ error: 'Invalid or expired token' }, 401)
+    }
+
+    // === レート制限（KYC提出は1時間に3回まで）===
+    if (c.env.DB) {
+      const rateLimitResult = await checkRateLimit(
+        c.env.DB,
+        payload.userId as string,
+        'kyc_submit',
+        RATE_LIMITS.KYC_SUBMIT // 3回/時間
+      )
+      if (!rateLimitResult.allowed) {
+        return c.json({
+          error: `KYC提出が多すぎます。${rateLimitResult.retryAfter}秒後に再試行してください。`,
+          retryAfter: rateLimitResult.retryAfter
+        }, 429)
+      }
     }
 
     const { id_type, id_number, document_data } = await c.req.json()

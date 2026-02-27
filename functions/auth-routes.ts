@@ -113,8 +113,8 @@ authApp.get('/oauth/:provider/callback', async (c) => {
         .all()
 
       if (results && results.length > 0) {
-        redirectPath = (results[0] as any).redirect_uri || '/app'
-        userRole = (results[0] as any).role || 'USER'
+        redirectPath = (results[0] as Record<string, unknown>).redirect_uri || '/app'
+        userRole = (results[0] as Record<string, unknown>).role || 'USER'
 
         // Delete used state
         await c.env.DB.prepare('DELETE FROM oauth_states WHERE state = ?').bind(state).run()
@@ -134,7 +134,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
     const providerUser = await getUserInfo(provider, tokenData.access_token)
 
     // Check if user exists or create new user
-    let user: any
+    let user: Record<string, unknown> | null
     let isNewUser = false
 
     // Try to use DB if available
@@ -150,7 +150,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
       if (socialAccounts.length > 0) {
         // Existing user - fetch user data
-        const userId = (socialAccounts[0] as any).user_id
+        const userId = (socialAccounts[0] as Record<string, unknown>).user_id
         const { results: users } = await c.env.DB.prepare(
           'SELECT id, email, name, role, avatar_url FROM users WHERE id = ?'
         )
@@ -284,19 +284,34 @@ authApp.post('/register', async (c) => {
     const body = await c.req.json()
     const { email, password, name, phone, role = 'USER' } = body
 
-    // Validation
-    if (!email || !password || !name) {
-      return c.json({ error: 'メールアドレス、パスワード、お名前は必須です' }, 400)
+    // === バリデーション（validation.ts を使用）===
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return c.json({ error: 'お名前は必須です' }, 400)
     }
-
-    if (password.length < 8) {
-      return c.json({ error: 'パスワードは8文字以上で入力してください' }, 400)
+    const emailValidation = validateEmail(email)
+    if (!emailValidation.valid) {
+      return c.json({ error: emailValidation.error }, 400)
     }
+    const passwordValidation = validatePassword(password)
+    if (!passwordValidation.valid) {
+      return c.json({ error: passwordValidation.error }, 400)
+    }
+    const sanitizedEmail = emailValidation.sanitized as string
 
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return c.json({ error: '有効なメールアドレスを入力してください' }, 400)
+    // === レート制限（登録は1時間に5回まで）===
+    if (c.env.DB) {
+      const rateLimitResult = await checkRateLimit(
+        c.env.DB,
+        c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')?.split(',')[0] || 'unknown',
+        'register',
+        RATE_LIMITS.REGISTER
+      )
+      if (!rateLimitResult.allowed) {
+        return c.json({
+          error: `登録リクエストが多すぎます。${rateLimitResult.retryAfter}秒後に再試行してください。`,
+          retryAfter: rateLimitResult.retryAfter
+        }, 429)
+      }
     }
 
     // Check if DB is available
@@ -306,7 +321,7 @@ authApp.post('/register', async (c) => {
         success: true,
         message: '仮登録が完了しました。ご登録のメールアドレスに確認メールを送信しました。',
         userId: generateUserId(),
-        email: email,
+        email: sanitizedEmail,
       })
     }
 
@@ -423,7 +438,7 @@ authApp.post('/register', async (c) => {
             userId: existingUserId,
             email: email
           }, 200)
-        } catch (updateError: any) {
+        } catch (updateError: unknown) {
           console.error('❌ Failed to update existing user:', updateError)
           return c.json({ 
             error: 'アカウント情報の更新に失敗しました。',
@@ -591,7 +606,7 @@ authApp.get('/verify-email', async (c) => {
       return c.redirect('/?error=invalid_or_expired_token')
     }
 
-    const userId = (results[0] as any).user_id
+    const userId = (results[0] as Record<string, unknown>).user_id
 
     // Get user info for auto-login
     const { results: userResults } = await c.env.DB.prepare(
@@ -604,7 +619,7 @@ authApp.get('/verify-email', async (c) => {
       return c.redirect('/?error=user_not_found')
     }
 
-    const user = userResults[0] as any
+    const user = userResults[0] as Record<string, unknown>
 
     // Update user as verified
     await c.env.DB.prepare(
@@ -724,9 +739,9 @@ authApp.post('/login', async (c) => {
         .bind(email)
         .all()
 
-      let user: any = null
+      let user: Record<string, unknown> | null = null
       if (userResults.length > 0) {
-        const candidate = userResults[0] as any
+        const candidate = userResults[0] as Record<string, unknown>
         const storedHash = candidate.password_hash as string
         const isValid = await verifyPassword(password, storedHash)
         if (isValid) {
@@ -835,7 +850,7 @@ authApp.get('/me', async (c) => {
       return c.json({ error: 'ユーザーが見つかりません' }, 404)
     }
 
-    const user = results[0] as any
+    const user = results[0] as Record<string, unknown>
 
     // Check if user has linked social accounts
     const { results: socialAccounts } = await c.env.DB.prepare(
@@ -844,7 +859,7 @@ authApp.get('/me', async (c) => {
       .bind(user.id)
       .all()
 
-    const linkedProviders = socialAccounts.map((acc: any) => acc.provider)
+    const linkedProviders = socialAccounts.map((acc: Record<string, unknown>) => acc.provider)
 
     return c.json({
       user: {
@@ -957,94 +972,6 @@ authApp.delete('/link/:provider', async (c) => {
   }
 })
 
-// ============================================
-// User Registration (Email/Password)
-// ============================================
-authApp.post('/register', async (c) => {
-  try {
-    const { email, password, name, role = 'USER' } = await c.req.json()
-
-    if (!email || !password || !name) {
-      return c.json({ error: 'メールアドレス、パスワード、名前は必須です' }, 400)
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return c.json({ error: '有効なメールアドレスを入力してください' }, 400)
-    }
-
-    // Password validation (minimum 8 characters)
-    if (password.length < 8) {
-      return c.json({ error: 'パスワードは8文字以上である必要があります' }, 400)
-    }
-
-    if (!c.env.DB) {
-      // 開発モード: モックユーザーを返す
-      const mockUser = {
-        id: generateUserId(),
-        email,
-        name,
-        role,
-        created_at: new Date().toISOString(),
-      }
-      
-      const token = await createJWT({ userId: mockUser.id, role: mockUser.role }, c.env.JWT_SECRET)
-      
-      return c.json({ 
-        success: true,
-        token, 
-        user: mockUser,
-        message: '開発モード: ユーザー登録が完了しました'
-      })
-    }
-
-    // Check if email already exists
-    const existingUser = await c.env.DB.prepare(
-      'SELECT id FROM users WHERE email = ?'
-    ).bind(email).first()
-
-    if (existingUser) {
-      return c.json({ error: 'このメールアドレスは既に登録されています' }, 400)
-    }
-
-    // Hash password (PBKDF2 + salt)
-    const passwordHash = await hashPassword(password)
-
-    // Create new user
-    const userId = generateUserId()
-    await c.env.DB.prepare(
-      `INSERT INTO users (id, email, password_hash, name, role, status, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, 'ACTIVE', datetime('now'), datetime('now'))`
-    ).bind(userId, email, passwordHash, name, role).run()
-
-    // Fetch created user
-    const user = await c.env.DB.prepare(
-      'SELECT id, email, name, role, created_at FROM users WHERE id = ?'
-    ).bind(userId).first()
-
-    // Generate JWT token
-    const token = await createJWT({ userId: user.id, role: user.role }, c.env.JWT_SECRET)
-
-    console.log('✅ User registered:', email)
-
-    return c.json({ 
-      success: true,
-      token, 
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-      message: 'ユーザー登録が完了しました'
-    })
-  } catch (e) {
-    console.error('Registration error:', e)
-    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
-  }
-})
-
 // =========================================
 // パスワードリセット
 // =========================================
@@ -1125,7 +1052,7 @@ authApp.post('/admin/delete-users', async (c) => {
           continue
         }
 
-        const userId = (results[0] as any).id
+        const userId = (results[0] as Record<string, unknown>).id
 
         console.log(`🔍 削除開始: ${email} (ID: ${userId})`)
 

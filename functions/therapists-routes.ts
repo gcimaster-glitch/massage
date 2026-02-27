@@ -97,7 +97,7 @@ app.get('/', async (c) => {
       limit,
       totalPages: Math.ceil(total / limit)
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching therapists:', error);
     return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
   }
@@ -187,11 +187,11 @@ app.get('/:id', async (c) => {
       options: optionsResult.results || [],
       reviews: reviewsResult.results || []
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching therapist detail:', error);
     return c.json({ 
       error: 'セラピストの取得に失敗しました',
-      details: error.message || String(error)
+      details: (error as Error).message || String(error)
     }, 500);
   }
 });
@@ -224,7 +224,7 @@ app.get('/:id/schedule', async (c) => {
       date,
       bookings: result.results || []
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching therapist schedule:', error);
     return c.json({ error: 'スケジュールの取得に失敗しました' }, 500);
   }
@@ -292,7 +292,7 @@ app.get('/:id/menu', async (c) => {
       courses: coursesResult.results || [],
       options: optionsResult.results || []
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching therapist menu:', error);
     return c.json({ error: 'メニューの取得に失敗しました' }, 500);
   }

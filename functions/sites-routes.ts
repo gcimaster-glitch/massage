@@ -102,7 +102,7 @@ app.get('/', async (c) => {
       limit,
       totalPages: Math.ceil(total / limit)
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching sites:', error);
     return c.json({ error: '施設の取得に失敗しました' }, 500);
   }
@@ -150,7 +150,7 @@ app.get('/:id', async (c) => {
       site,
       rooms: roomsResult.results || []
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching site detail:', error);
     return c.json({ error: '施設の取得に失敗しました' }, 500);
   }
@@ -193,7 +193,7 @@ app.get('/:id/therapists', async (c) => {
     return c.json({
       therapists: result.results || []
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching site therapists:', error);
     return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
   }
