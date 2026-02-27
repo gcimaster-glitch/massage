@@ -7,6 +7,7 @@
  */
 
 import { verifyJWT as _verifyJWT } from './auth-helpers'
+import type { JWTPayload, AuthResult } from './types'
 
 // auth-helpers.ts の verifyJWT を再エクスポート（後方互換）
 export { verifyJWT } from './auth-helpers'
@@ -19,7 +20,7 @@ export async function requireAuth(
   authHeader: string | null,
   secret: string,
   allowedRoles: string[] = []
-): Promise<{ success: boolean; user?: any; error?: string }> {
+): Promise<AuthResult> {
   try {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return { success: false, error: 'Missing or invalid authorization header' }
@@ -30,7 +31,7 @@ export async function requireAuth(
       return { success: false, error: 'Missing token' }
     }
 
-    const user = await _verifyJWT(token, secret)
+    const user = await _verifyJWT(token, secret) as JWTPayload | null
     if (!user) {
       return { success: false, error: 'Invalid or expired token' }
     }
@@ -56,7 +57,7 @@ export async function requireAuth(
 export async function requireAdmin(
   authHeader: string | null,
   secret: string
-): Promise<{ success: boolean; user?: any; error?: string }> {
+): Promise<AuthResult> {
   return requireAuth(authHeader, secret, ['ADMIN', 'Admin'])
 }
 
@@ -66,7 +67,7 @@ export async function requireAdmin(
 export async function requireTherapist(
   authHeader: string | null,
   secret: string
-): Promise<{ success: boolean; user?: any; error?: string }> {
+): Promise<AuthResult> {
   return requireAuth(authHeader, secret, ['THERAPIST', 'Therapist', 'ADMIN', 'Admin'])
 }
 
@@ -76,6 +77,6 @@ export async function requireTherapist(
 export async function requireUser(
   authHeader: string | null,
   secret: string
-): Promise<{ success: boolean; user?: any; error?: string }> {
+): Promise<AuthResult> {
   return requireAuth(authHeader, secret, ['USER', 'User', 'THERAPIST', 'Therapist', 'ADMIN', 'Admin'])
 }

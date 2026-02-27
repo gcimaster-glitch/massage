@@ -3,7 +3,6 @@ import { cors } from 'hono/cors'
 import authApp from './auth-routes'
 import passwordResetApp from './password-reset-routes'
 import mapsApp from './maps-routes'
-import adminApp from './admin-routes'
 import adminComprehensiveApp from './admin-comprehensive-routes'
 import sitesApp from './sites-routes'
 import adminSitesApp from './admin-sites-routes'
@@ -23,6 +22,7 @@ import emailApp from './routes/email-routes'
 import kycApp from './kyc-routes'
 import notifyApp from './notify-routes'
 import mockDataApp from './mock-data-routes'
+import paymentsApp from './payments-routes'
 
 // ============================================
 // Type Definitions
@@ -117,7 +117,6 @@ app.route('/api/maps', mapsApp)
 // ============================================
 // Admin Routes
 // ============================================
-app.route('/api/admin', adminApp)
 app.route('/api/admin', adminComprehensiveApp)
 
 // ============================================
@@ -182,6 +181,9 @@ app.route('/api/schedules', schedulesRoutesApp)
 // Payment Routes
 // ============================================
 app.route('/api/payment', paymentApp)
+app.route('/api/payments', paymentsApp)
+app.route('/api/receipts', paymentsApp)
+app.route('/api/user', paymentsApp)
 
 // ============================================
 // Email Routes

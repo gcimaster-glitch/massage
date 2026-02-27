@@ -76,7 +76,7 @@ therapistEditApp.post('/', async (c) => {
       return c.json({ error: 'Therapist not found' }, 404)
     }
     
-    const profile: any = profiles[0]
+    const profile = profiles[0] as Record<string, unknown>
     
     // 編集者情報取得
     const { results: editors } = await c.env.DB.prepare(`
@@ -87,7 +87,7 @@ therapistEditApp.post('/', async (c) => {
       return c.json({ error: 'Editor not found' }, 404)
     }
     
-    const editor: any = editors[0]
+    const editor = editors[0] as Record<string, unknown>
     
     // 権限チェック：本人編集 or 管理者編集
     const isSelfEdit = editorRole === 'THERAPIST' && profile.user_id === editorId
@@ -196,7 +196,7 @@ therapistEditApp.get('/pending', async (c) => {
       WHERE tpe.status = 'PENDING'
     `
     
-    const params: any[] = []
+    const params: (string | number | null)[] = []
     
     // オフィス管理者の場合、自分のオフィスのみ
     if (reviewerRole === 'THERAPIST_OFFICE') {
@@ -249,7 +249,7 @@ therapistEditApp.post('/:id/approve', async (c) => {
       return c.json({ error: 'Edit request not found or already processed' }, 404)
     }
     
-    const edit: any = edits[0]
+    const edit = edits[0] as Record<string, unknown>
     
     // 承認権限チェック
     const { results: officeData } = await c.env.DB.prepare(`
@@ -277,7 +277,7 @@ therapistEditApp.post('/:id/approve', async (c) => {
       SELECT * FROM therapist_profiles WHERE id = ?
     `).bind(edit.therapist_id).all()
     
-    const currentProfile: any = currentProfiles[0]
+    const currentProfile = currentProfiles[0] as Record<string, unknown>
     
     // 各フィールドを更新
     for (const [fieldName, newValue] of Object.entries(changes)) {
@@ -344,7 +344,7 @@ therapistEditApp.post('/:id/reject', async (c) => {
       return c.json({ error: 'Edit request not found or already processed' }, 404)
     }
     
-    const edit: any = edits[0]
+    const edit = edits[0] as Record<string, unknown>
     
     // 承認権限チェック
     const { results: officeData } = await c.env.DB.prepare(`

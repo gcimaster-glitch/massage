@@ -78,7 +78,7 @@ async function checkRateLimit(
     const existing = await db.prepare(`
       SELECT * FROM rate_limit_tracking
       WHERE identifier = ? AND endpoint = ? AND expires_at > ?
-    `).bind(identifier, endpoint, now).first() as any;
+    `).bind(identifier, endpoint, now).first() as Record<string, unknown>;
 
     if (existing) {
       const windowStartTime = existing.window_start as number;
@@ -166,7 +166,7 @@ app.post('/forgot-password', async (c) => {
     // ユーザーの存在確認
     const user = await c.env.DB.prepare('SELECT id, email, name FROM users WHERE email = ?')
       .bind(email)
-      .first() as any;
+      .first() as Record<string, unknown>;
 
     if (!user) {
       // セキュリティのため、ユーザーが存在しなくても成功レスポンスを返す
@@ -285,7 +285,7 @@ app.post('/reset-password', async (c) => {
     const resetToken = await c.env.DB.prepare(`
       SELECT * FROM password_reset_tokens 
       WHERE token = ? AND used_at IS NULL AND expires_at > ?
-    `).bind(token, now).first() as any;
+    `).bind(token, now).first() as Record<string, unknown>;
 
     if (!resetToken) {
       await logSecurityEvent(c.env.DB, 'password_reset_invalid_token', {

@@ -42,6 +42,27 @@ export const RATE_LIMITS = {
     limit: 3,
     windowMs: 60 * 60 * 1000, // 1時間
     message: '登録申請が多すぎます。1時間後に再試行してください。'
+  },
+
+  // 予約作成: 20回/分（通常ユーザーには十分）
+  BOOKING_CREATE: {
+    limit: 20,
+    windowMs: 60 * 1000, // 1分
+    message: '予約リクエストが多すぎます。しばらく待ってから再試行してください。'
+  },
+
+  // KYC提出: 3回/時間
+  KYC_SUBMIT: {
+    limit: 3,
+    windowMs: 60 * 60 * 1000, // 1時間
+    message: 'KYC提出が多すぎます。1時間後に再試行してください。'
+  },
+
+  // 管理者API: 200回/分
+  ADMIN: {
+    limit: 200,
+    windowMs: 60 * 1000, // 1分
+    message: '管理者APIリクエストが多すぎます。しばらく待ってから再試行してください。'
   }
 };
 
@@ -62,7 +83,7 @@ export async function checkRateLimit(
     const existing = await db.prepare(`
       SELECT * FROM rate_limit_tracking
       WHERE identifier = ? AND endpoint = ? AND expires_at > ?
-    `).bind(identifier, endpoint, now).first() as any;
+    `).bind(identifier, endpoint, now).first() as Record<string, unknown>;
 
     if (existing) {
       const windowStartTime = existing.window_start as number;

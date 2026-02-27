@@ -131,9 +131,9 @@ app.get('/', async (c) => {
       limit,
       totalPages: Math.ceil(total / limit)
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching sites:', error);
-    return c.json({ error: 'Failed to fetch sites', details: error.message }, 500);
+    return c.json({ error: 'Failed to fetch sites', details: (error as Error).message }, 500);
   }
 });
 
@@ -162,9 +162,9 @@ app.get('/:id', async (c) => {
     }
     
     return c.json({ site });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching site:', error);
-    return c.json({ error: 'Failed to fetch site', details: error.message }, 500);
+    return c.json({ error: 'Failed to fetch site', details: (error as Error).message }, 500);
   }
 });
 
@@ -227,9 +227,9 @@ app.post('/', async (c) => {
     ).run();
     
     return c.json({ success: true, id }, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating site:', error);
-    return c.json({ error: 'Failed to create site', details: error.message }, 500);
+    return c.json({ error: 'Failed to create site', details: (error as Error).message }, 500);
   }
 });
 
@@ -275,9 +275,9 @@ app.put('/:id', async (c) => {
     await DB.prepare(query).bind(...values).run();
     
     return c.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating site:', error);
-    return c.json({ error: 'Failed to update site', details: error.message }, 500);
+    return c.json({ error: 'Failed to update site', details: (error as Error).message }, 500);
   }
 });
 
@@ -296,9 +296,9 @@ app.delete('/:id', async (c) => {
   try {
     await DB.prepare('DELETE FROM sites WHERE id = ?').bind(siteId).run();
     return c.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting site:', error);
-    return c.json({ error: 'Failed to delete site', details: error.message }, 500);
+    return c.json({ error: 'Failed to delete site', details: (error as Error).message }, 500);
   }
 });
 
@@ -326,9 +326,9 @@ app.post('/bulk/hide', async (c) => {
     await DB.prepare(query).bind(...ids).run();
     
     return c.json({ success: true, count: ids.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error hiding sites:', error);
-    return c.json({ error: 'Failed to hide sites', details: error.message }, 500);
+    return c.json({ error: 'Failed to hide sites', details: (error as Error).message }, 500);
   }
 });
 
@@ -356,9 +356,9 @@ app.post('/bulk/archive', async (c) => {
     await DB.prepare(query).bind(...ids).run();
     
     return c.json({ success: true, count: ids.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error archiving sites:', error);
-    return c.json({ error: 'Failed to archive sites', details: error.message }, 500);
+    return c.json({ error: 'Failed to archive sites', details: (error as Error).message }, 500);
   }
 });
 
@@ -390,9 +390,9 @@ app.post('/bulk/status', async (c) => {
     await DB.prepare(query).bind(status, ...ids).run();
     
     return c.json({ success: true, count: ids.length, status });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating site status:', error);
-    return c.json({ error: 'Failed to update site status', details: error.message }, 500);
+    return c.json({ error: 'Failed to update site status', details: (error as Error).message }, 500);
   }
 });
 

@@ -8,16 +8,15 @@
 
 import { Hono } from 'hono';
 import { verifyJWT } from './auth-middleware';
+import { checkRateLimit, RATE_LIMITS } from './rate-limit';
+import { validateText, validateDate } from './validation';
 
-type Bindings = {
-  DB: D1Database;
-  JWT_SECRET: string;
-};
+import type { Bindings, Booking, User } from './types';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 // 認証必須ミドルウェア
-const requireAuth = async (c: any, next: any) => {
+const requireAuth = async (c: Parameters<typeof app.get>[1], next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: '認証が必要です' }, 401);
@@ -83,13 +82,13 @@ app.get('/guest/:bookingId', async (c) => {
     }
     
     return c.json({ success: true, booking });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error fetching guest booking:', error);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     return c.json({ 
       error: '予約情報の取得に失敗しました',
-      details: error.message 
+      details: (error as Error).message 
     }, 500);
   }
 });
@@ -102,9 +101,23 @@ app.use('/*', requireAuth);
 // ============================================
 app.post('/', requireAuth, async (c) => {
   const { DB } = c.env;
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   
   try {
+    // === レート制限（予約作成は1分に10回まで）===
+    const rateLimitResult = await checkRateLimit(
+      DB,
+      userId || c.req.header('CF-Connecting-IP') || 'unknown',
+      'booking_create',
+      RATE_LIMITS.BOOKING_CREATE
+    );
+    if (!rateLimitResult.allowed) {
+      return c.json({
+        error: `予約リクエストが多すぎます。${rateLimitResult.retryAfter}秒後に再試行してください。`,
+        retryAfter: rateLimitResult.retryAfter
+      }, 429);
+    }
+
     const body = await c.req.json();
     const {
       therapist_id,
@@ -211,7 +224,7 @@ app.post('/', requireAuth, async (c) => {
     try {
       await DB.prepare(insertBookingQuery).bind(...bindValues).run();
       console.log('✅ Booking inserted successfully');
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       console.error('❌ Database insert failed (trying scheduled_at):', dbError);
       
       // scheduled_atで失敗した場合、scheduled_startで再試行
@@ -227,12 +240,12 @@ app.post('/', requireAuth, async (c) => {
         try {
           await DB.prepare(insertBookingQuery).bind(...bindValues).run();
           console.log('✅ Booking inserted successfully with scheduled_start');
-        } catch (retryError: any) {
+        } catch (retryError: unknown) {
           console.error('❌ Database insert failed again:', retryError);
-          throw new Error(`Database insert failed: ${retryError.message}`);
+          throw new Error(`Database insert failed: ${(retryError as Error).message}`);
         }
       } else {
-        throw new Error(`Database insert failed: ${dbError.message}`);
+        throw new Error(`Database insert failed: ${(dbError as Error).message}`);
       }
     }
     
@@ -265,7 +278,7 @@ app.post('/', requireAuth, async (c) => {
       bookingId,  // Add bookingId to response
       booking
     }, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error creating booking:', error);
     console.error('Error details:', {
       message: error.message,
@@ -274,8 +287,8 @@ app.post('/', requireAuth, async (c) => {
     });
     return c.json({ 
       error: '予約の作成に失敗しました',
-      details: error.message || 'Unknown error',
-      errorType: error.constructor.name
+      details: (error as Error).message || 'Unknown error',
+      errorType: (error as Error).constructor.name
     }, 500);
   }
 });
@@ -296,14 +309,14 @@ app.get('/', requireAuth, async (c) => {
   
   try {
     let whereClause = '';
-    let params: any[] = [];
+    let params: (string | number)[] = [];
 
     // ロールに応じてクエリを変更
     if (userRole === 'THERAPIST') {
       // セラピストの場合：自分が担当する予約を取得
       const therapistProfile = await DB.prepare(
         'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<any>();
+      ).bind(userId).first<Record<string, unknown>>();
 
       if (!therapistProfile) {
         return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
@@ -362,7 +375,7 @@ app.get('/', requireAuth, async (c) => {
       limit,
       totalPages: Math.ceil(total / limit)
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching bookings:', error);
     return c.json({ error: '予約の取得に失敗しました' }, 500);
   }
@@ -398,7 +411,7 @@ app.get('/:id', requireAuth, async (c) => {
       WHERE b.id = ?
     `;
     
-    const booking = await DB.prepare(bookingQuery).bind(bookingId).first<any>();
+    const booking = await DB.prepare(bookingQuery).bind(bookingId).first<Record<string, unknown>>();
     
     if (!booking) {
       return c.json({ error: '予約が見つかりません' }, 404);
@@ -412,7 +425,7 @@ app.get('/:id', requireAuth, async (c) => {
     if (userRole === 'THERAPIST') {
       const therapistProfile = await DB.prepare(
         'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<any>();
+      ).bind(userId).first<Record<string, unknown>>();
 
       if (!therapistProfile || booking.therapist_id !== therapistProfile.id) {
         return c.json({ error: '他のセラピストの予約は閲覧できません' }, 403);
@@ -433,7 +446,7 @@ app.get('/:id', requireAuth, async (c) => {
       booking,
       items: itemsResult.results || []
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching booking detail:', error);
     return c.json({ error: '予約の取得に失敗しました' }, 500);
   }
@@ -471,7 +484,7 @@ app.delete('/:id', async (c) => {
       success: true,
       message: '予約をキャンセルしました'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error cancelling booking:', error);
     return c.json({ error: '予約のキャンセルに失敗しました' }, 500);
   }
@@ -510,7 +523,7 @@ app.patch('/:id/approve', async (c) => {
       success: true,
       message: '予約を承認しました'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error approving booking:', error);
     return c.json({ error: '予約の承認に失敗しました' }, 500);
   }
@@ -559,7 +572,7 @@ app.patch('/:id/reject', async (c) => {
       success: true,
       message: '予約を拒否しました'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error rejecting booking:', error);
     return c.json({ error: '予約の拒否に失敗しました' }, 500);
   }
@@ -594,7 +607,7 @@ app.patch('/:id/status', requireAuth, async (c) => {
     // 予約が存在することを確認
     const booking = await DB.prepare(
       'SELECT * FROM bookings WHERE id = ?'
-    ).bind(bookingId).first<any>();
+    ).bind(bookingId).first<Record<string, unknown>>();
     
     if (!booking) {
       return c.json({ error: '予約が見つかりません' }, 404);
@@ -615,7 +628,7 @@ app.patch('/:id/status', requireAuth, async (c) => {
       // therapist_idがセラピストプロフィールIDと一致するか確認
       const therapistProfile = await DB.prepare(
         'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<any>();
+      ).bind(userId).first<Record<string, unknown>>();
 
       if (!therapistProfile || booking.therapist_id !== therapistProfile.id) {
         return c.json({ error: '他のセラピストの予約は変更できません' }, 403);
@@ -655,11 +668,11 @@ app.patch('/:id/status', requireAuth, async (c) => {
       message: 'ステータスを更新しました',
       status
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error updating booking status:', error);
     return c.json({ 
       error: 'ステータスの更新に失敗しました',
-      details: error.message 
+      details: (error as Error).message 
     }, 500);
   }
 });

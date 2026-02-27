@@ -12,7 +12,7 @@ type Bindings = {
 const userManagementApp = new Hono<{ Bindings: Bindings }>()
 
 // Middleware: Check admin role
-const requireAdmin = async (c: any, next: any) => {
+const requireAdmin = async (c: Parameters<typeof app.get>[1], next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: '認証が必要です' }, 401)
@@ -57,7 +57,7 @@ userManagementApp.get('/', async (c) => {
       LEFT JOIN social_accounts sa ON u.id = sa.user_id
       WHERE u.is_archived = ?
     `
-    const params: any[] = [archived ? 1 : 0]
+    const params: (string | number | null)[] = [archived ? 1 : 0]
 
     if (search) {
       query += ` AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)`
@@ -91,7 +91,7 @@ userManagementApp.get('/', async (c) => {
     }
 
     const { results: countResults } = await c.env.DB.prepare(countQuery).bind(...countParams).all()
-    const total = (countResults[0] as any).total
+    const total = (countResults[0]  as Record<string, unknown>).total
 
     return c.json({
       users,
@@ -175,7 +175,7 @@ userManagementApp.put('/:id', async (c) => {
 
     // Build update query dynamically
     const updates: string[] = []
-    const params: any[] = []
+    const params: (string | number | null)[] = []
 
     if (name !== undefined) {
       updates.push('name = ?')

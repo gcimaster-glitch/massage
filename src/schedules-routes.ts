@@ -106,7 +106,7 @@ app.post('/', async (c) => {
       schedule_id: scheduleId,
       message: 'スケジュールを作成しました'
     }, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating schedule:', error);
     return c.json({ error: 'スケジュールの作成に失敗しました' }, 500);
   }
@@ -142,7 +142,7 @@ app.get('/', async (c) => {
     return c.json({
       schedules: result.results || []
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching schedules:', error);
     return c.json({ error: 'スケジュールの取得に失敗しました' }, 500);
   }
@@ -171,7 +171,7 @@ app.delete('/:id', async (c) => {
       success: true,
       message: 'スケジュールを削除しました'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting schedule:', error);
     return c.json({ error: 'スケジュールの削除に失敗しました' }, 500);
   }
