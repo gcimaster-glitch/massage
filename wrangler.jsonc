@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hogusy",
-  "compatibility_date": "2024-01-01",
+  "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat"],
   "pages_build_output_dir": "./dist",
 
@@ -28,47 +28,44 @@
 
   // ============================================
   // Environment Variables (Public / Non-secret)
-  // NOTE: Secret values MUST be set via Cloudflare Dashboard
-  //       or `wrangler secret put <KEY>` command.
+  // NOTE: Secret values MUST be set via Cloudflare Dashboard.
   //       DO NOT put secrets in this file.
   //
   // Required secrets to set in Cloudflare Dashboard:
-  //   - JWT_SECRET         : JWT署名用シークレット（最低32文字のランダム文字列）
-  //   - GOOGLE_MAPS_API_KEY: Google Maps Platform APIキー
-  //   - RESEND_API_KEY     : Resend メール送信APIキー
-  //   - STRIPE_SECRET      : Stripe シークレットキー
-  //   - GEMINI_API_KEY     : Google Gemini API キー（AI機能用）
-  //   - GOOGLE_CLIENT_ID   : Google OAuth クライアントID
+  //   - JWT_SECRET          : JWT署名用シークレット（最低32文字のランダム文字列）
+  //   - GOOGLE_MAPS_API_KEY : Google Maps Platform APIキー
+  //   - RESEND_API_KEY      : Resend メール送信APIキー
+  //   - STRIPE_SECRET       : Stripe シークレットキー
+  //   - GEMINI_API_KEY      : Google Gemini API キー（AI機能用）
+  //   - GOOGLE_CLIENT_ID    : Google OAuth クライアントID
   //   - GOOGLE_CLIENT_SECRET: Google OAuth クライアントシークレット
-  //   - LINE_CLIENT_ID     : LINE Login チャネルID
-  //   - LINE_CLIENT_SECRET : LINE Login チャネルシークレット
-  //   - APPLE_CLIENT_ID    : Sign in with Apple サービスID
-  //   - APPLE_CLIENT_SECRET: Sign in with Apple シークレット
-  //   - YAHOO_CLIENT_ID    : Yahoo! JAPAN Login クライアントID
-  //   - YAHOO_CLIENT_SECRET: Yahoo! JAPAN Login クライアントシークレット
-  //   - X_CLIENT_ID        : X (Twitter) OAuth クライアントID
-  //   - X_CLIENT_SECRET    : X (Twitter) OAuth クライアントシークレット
-  //   - FACEBOOK_CLIENT_ID : Facebook Login アプリID
+  //   - LINE_CLIENT_ID      : LINE Login チャネルID
+  //   - LINE_CLIENT_SECRET  : LINE Login チャネルシークレット
+  //   - APPLE_CLIENT_ID     : Sign in with Apple サービスID
+  //   - APPLE_CLIENT_SECRET : Sign in with Apple シークレット
+  //   - YAHOO_CLIENT_ID     : Yahoo! JAPAN Login クライアントID
+  //   - YAHOO_CLIENT_SECRET : Yahoo! JAPAN Login クライアントシークレット
+  //   - X_CLIENT_ID         : X (Twitter) OAuth クライアントID
+  //   - X_CLIENT_SECRET     : X (Twitter) OAuth クライアントシークレット
+  //   - FACEBOOK_CLIENT_ID  : Facebook Login アプリID
   //   - FACEBOOK_CLIENT_SECRET: Facebook Login アプリシークレット
-  //   - ALLOWED_ORIGINS    : 許可するCORSオリジン（カンマ区切り、例: "https://hogusy.com,https://www.hogusy.com"）
+  //   - ALLOWED_ORIGINS     : 許可するCORSオリジン（例: "https://hogusy.com,https://www.hogusy.com"）
+  //
+  // NOTE: Cloudflare Pages supports only "preview" and "production" environments.
+  //       For local development, use .dev.vars file (see .env.example).
   // ============================================
   "vars": {
     "ENVIRONMENT": "production"
   },
 
   // ============================================
-  // Development / Preview Environment Overrides
+  // Preview Environment Overrides
+  // (Cloudflare Pages supports "preview" and "production" only)
   // ============================================
   "env": {
     "preview": {
       "vars": {
         "ENVIRONMENT": "preview"
-      }
-    },
-    "development": {
-      "vars": {
-        "ENVIRONMENT": "development",
-        "ALLOWED_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
       }
     }
   }
