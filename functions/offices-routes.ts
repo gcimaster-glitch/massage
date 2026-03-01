@@ -22,8 +22,9 @@ officesApp.get('/', async (c) => {
     
     // Get all offices first
     const { results: offices } = await c.env.DB.prepare(`
-      SELECT id, name, area, manager_name, contact_email, commission_rate
-      FROM therapist_offices
+      SELECT id, name, area_code, manager_name, contact_email, commission_rate, status
+      FROM offices
+      WHERE status != 'inactive' OR status IS NULL
     `).all()
     
     // Get therapist counts for each office
@@ -66,9 +67,9 @@ officesApp.get('/:id', async (c) => {
     
     // 事務所情報
     const { results: offices } = await c.env.DB.prepare(`
-      SELECT tof.*
-      FROM therapist_offices tof
-      WHERE tof.id = ?
+      SELECT o.*
+      FROM offices o
+      WHERE o.id = ?
     `).bind(id).all()
     
     if (offices.length === 0) {
