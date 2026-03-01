@@ -54,7 +54,7 @@ notifyApp.post('/email', async (c) => {
 })
 
 // ============================================
-// GET /api/storage/upload-url - R2署名付きURL取得
+// GET /api/storage/upload-url - R2アップロードURL取得
 // ============================================
 notifyApp.get('/upload-url', async (c) => {
   const fileName = c.req.query('file')
@@ -63,15 +63,57 @@ notifyApp.get('/upload-url', async (c) => {
     return c.json({ error: 'File name required' }, 400)
   }
 
+  if (!c.env.STORAGE) {
+    return c.json({ error: 'Storage not configured' }, 503)
+  }
+
   // ファイル名のサニタイズ（パストラバーサル対策）
   const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
   const key = `uploads/${Date.now()}-${sanitizedFileName}`
 
-  // R2署名付きURLの生成
-  // TODO: 本番環境ではR2の署名付きURLを生成する
+  // Cloudflare WorkersではR2の署名付きURLはネイティブサポートなし。
+  // /api/storage/uploadエンドポイントを経由してアップロードする。
+  const origin = new URL(c.req.url).origin
   return c.json({
-    url: `https://storage.hogusy.com/${key}`,
+    url: `${origin}/api/storage/upload`,
     key,
+    method: 'POST',
+  })
+})
+
+// ============================================
+// POST /api/storage/upload - R2へ直接アップロード
+// ============================================
+notifyApp.post('/upload', async (c) => {
+  if (!c.env.STORAGE) {
+    return c.json({ error: 'Storage not configured' }, 503)
+  }
+
+  const key = c.req.query('key')
+  if (!key) {
+    return c.json({ error: 'Key parameter required' }, 400)
+  }
+
+  const contentType = c.req.header('Content-Type') || 'application/octet-stream'
+  const body = await c.req.arrayBuffer()
+
+  // ファイルサイズチェック（20MB以下）
+  if (body.byteLength > 20 * 1024 * 1024) {
+    return c.json({ error: 'ファイルサイズは20MB以下にしてください' }, 400)
+  }
+
+  await c.env.STORAGE.put(key, body, {
+    httpMetadata: { contentType },
+    customMetadata: {
+      uploadedAt: new Date().toISOString(),
+    },
+  })
+
+  const origin = new URL(c.req.url).origin
+  return c.json({
+    success: true,
+    key,
+    url: `${origin}/api/storage/${key}`,
   })
 })
 

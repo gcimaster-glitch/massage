@@ -7,6 +7,7 @@ import { checkRateLimit, RATE_LIMITS } from './rate-limit'
 
 type Bindings = {
   DB: D1Database
+  STORAGE: R2Bucket
   JWT_SECRET: string
   RESEND_API_KEY: string
 }
@@ -15,6 +16,7 @@ const kycApp = new Hono<{ Bindings: Bindings }>()
 
 // ============================================
 // POST /api/kyc - KYC書類提出（ユーザー用）
+// Base64エンコードされた画像データを受け取りR2に保存
 // ============================================
 kycApp.post('/', async (c) => {
   const authHeader = c.req.header('Authorization')
@@ -46,26 +48,128 @@ kycApp.post('/', async (c) => {
       }
     }
 
-    const { id_type, id_number, document_data } = await c.req.json()
+    const { id_type, id_number, document_data, file_name, mime_type } = await c.req.json()
 
     if (!document_data) {
-      return c.json({ error: 'Document data is required' }, 400)
+      return c.json({ error: '書類データが必要です' }, 400)
+    }
+    if (!id_type) {
+      return c.json({ error: '書類種別が必要です' }, 400)
     }
 
-    // kyc_status を PENDING に更新
+    // Base64デコード
+    let fileBuffer: ArrayBuffer
+    try {
+      const base64Data = (document_data as string).replace(/^data:[^;]+;base64,/, '')
+      const binaryStr = atob(base64Data)
+      const bytes = new Uint8Array(binaryStr.length)
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i)
+      }
+      fileBuffer = bytes.buffer
+    } catch {
+      return c.json({ error: '書類データの形式が不正です' }, 400)
+    }
+
+    // ファイルサイズチェック（最大10MB）
+    if (fileBuffer.byteLength > 10 * 1024 * 1024) {
+      return c.json({ error: 'ファイルサイズは10MB以下にしてください' }, 400)
+    }
+
+    // R2への保存
+    if (!c.env.STORAGE) {
+      return c.json({ error: 'ストレージが設定されていません' }, 503)
+    }
+
+    const timestamp = Date.now()
+    const sanitizedFileName = ((file_name as string) || 'document').replace(/[^a-zA-Z0-9._-]/g, '_')
+    const r2Key = `kyc/${payload.userId}/${timestamp}-${sanitizedFileName}`
+    const docId = `kyc_${timestamp}_${Math.random().toString(36).slice(2, 9)}`
+
+    await c.env.STORAGE.put(r2Key, fileBuffer, {
+      httpMetadata: {
+        contentType: (mime_type as string) || 'application/octet-stream',
+      },
+      customMetadata: {
+        userId: payload.userId as string,
+        idType: id_type as string,
+        uploadedAt: new Date().toISOString(),
+      },
+    })
+
+    // kyc_documentsテーブルに記録
     await c.env.DB.prepare(`
-      UPDATE users 
-      SET kyc_status = 'PENDING'
+      INSERT INTO kyc_documents (id, user_id, id_type, id_number, r2_key, file_name, file_size, mime_type, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
+    `).bind(
+      docId,
+      payload.userId,
+      id_type,
+      id_number || null,
+      r2Key,
+      sanitizedFileName,
+      fileBuffer.byteLength,
+      (mime_type as string) || 'application/octet-stream',
+      timestamp,
+      timestamp
+    ).run()
+
+    // usersテーブルのkyc_statusをPENDINGに更新
+    await c.env.DB.prepare(`
+      UPDATE users
+      SET kyc_status = 'PENDING', updated_at = datetime('now')
       WHERE id = ?
     `).bind(payload.userId).run()
 
-    // TODO: 本番環境では、KYC書類をR2にアップロードし、審査キューに追加
-    // await c.env.STORAGE.put(`kyc/${payload.userId}/${Date.now()}.jpg`, document_data)
+    return c.json({
+      success: true,
+      kyc_status: 'PENDING',
+      document_id: docId,
+      message: '本人確認書類を受け付けました。審査には1〜3営業日かかります。'
+    })
 
-    return c.json({ success: true, kyc_status: 'PENDING' })
   } catch (e) {
     console.error('KYC submission error:', e)
-    return c.json({ error: 'KYC submission failed' }, 500)
+    return c.json({ error: 'KYC提出に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// GET /api/kyc/status - KYC審査状況確認（ユーザー用）
+// ============================================
+kycApp.get('/status', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  try {
+    const token = authHeader.replace('Bearer ', '')
+    const payload = await verifyJWT(token, c.env.JWT_SECRET)
+    if (!payload) {
+      return c.json({ error: 'Invalid or expired token' }, 401)
+    }
+
+    const user = await c.env.DB.prepare(
+      'SELECT kyc_status FROM users WHERE id = ?'
+    ).bind(payload.userId).first<{ kyc_status: string }>()
+
+    const docs = await c.env.DB.prepare(`
+      SELECT id, id_type, status, rejection_reason, created_at, updated_at
+      FROM kyc_documents
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT 5
+    `).bind(payload.userId).all()
+
+    return c.json({
+      kyc_status: user?.kyc_status || 'NONE',
+      documents: docs.results || []
+    })
+
+  } catch (e) {
+    console.error('KYC status error:', e)
+    return c.json({ error: 'KYC状況の取得に失敗しました' }, 500)
   }
 })
 
@@ -78,11 +182,23 @@ kycApp.get('/admin', async (c) => {
       return c.json({ applications: [] })
     }
 
+    // kyc_documentsテーブルとusersを結合して取得
     const result = await c.env.DB.prepare(`
-      SELECT id, email, name, phone, kyc_status, created_at
-      FROM users
-      WHERE kyc_status = 'PENDING'
-      ORDER BY created_at DESC
+      SELECT
+        kd.id as doc_id,
+        kd.user_id,
+        kd.id_type,
+        kd.status,
+        kd.file_name,
+        kd.created_at,
+        u.email,
+        u.name,
+        u.phone,
+        u.kyc_status as user_kyc_status
+      FROM kyc_documents kd
+      JOIN users u ON kd.user_id = u.id
+      WHERE kd.status = 'PENDING'
+      ORDER BY kd.created_at DESC
     `).all()
 
     return c.json({ applications: result.results || [] })
@@ -98,7 +214,7 @@ kycApp.get('/admin', async (c) => {
 kycApp.patch('/admin/:userId', async (c) => {
   try {
     const userId = c.req.param('userId')
-    const { status, reason } = await c.req.json()
+    const { status, reason, doc_id } = await c.req.json()
 
     if (!c.env.DB) {
       return c.json({ error: 'Database not available' }, 500)
@@ -108,9 +224,28 @@ kycApp.patch('/admin/:userId', async (c) => {
       return c.json({ error: 'Invalid status. Must be VERIFIED or REJECTED' }, 400)
     }
 
+    const now = Date.now()
+
+    // kyc_documentsのステータス更新
+    if (doc_id) {
+      await c.env.DB.prepare(`
+        UPDATE kyc_documents
+        SET status = ?, rejection_reason = ?, reviewed_at = ?, updated_at = ?
+        WHERE id = ? AND user_id = ?
+      `).bind(status, reason || null, now, now, doc_id, userId).run()
+    } else {
+      // doc_idなしの場合は最新のPENDINGドキュメントを更新
+      await c.env.DB.prepare(`
+        UPDATE kyc_documents
+        SET status = ?, rejection_reason = ?, reviewed_at = ?, updated_at = ?
+        WHERE user_id = ? AND status = 'PENDING'
+      `).bind(status, reason || null, now, now, userId).run()
+    }
+
+    // usersテーブルのkyc_statusを更新
     await c.env.DB.prepare(`
-      UPDATE users 
-      SET kyc_status = ?
+      UPDATE users
+      SET kyc_status = ?, updated_at = datetime('now')
       WHERE id = ?
     `).bind(status, userId).run()
 

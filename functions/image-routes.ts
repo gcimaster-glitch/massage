@@ -36,13 +36,76 @@ app.get('/upload-url', async (c) => {
     return c.json({ error: 'File name required' }, 400);
   }
 
-  const key = `uploads/${payload.userId}/${Date.now()}-${fileName}`;
+  // ファイル名のサニタイズ（パストラバーサル対策）
+  const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const key = `uploads/${payload.userId}/${Date.now()}-${sanitizedFileName}`;
 
-  // R2 署名付きURLの生成
-  // 本番では c.env.STORAGE.createMultipartUpload() または presigned URL を使用
+  if (!c.env.STORAGE) {
+    return c.json({ error: 'Storage not configured' }, 503);
+  }
+
+  // R2の署名付きURLはCloudflare Workersではネイティブサポートなし。
+  // フロントエンドからはこのURLに対してPUTリクエストを送ることでアップロードする。
+  // アップロードエンドポイントは /api/images/upload エンドポイントで受け付ける
+  const origin = new URL(c.req.url).origin;
   return c.json({
-    url: `https://storage.hogusy.com/${key}`,
+    url: `${origin}/api/images/upload`,
     key,
+    method: 'POST',
+  });
+});
+
+// ============================================
+// 画像アップロード（R2へ直接保存）
+// ============================================
+app.post('/upload', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+  if (!payload) {
+    return c.json({ error: 'Invalid or expired token' }, 401);
+  }
+
+  if (!c.env.STORAGE) {
+    return c.json({ error: 'Storage not configured' }, 503);
+  }
+
+  const contentType = c.req.header('Content-Type') || 'application/octet-stream';
+  const key = c.req.query('key');
+
+  if (!key) {
+    return c.json({ error: 'Key parameter required' }, 400);
+  }
+
+  // セキュリティチェック: keyは必ず自分のuserIdで始まること
+  if (!key.startsWith(`uploads/${payload.userId}/`)) {
+    return c.json({ error: 'Unauthorized key path' }, 403);
+  }
+
+  const body = await c.req.arrayBuffer();
+
+  // ファイルサイズチェック（20MB以下）
+  if (body.byteLength > 20 * 1024 * 1024) {
+    return c.json({ error: 'ファイルサイズは20MB以下にしてください' }, 400);
+  }
+
+  await c.env.STORAGE.put(key, body, {
+    httpMetadata: { contentType },
+    customMetadata: {
+      userId: payload.userId as string,
+      uploadedAt: new Date().toISOString(),
+    },
+  });
+
+  const origin = new URL(c.req.url).origin;
+  return c.json({
+    success: true,
+    key,
+    url: `${origin}/api/images/${key}`,
   });
 });
 
