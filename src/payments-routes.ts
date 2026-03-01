@@ -82,19 +82,32 @@ app.get('/receipts/:paymentId', async (c) => {
     return c.json({ error: 'Invalid or expired token' }, 401);
   }
 
-  // モックデータ（本番では DB から取得）
-  const payment = {
-    id: paymentId,
-    amount: 8000,
-    service_name: '60分リラクゼーションマッサージ',
-    booking_id: 'B-2024-001',
-    scheduled_at: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    customer_name: '山田 太郎',
-    therapist_name: '田中 有紀',
-  };
+  // DBから支払い情報を取得
+  const { DB } = c.env;
+  const userId = payload.userId;
 
-  const issueDate = new Date(payment.created_at).toLocaleDateString('ja-JP');
+  const payment = await DB.prepare(`
+    SELECT
+      p.id,
+      p.amount,
+      p.created_at,
+      p.status,
+      b.id as booking_id,
+      b.service_name,
+      b.scheduled_at,
+      b.therapist_name,
+      u.name as customer_name
+    FROM payments p
+    JOIN bookings b ON p.booking_id = b.id
+    JOIN users u ON p.user_id = u.id
+    WHERE p.id = ? AND p.user_id = ?
+  `).bind(paymentId, userId).first<Record<string, unknown>>();
+
+  if (!payment) {
+    return c.json({ error: '領収書が見つかりません' }, 404);
+  }
+
+  const issueDate = new Date(payment.created_at as string).toLocaleDateString('ja-JP');
 
   const receiptHTML = `<!DOCTYPE html>
 <html lang="ja">
@@ -117,13 +130,13 @@ app.get('/receipts/:paymentId', async (c) => {
     <p style="font-size: 20px; font-weight: bold;">領収書</p>
     <p style="color: #6b7280;">発行日: ${issueDate}</p>
   </div>
-  <div class="amount">¥${payment.amount.toLocaleString()}</div>
+  <div class="amount">¥${(payment.amount as number).toLocaleString()}</div>
   <table>
-    <tr><th>領収書番号</th><td>${payment.id}</td></tr>
-    <tr><th>お客様名</th><td>${payment.customer_name} 様</td></tr>
-    <tr><th>サービス内容</th><td>${payment.service_name}</td></tr>
-    <tr><th>担当セラピスト</th><td>${payment.therapist_name}</td></tr>
-    <tr><th>予約番号</th><td>${payment.booking_id}</td></tr>
+    <tr><th>領収書番号</th><td>${payment.id as string}</td></tr>
+    <tr><th>お客様名</th><td>${payment.customer_name as string} 様</td></tr>
+    <tr><th>サービス内容</th><td>${payment.service_name as string}</td></tr>
+    <tr><th>担当セラピスト</th><td>${payment.therapist_name as string}</td></tr>
+    <tr><th>予約番号</th><td>${payment.booking_id as string}</td></tr>
   </table>
   <p style="margin-top: 20px; font-size: 12px; color: #666;">但し書き: 上記金額を正に領収いたしました。</p>
   <div class="no-print" style="text-align: center; margin-top: 30px;">
