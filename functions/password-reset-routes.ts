@@ -126,9 +126,14 @@ app.post('/forgot-password', async (c) => {
   const ipAddress = getClientIP(c);
   const userAgent = getUserAgent(c);
 
+  let email: string | undefined;
   try {
-    const { email } = await c.req.json();
-
+    const body = await c.req.json();
+    email = body?.email;
+  } catch {
+    return c.json({ error: 'メールアドレスを入力してください' }, 400);
+  }
+  try {
     // 入力バリデーション
     if (!email || typeof email !== 'string') {
       return c.json({ error: 'メールアドレスを入力してください' }, 400);
