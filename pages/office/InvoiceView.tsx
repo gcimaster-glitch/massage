@@ -1,23 +1,50 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Printer, Download, ArrowLeft, Building, CreditCard, CheckCircle, Info, ShieldCheck, BadgeCheck } from 'lucide-react';
-import { MOCK_STATEMENTS } from '../../constants';
+import { Printer, Download, ArrowLeft, Building, CreditCard, CheckCircle, Info, ShieldCheck, BadgeCheck, Loader2 } from 'lucide-react';
 
 const InvoiceView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
-  const isTherapistPayout = id?.startsWith('therapist-');
-  const statement = MOCK_STATEMENTS[0];
-  
-  const PLATFORM_FEE_RATE = 0.15;
-  const WITHHOLDING_TAX_RATE = 0.1021; 
+  const [statement, setStatement] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const totalSales = statement.totalSales;
+  const isTherapistPayout = id?.startsWith('therapist-');
+
+  useEffect(() => {
+    if (!id) return;
+    const token = localStorage.getItem('auth_token');
+    fetch(`/api/admin/financial-statements/${id}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => setStatement(data.statement || data))
+      .catch(err => setError(err === 404 ? '帳票が見つかりません' : '帳票の取得に失敗しました'))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="animate-spin text-teal-600" size={48} />
+    </div>
+  );
+
+  if (error || !statement) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <p className="text-gray-500 font-bold">{error || '帳票が見つかりません'}</p>
+        <button onClick={() => navigate(-1)} className="text-teal-600 font-bold hover:underline">戻る</button>
+      </div>
+    </div>
+  );
+
+  const PLATFORM_FEE_RATE = 0.15;
+  const WITHHOLDING_TAX_RATE = 0.1021;
+
+  const totalSales = statement.total_sales || 0;
   const platformFee = Math.floor(totalSales * PLATFORM_FEE_RATE);
   const basePayout = totalSales - platformFee;
-  
   const withholdingTax = isTherapistPayout ? Math.floor(basePayout * WITHHOLDING_TAX_RATE) : 0;
   const finalPayout = basePayout - withholdingTax;
 
@@ -42,11 +69,11 @@ const InvoiceView: React.FC = () => {
       </div>
 
       <div className="max-w-[210mm] mx-auto bg-white mt-10 shadow-2xl p-[25mm] print:m-0 print:shadow-none min-h-[297mm] relative overflow-hidden border-t-[16px] border-gray-900">
-        
+
         <div className="flex justify-between items-start mb-20">
            <div className="space-y-6">
               <div className="flex items-center gap-3">
-                 <div className="w-12 h-12 bg-gray-900 text-white rounded-xl flex items-center justify-center font-black text-2xl shadow-xl">S</div>
+                 <div className="w-12 h-12 bg-gray-900 text-white rounded-xl flex items-center justify-center font-black text-2xl shadow-xl">H</div>
                  <h1 className="text-4xl font-black text-gray-900 tracking-tighter">
                    {isTherapistPayout ? '報酬支払明細書' : '適格請求書 / 支払通知書'}
                  </h1>
@@ -60,9 +87,9 @@ const InvoiceView: React.FC = () => {
            </div>
            <div className="text-right space-y-1">
               <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Serial Number</p>
-              <p className="text-lg font-black font-mono tracking-tighter">{id}</p>
+              <p className="text-lg font-black font-mono tracking-tighter">{statement.id}</p>
               <p className="text-[10px] font-black text-gray-400 uppercase mt-4 mb-1">Issue Date</p>
-              <p className="text-sm font-black">{new Date().toLocaleDateString('ja-JP', {year:'numeric', month:'2-digit', day:'2-digit'})}</p>
+              <p className="text-sm font-black">{new Date(statement.generated_at || Date.now()).toLocaleDateString('ja-JP', {year:'numeric', month:'2-digit', day:'2-digit'})}</p>
            </div>
         </div>
 
@@ -71,26 +98,24 @@ const InvoiceView: React.FC = () => {
               <div>
                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 border-l-4 border-gray-200 pl-3">Recipient (宛先)</p>
                  <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-                   {isTherapistPayout ? '田中 有紀' : statement.userName} <span className="text-sm font-bold ml-1">御中</span>
+                   {statement.user_name} <span className="text-sm font-bold ml-1">御中</span>
                  </h2>
               </div>
               <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
                  <p className="text-[11px] text-gray-500 font-bold leading-relaxed">
                     毎度格別のお引き立てにあずかり、厚く御礼申し上げます。<br/>
-                    下記のとおり、2025年5月度の決済精算金および配分報酬を通知いたします。
+                    下記のとおり、{statement.target_month}度の決済精算金および配分報酬を通知いたします。
                  </p>
               </div>
            </div>
            <div className="text-right space-y-6">
               <div>
                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 border-r-4 border-teal-600 pr-3">Issuer (発行元)</p>
-                 <p className="text-xl font-black text-gray-900">
-                    {isTherapistPayout ? '新宿ウェルネス・エージェンシー' : '株式会社Soothe'}
-                 </p>
+                 <p className="text-xl font-black text-gray-900">HOGUSY株式会社</p>
                  <p className="text-xs font-bold text-gray-500 mt-2">東京都渋谷区道玄坂 1-2-3</p>
                  <div className="mt-4 flex flex-col items-end gap-1">
                     <p className="text-[11px] font-black text-gray-900 flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
-                       <ShieldCheck size={14} className="text-teal-600" /> 
+                       <ShieldCheck size={14} className="text-teal-600" />
                        適格請求書発行事業者登録番号: <span className="font-mono">T1234567890123</span>
                     </p>
                  </div>
@@ -115,7 +140,9 @@ const InvoiceView: React.FC = () => {
            </div>
            <div className="relative z-10 text-right space-y-1">
               <p className="text-xs font-bold opacity-40 uppercase tracking-widest">Expected Date</p>
-              <p className="text-2xl font-black border-b-4 border-teal-500 pb-1">2025/06/10</p>
+              <p className="text-2xl font-black border-b-4 border-teal-500 pb-1">
+                {statement.paid_at ? new Date(statement.paid_at).toLocaleDateString('ja-JP') : '振込予定日未定'}
+              </p>
            </div>
         </div>
 
@@ -171,9 +198,9 @@ const InvoiceView: React.FC = () => {
            <div className="bg-gray-50 p-8 rounded-[40px] border border-gray-100 space-y-4">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><CreditCard size={14}/> Bank Account (振込先)</p>
               <div className="space-y-1">
-                 <p className="font-black text-gray-900 text-lg">三菱UFJ銀行 新宿中央支店</p>
-                 <p className="text-sm font-bold text-gray-500">普通 1234567</p>
-                 <p className="text-sm font-black text-gray-900 mt-2 tracking-widest uppercase">タナカ ユキ</p>
+                 <p className="font-black text-gray-900 text-lg">{statement.bank_name || '（振込先未登録）'}</p>
+                 {statement.bank_account && <p className="text-sm font-bold text-gray-500">{statement.bank_account}</p>}
+                 {statement.bank_holder && <p className="text-sm font-black text-gray-900 mt-2 tracking-widest uppercase">{statement.bank_holder}</p>}
               </div>
            </div>
            <div className="bg-teal-50 p-8 rounded-[40px] border border-teal-100 flex items-start gap-4">
@@ -188,7 +215,7 @@ const InvoiceView: React.FC = () => {
         </div>
 
         <div className="text-center pt-20 border-t border-gray-50">
-           <p className="text-[10px] text-gray-300 font-black uppercase tracking-[0.6em]">Soothe Financial Governance v2.5</p>
+           <p className="text-[10px] text-gray-300 font-black uppercase tracking-[0.6em]">HOGUSY Financial Governance v2.5</p>
         </div>
       </div>
     </div>

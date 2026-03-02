@@ -1,21 +1,42 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, ShieldCheck, CheckCircle, ArrowRight, Building, Clock, Navigation } from 'lucide-react';
-import { MOCK_SITES } from '../../constants';
+import { MapPin, Star, ShieldCheck, CheckCircle, ArrowRight, Building, Clock, Navigation, Loader2 } from 'lucide-react';
 
 const HostLP: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const site = MOCK_SITES.find(s => s.id === id) || MOCK_SITES[0];
+  const [site, setSite] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/sites/${id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setSite(data?.site || data))
+      .catch(() => setSite(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="animate-spin text-teal-600" size={48} />
+    </div>
+  );
+
+  if (!site) return (
+    <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">
+      施設情報が見つかりません
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-white">
       {/* Dynamic Hero */}
       <header className="relative h-[80vh] flex items-center justify-center text-white overflow-hidden">
-        <img 
-          src={`https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200`} 
-          className="absolute inset-0 w-full h-full object-cover brightness-[0.4]" 
+        <img
+          src={site.image_url || `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200`}
+          className="absolute inset-0 w-full h-full object-cover brightness-[0.4]"
           alt={site.name}
         />
         <div className="relative z-10 max-w-4xl px-4 text-center space-y-6">
@@ -24,7 +45,7 @@ const HostLP: React.FC = () => {
            <p className="text-xl md:text-2xl text-gray-200 font-medium">
              都会の喧騒を離れ、<br className="md:hidden"/>一瞬で心整うプライベート空間へ。
            </p>
-           <button 
+           <button
              onClick={() => navigate('/auth/register')}
              className="bg-white text-gray-900 px-10 py-5 rounded-full text-xl font-extrabold hover:bg-teal-500 hover:text-white transition-all shadow-2xl hover:scale-105"
            >
@@ -52,7 +73,7 @@ const HostLP: React.FC = () => {
          </div>
       </section>
 
-      {/* site Info */}
+      {/* Site Info */}
       <section className="py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
            <div className="space-y-8">
@@ -69,7 +90,7 @@ const HostLP: React.FC = () => {
                     <Building className="text-teal-600 flex-shrink-0" />
                     <div>
                        <p className="font-bold">店舗タイプ</p>
-                       <p className="text-gray-600">ホテル常設プレミアムブース (24時間営業)</p>
+                       <p className="text-gray-600">{site.site_type === 'CARE_CUBE' ? 'CARE CUBE（完全個室）' : site.site_type || 'プレミアムブース'}</p>
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-4 pt-4">
@@ -80,9 +101,16 @@ const HostLP: React.FC = () => {
                     ))}
                  </div>
               </div>
-              <button className="flex items-center gap-2 text-teal-600 font-bold hover:underline">
-                 <Navigation size={18} /> Google Maps で開く
-              </button>
+              {site.latitude && site.longitude && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${site.latitude},${site.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-teal-600 font-bold hover:underline"
+                >
+                  <Navigation size={18} /> Google Maps で開く
+                </a>
+              )}
            </div>
            <div className="h-[400px] rounded-3xl overflow-hidden shadow-xl">
               <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" />
@@ -93,7 +121,7 @@ const HostLP: React.FC = () => {
       {/* Footer CTA */}
       <footer className="py-20 bg-gray-900 text-white text-center">
          <h2 className="text-3xl font-bold mb-8">まずは無料会員登録で特典をゲット</h2>
-         <button 
+         <button
            onClick={() => navigate('/auth/register')}
            className="bg-teal-500 text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-teal-400 transition-all flex items-center gap-2 mx-auto"
          >

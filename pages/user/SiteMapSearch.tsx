@@ -8,7 +8,7 @@ import {
   User, LogIn, UserPlus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_SITES } from '../../constants';
+
 import QuickBookingPanel from '../../components/QuickBookingPanel';
 
 // Google Maps の型定義
@@ -143,8 +143,8 @@ const SiteMapSearch: React.FC = () => {
       setSites(data.sites || []);
     } catch (e) {
       console.error('Failed to fetch sites:', e);
-      // フォールバック: モックデータを使用
-      setSites(MOCK_SITES || []);
+      // APIエラー時は空配列を使用
+      setSites([]);
     }
   };
 

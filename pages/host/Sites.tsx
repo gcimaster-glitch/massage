@@ -1,6 +1,5 @@
 
-import React, { useState } from 'react';
-import { MOCK_SITES } from '../../constants';
+import React, { useState, useEffect } from 'react';
 import { Building, MapPin, Plus, Clock, ShieldCheck, Edit2, ChevronRight, X, Save, Trash2, CalendarCheck, AlertCircle, TrendingUp, BarChart3, Info } from 'lucide-react';
 import { BusinessHours, DayConfig, TimeBlock } from '../../types';
 
@@ -15,7 +14,18 @@ const defaultHours: BusinessHours = {
 };
 
 const HostSites: React.FC = () => {
-  const [sites, setSites] = useState(MOCK_SITES);
+  const [sites, setSites] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/host/sites', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+    })
+      .then(r => r.json())
+      .then(data => setSites(data.sites || data || []))
+      .catch(err => console.error('Failed to load sites:', err))
+      .finally(() => setIsLoading(false));
+  }, []);
   const [editingHoursId, setEditingHoursId] = useState<string | null>(null);
   const [hours, setHours] = useState<BusinessHours>(defaultHours);
   const [showAnalyticsId, setShowAnalyticsId] = useState<string | null>(null);

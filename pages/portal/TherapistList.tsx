@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import PortalLayout from './PortalLayout';
-import { MOCK_AREAS, MASTER_COURSES } from '../../constants';
+import { MASTER_COURSES } from '../../constants';
 import { 
   Star, MapPin, Search, Calendar, Clock, Filter, 
   ChevronRight, CheckCircle2, ShieldCheck, Zap, Award, 
@@ -58,9 +58,9 @@ const TherapistListPage: React.FC = () => {
       
       if (areasRes.ok) {
         const areasData = await areasRes.json();
-        setAreas(areasData.areas || MOCK_AREAS);
+        setAreas(areasData.areas || []);
       } else {
-        setAreas(MOCK_AREAS);
+        setAreas([]);
       }
       
       if (!therapistsRes.ok) {
@@ -100,7 +100,7 @@ const TherapistListPage: React.FC = () => {
     } catch (e) {
       console.error('Failed to fetch data:', e);
       setError(e instanceof Error ? e.message : 'データの取得に失敗しました。');
-      setAreas(MOCK_AREAS);
+      setAreas([]);
     } finally {
       setLoading(false);
     }
@@ -339,7 +339,7 @@ const TherapistCatalogCard: React.FC<{ therapist: any, onBook: () => void }> = (
              
              <div className="absolute top-6 left-6 flex flex-col gap-2">
                 <span className="bg-gray-900/90 backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-lg border border-white/20 uppercase tracking-widest shadow-xl">
-                   {MOCK_AREAS.find(a => a.id === therapist.areas[0])?.name}
+                   {areas.find((a: any) => a.id === therapist.areas?.[0])?.name}
                 </span>
                 {therapist.id === 't1' && (
                   <span className="bg-teal-500 text-white text-[9px] font-black px-3 py-1.5 rounded-lg shadow-xl flex items-center gap-1">

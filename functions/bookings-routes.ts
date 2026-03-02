@@ -677,4 +677,90 @@ app.patch('/:id/status', requireAuth, async (c) => {
   }
 });
 
+// ============================================
+// レビュー
+// ============================================
+
+/** POST /api/bookings/:id/review - レビュー投稿 */
+app.post('/:id/review', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId') as string
+    const { id } = c.req.param()
+    const { rating, comment, tags, is_safe } = await c.req.json() as {
+      rating: number; comment?: string; tags?: string[]; is_safe?: boolean
+    }
+    if (!rating || rating < 1 || rating > 5) return c.json({ error: '評価は1、5の整数で入力してください' }, 400)
+    // 予約のアクセス権限確認
+    const booking = await c.env.DB.prepare(
+      'SELECT * FROM bookings WHERE id = ? AND user_id = ?'
+    ).bind(id, userId).first() as any
+    if (!booking) return c.json({ error: '予約が見つかりません' }, 404)
+    // 重複レビューチェック
+    const existing = await c.env.DB.prepare('SELECT id FROM reviews WHERE booking_id = ?').bind(id).first()
+    if (existing) return c.json({ error: 'この予約は既にレビュー済みです' }, 409)
+    const reviewId = crypto.randomUUID()
+    await c.env.DB.prepare(
+      'INSERT INTO reviews (id, booking_id, user_id, therapist_id, rating, comment, is_public) VALUES (?, ?, ?, ?, ?, ?, 1)'
+    ).bind(reviewId, id, userId, booking.therapist_id, rating, comment || null).run()
+    // 安全上の憸念がある場合はインシデント登録
+    if (is_safe === false) {
+      const incidentId = crypto.randomUUID()
+      await c.env.DB.prepare(
+        'INSERT INTO incidents (id, booking_id, reported_by, description, status, created_at) VALUES (?, ?, ?, ?, \'OPEN\', datetime(\'now\'))'
+      ).bind(incidentId, id, userId, 'ユーザーから安全上の憸念が報告されました').run().catch(() => {})
+    }
+    return c.json({ success: true, reviewId }, 201)
+  } catch (error: unknown) {
+    return c.json({ error: 'レビューの投稿に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// チャットメッセージ
+// ============================================
+
+/** GET /api/bookings/:id/messages - 予約メッセージ一覧 */
+app.get('/:id/messages', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId') as string
+    const { id } = c.req.param()
+    const booking = await c.env.DB.prepare(
+      'SELECT * FROM bookings WHERE id = ? AND (user_id = ? OR therapist_id = ?)'
+    ).bind(id, userId, userId).first()
+    if (!booking) return c.json({ error: '予約が見つかりません' }, 404)
+    const messages = await c.env.DB.prepare(
+      'SELECT * FROM booking_messages WHERE booking_id = ? ORDER BY created_at ASC'
+    ).bind(id).all()
+    await c.env.DB.prepare(
+      'UPDATE booking_messages SET is_read = 1 WHERE booking_id = ? AND sender_id != ?'
+    ).bind(id, userId).run()
+    return c.json(messages.results || [])
+  } catch (error: unknown) {
+    return c.json({ error: 'メッセージの取得に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/bookings/:id/messages - メッセージ送信 */
+app.post('/:id/messages', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId') as string
+    const userRole = c.get('userRole') as string
+    const { id } = c.req.param()
+    const { content, message_type } = await c.req.json() as { content: string; message_type?: string }
+    if (!content?.trim()) return c.json({ error: 'メッセージ内容が必要です' }, 400)
+    const booking = await c.env.DB.prepare(
+      'SELECT * FROM bookings WHERE id = ? AND (user_id = ? OR therapist_id = ?)'
+    ).bind(id, userId, userId).first()
+    if (!booking) return c.json({ error: '予約が見つかりません' }, 404)
+    const msgId = crypto.randomUUID()
+    await c.env.DB.prepare(
+      'INSERT INTO booking_messages (id, booking_id, sender_id, sender_role, content, message_type) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(msgId, id, userId, userRole, content.trim(), message_type || 'TEXT').run()
+    const msg = await c.env.DB.prepare('SELECT * FROM booking_messages WHERE id = ?').bind(msgId).first()
+    return c.json(msg, 201)
+  } catch (error: unknown) {
+    return c.json({ error: 'メッセージの送信に失敗しました' }, 500)
+  }
+})
+
 export default app;

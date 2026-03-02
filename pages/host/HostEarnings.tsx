@@ -1,120 +1,139 @@
-import React, { useState } from 'react';
-import { JapaneseYen, Download, CheckCircle, Clock } from 'lucide-react';
-import { MOCK_STATEMENTS } from '../../constants';
-import { PayoutStatus, Role } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, Download, AlertCircle, RefreshCw, JapaneseYen, Calendar } from 'lucide-react';
+
+interface MonthlyStat {
+  month: string;
+  booking_count: number;
+  total_revenue: number;
+  host_earnings: number;
+}
+
+interface Summary {
+  total_revenue: number;
+  total_bookings: number;
+  this_month_revenue: number;
+  this_month_bookings: number;
+  host_rate: number;
+}
 
 const HostEarnings: React.FC = () => {
-  // Filter for the current logged in host (h1 for demo)
-  const myStatements = MOCK_STATEMENTS.filter(s => s.userRole === Role.HOST);
-  // Demo: Select the draft statement if exists
-  const currentMonthStatement = myStatements.find(s => s.targetMonth === '2025-05');
-  
-  // Local state to simulate approval
-  const [localStatement, setLocalStatement] = useState(currentMonthStatement);
+  const [earnings, setEarnings] = useState<MonthlyStat[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleApprove = () => {
-    if (confirm('明細内容を確認し、承認しますか？\n承認後、管理者が支払確定処理を行います。')) {
-      if (localStatement) {
-        setLocalStatement({ ...localStatement, status: PayoutStatus.APPROVED_BY_PARTNER });
-        alert('明細を承認しました。');
-      }
+  const fetchEarnings = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch('/api/host/earnings', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('収益情報の取得に失敗しました');
+      const json = await res.json();
+      setEarnings(json.earnings || []);
+      setSummary(json.summary || null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'エラーが発生しました');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusDisplay = (status: PayoutStatus) => {
-      switch(status) {
-          case PayoutStatus.DRAFT: return { color: 'text-orange-600', text: '承認待ち', icon: <Clock size={16} /> };
-          case PayoutStatus.APPROVED_BY_PARTNER: return { color: 'text-blue-600', text: '承認済・確定待ち', icon: <CheckCircle size={16} /> };
-          case PayoutStatus.FIXED: return { color: 'text-purple-600', text: '支払確定', icon: <CheckCircle size={16} /> };
-          case PayoutStatus.PAID: return { color: 'text-green-600', text: '振込完了', icon: <JapaneseYen size={16} /> };
-          default: return { color: 'text-gray-400', text: '集計中', icon: <Clock size={16} /> };
-      }
-  };
+  useEffect(() => { fetchEarnings(); }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">売上管理・明細 (施設)</h1>
+    <div className="space-y-10 animate-fade-in pb-20 text-gray-900 font-sans px-4 pt-4">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-6">
+        <div>
+          <span className="inline-block bg-teal-50 text-teal-600 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.4em] mb-4 border border-teal-100">ホスト収益</span>
+          <h1 className="text-4xl font-black tracking-tighter">収益レポート</h1>
+          <p className="text-gray-400 font-bold uppercase tracking-[0.3em] mt-1 text-[10px]">Host Revenue Report</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={fetchEarnings} className="bg-white border-2 border-gray-100 text-gray-900 px-6 py-3 rounded-2xl text-xs font-black flex items-center gap-2 hover:bg-gray-50 transition-all shadow-sm">
+            <RefreshCw size={14} /> 更新
+          </button>
+        </div>
       </div>
 
-      {/* Action Card for Current Month */}
-      {localStatement ? (
-        <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
-           <div className="flex justify-between items-start">
-              <div>
-                 <h2 className="font-bold text-lg text-gray-900 mb-1">{localStatement.targetMonth}月度 施設利用報酬</h2>
-                 <p className="text-sm text-gray-500 mb-4">ステータス: <span className={`font-bold ${getStatusDisplay(localStatement.status).color}`}>{getStatusDisplay(localStatement.status).text}</span></p>
-                 <div className="text-3xl font-bold text-gray-900">¥{localStatement.payoutAmount.toLocaleString()}</div>
-                 <p className="text-xs text-gray-500 mt-1">（対象売上: ¥{localStatement.totalSales.toLocaleString()}）</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                 {localStatement.status === PayoutStatus.DRAFT && (
-                    <button 
-                      onClick={handleApprove}
-                      className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-orange-700 shadow-sm flex items-center gap-2 animate-pulse"
-                    >
-                       <CheckCircle size={18} /> 明細を承認する
-                    </button>
-                 )}
-                 <button className="text-orange-600 font-bold text-sm border border-orange-600 px-4 py-2 rounded-lg hover:bg-teal-50 flex items-center gap-2 justify-center">
-                    <Download size={16} /> PDFダウンロード
-                 </button>
-              </div>
-           </div>
-           
-           {/* Mini Breakdown */}
-           <div className="mt-6 pt-4 border-t border-gray-100">
-               <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">内訳プレビュー</h3>
-               <div className="space-y-2">
-                  {localStatement.details.slice(0, 3).map((d, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                         <span className="text-gray-600">{d.date} {d.description}</span>
-                         <span className="font-mono">¥{d.amount.toLocaleString()}</span>
-                      </div>
-                  ))}
-                  {localStatement.details.length > 3 && <div className="text-xs text-gray-400 text-center">他 {localStatement.details.length - 3} 件</div>}
-               </div>
-           </div>
-        </div>
-      ) : (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center text-gray-500">
-          現在、確認が必要な新しい明細はありません。
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+          <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+          <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
 
-      {/* Past Statements */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50">
-          <h2 className="font-bold text-gray-700">過去の明細履歴</h2>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">データを読み込み中...</p>
         </div>
-        <div className="divide-y divide-gray-100">
-          {myStatements.filter(s => s.targetMonth !== '2025-05').length > 0 ? (
-            myStatements.filter(s => s.targetMonth !== '2025-05').map((stmt) => (
-              <div key={stmt.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                 <div className="flex items-center gap-4">
-                    <div className="bg-gray-100 p-3 rounded-lg text-gray-600 font-bold">
-                       {stmt.targetMonth.split('-')[1]}月
-                    </div>
-                    <div>
-                       <p className="font-bold text-gray-900">¥{stmt.payoutAmount.toLocaleString()}</p>
-                       <p className="text-xs text-gray-500">ID: {stmt.id}</p>
-                    </div>
-                 </div>
-                 <div className="text-right">
-                    <div className={`flex items-center gap-1 text-sm font-bold ${getStatusDisplay(stmt.status).color}`}>
-                       {getStatusDisplay(stmt.status).icon} {getStatusDisplay(stmt.status).text}
-                    </div>
-                    <button className="text-xs text-teal-600 hover:underline mt-1">詳細を見る</button>
-                 </div>
+      ) : (
+        <>
+          {summary && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="bg-white p-10 rounded-[56px] shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-full blur-3xl opacity-50"></div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2"><TrendingUp size={12}/> 今月の売上</p>
+                <h3 className="text-5xl font-black text-gray-900 tracking-tighter">¥{(summary.this_month_revenue || 0).toLocaleString()}</h3>
+                <p className="text-[9px] font-bold text-gray-400 mt-4 uppercase">{summary.this_month_bookings}件の予約</p>
               </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-gray-400">
-              過去の履歴はありません。
+              <div className="bg-white p-10 rounded-[56px] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-2xl transition-all duration-500">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">累計売上</p>
+                <h3 className="text-5xl font-black text-teal-600 tracking-tighter">¥{(summary.total_revenue || 0).toLocaleString()}</h3>
+                <p className="text-[9px] font-bold text-gray-400 mt-4 uppercase">総予約数: {summary.total_bookings}件</p>
+              </div>
+              <div className="bg-gray-900 p-10 rounded-[56px] shadow-2xl text-white relative overflow-hidden flex flex-col justify-between">
+                <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><JapaneseYen size={80}/></div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">ホスト収益率</p>
+                <h3 className="text-5xl font-black tracking-tighter">{((summary.host_rate || 0.1) * 100).toFixed(0)}%</h3>
+                <p className="text-[9px] font-bold text-gray-400 mt-4">売上の{((summary.host_rate || 0.1) * 100).toFixed(0)}%がホスト収益として計上されます</p>
+              </div>
             </div>
           )}
-        </div>
-      </div>
+
+          <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+              <h2 className="font-black text-lg flex items-center gap-3"><Calendar size={20} className="text-teal-600" /> 月別収益</h2>
+              <button className="bg-gray-50 text-gray-600 px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-gray-100">
+                <Download size={14} /> CSV
+              </button>
+            </div>
+            {earnings.length === 0 ? (
+              <div className="p-16 text-center">
+                <TrendingUp className="mx-auto text-gray-300 mb-3" size={40} />
+                <p className="text-gray-400 text-sm font-medium">収益データがありません</p>
+                <p className="text-gray-300 text-xs mt-1">予約が完了すると収益が記録されます</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="text-left px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">月</th>
+                      <th className="text-right px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">予約数</th>
+                      <th className="text-right px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">売上合計</th>
+                      <th className="text-right px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">ホスト収益</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {earnings.map((row) => (
+                      <tr key={row.month} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                        <td className="px-8 py-5 font-black text-gray-900">{row.month}</td>
+                        <td className="px-8 py-5 text-right font-bold text-gray-600">{row.booking_count}件</td>
+                        <td className="px-8 py-5 text-right font-black text-gray-900">¥{(row.total_revenue || 0).toLocaleString()}</td>
+                        <td className="px-8 py-5 text-right font-black text-teal-600">¥{(row.host_earnings || 0).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

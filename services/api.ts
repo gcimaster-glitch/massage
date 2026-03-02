@@ -39,6 +39,7 @@ export const api = {
     get: (id: string) => call<any>(`/bookings/${id}`),
     updateStatus: (id: string, status: string) => call<any>(`/bookings/${id}/status`, 'PATCH', { status }),
     getMessages: (id: string) => call<any[]>(`/bookings/${id}/messages`),
+    sendMessage: (id: string, content: string, message_type?: string) => call<any>(`/bookings/${id}/messages`, 'POST', { content, message_type }),
     updateLocation: (id: string, lat: number, lng: number) => call<any>(`/bookings/${id}/location`, 'PATCH', { lat, lng }),
   },
   

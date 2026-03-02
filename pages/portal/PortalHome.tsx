@@ -7,7 +7,7 @@ import {
   Timer, UserCheck, Building2, Navigation, Filter, Clock, Target,
   Map as MapIcon, X
 } from 'lucide-react';
-import { MOCK_THERAPISTS, MOCK_AREAS } from '../../constants';
+
 import PortalLayout from './PortalLayout';
 
 // Google Maps の型定義
@@ -77,11 +77,11 @@ const PortalHome: React.FC = () => {
           list.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
           setTherapists(list);
         } else {
-          setTherapists(MOCK_THERAPISTS);
+          setTherapists([]);
         }
       } catch (e) {
         console.error('Failed to fetch therapists:', e);
-        setTherapists(MOCK_THERAPISTS);
+        setTherapists([]);
       } finally {
         setTherapistsLoading(false);
       }

@@ -8,7 +8,7 @@ import { api } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { BookingType } from '../../types';
 import SmartAssistant from '../../components/SmartAssistant';
-import { MOCK_THERAPISTS, MOCK_SITES } from '../../constants';
+
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { SkeletonCard } from '../../components/Skeleton';
 
@@ -91,10 +91,9 @@ const UserHome: React.FC = () => {
         const errorMessage = e instanceof Error ? e.message : 'データの読み込みに失敗しました';
         setError(errorMessage);
         
-        // Fallback to mock data for better UX
-        console.log('📦 Using fallback mock data');
-        setSites(MOCK_SITES);
-        setTherapists(MOCK_THERAPISTS);
+        // APIエラー時は空配列を使用
+        setSites([]);
+        setTherapists([]);
       } finally {
         setDataLoading(false);
       }

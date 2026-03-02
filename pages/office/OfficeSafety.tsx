@@ -6,7 +6,6 @@ import {
   Siren, ShieldCheck, Navigation, ArrowUpRight, Search,
   Activity, Video, Volume2, Maximize2, MoreHorizontal
 } from 'lucide-react';
-import { MOCK_THERAPISTS } from '../../constants';
 
 const OfficeSafety: React.FC = () => {
   const [monitors, setMonitors] = useState([

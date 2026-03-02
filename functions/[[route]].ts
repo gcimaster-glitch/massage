@@ -197,4 +197,10 @@ app.route('/api/email', emailApp)
 app.route('/api/notify', notifyApp)
 app.route('/api/storage', notifyApp)
 
+// ============================================
+// Host & Affiliate Routes
+// ============================================
+import hostAffiliateApp from './host-affiliate-routes'
+app.route('/api', hostAffiliateApp)
+
 export default app

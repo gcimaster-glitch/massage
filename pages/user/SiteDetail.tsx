@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_SITES } from '../../constants';
 import { 
   MapPin, Star, Wifi, Droplets, Lock, Wind, ArrowLeft, 
   CheckCircle, Navigation, Info, ShieldCheck, Zap, 

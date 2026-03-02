@@ -492,4 +492,251 @@ app.get('/stats', requireAdmin, async (c) => {
   return c.json({ stats, timestamp: new Date().toISOString() })
 })
 
+// ============================================
+// インシデント管理
+// ============================================
+/** GET /api/admin/incidents - インシデント一覧 */
+app.get('/incidents', requireAdmin, async (c) => {
+  const { DB } = c.env
+  const status = c.req.query('status') || ''
+  const severity = c.req.query('severity') || ''
+  const page = parseInt(c.req.query('page') || '1')
+  const limit = parseInt(c.req.query('limit') || '20')
+  const offset = (page - 1) * limit
+  try {
+    let sql = `SELECT i.*, b.scheduled_at, b.service_name,
+      u.name as reporter_name
+      FROM incidents i
+      LEFT JOIN bookings b ON i.booking_id = b.id
+      LEFT JOIN users u ON i.reporter_id = u.id
+      WHERE 1=1`
+    const params: (string | number)[] = []
+    if (status) { sql += ' AND i.status = ?'; params.push(status) }
+    if (severity) { sql += ' AND i.severity = ?'; params.push(severity) }
+    sql += ` ORDER BY i.created_at DESC LIMIT ? OFFSET ?`
+    params.push(limit, offset)
+    const result = await DB.prepare(sql).bind(...params).all()
+    const countResult = await DB.prepare('SELECT COUNT(*) as total FROM incidents').first<{ total: number }>()
+    return c.json({ incidents: result.results || [], total: countResult?.total || 0, page, limit })
+  } catch (e) {
+    console.error('インシデント取得エラー:', e)
+    return c.json({ error: 'インシデントの取得に失敗しました' }, 500)
+  }
+})
+
+/** GET /api/admin/incidents/:id - インシデント詳細 */
+app.get('/incidents/:id', requireAdmin, async (c) => {
+  const { DB } = c.env
+  const id = c.req.param('id')
+  try {
+    const incident = await DB.prepare(`
+      SELECT i.*, b.scheduled_at, b.service_name, b.price, b.type as booking_type,
+        u.name as reporter_name, u.email as reporter_email
+      FROM incidents i
+      LEFT JOIN bookings b ON i.booking_id = b.id
+      LEFT JOIN users u ON i.reporter_id = u.id
+      WHERE i.id = ?
+    `).bind(id).first()
+    if (!incident) return c.json({ error: 'インシデントが見つかりません' }, 404)
+    return c.json({ incident })
+  } catch (e) {
+    return c.json({ error: '取得に失敗しました' }, 500)
+  }
+})
+
+/** PATCH /api/admin/incidents/:id - インシデントステータス更新 */
+app.patch('/incidents/:id', requireAdmin, async (c) => {
+  const { DB } = c.env
+  const id = c.req.param('id')
+  try {
+    const { status } = await c.req.json()
+    const resolvedAt = (status === 'RESOLVED' || status === 'CLOSED') ? new Date().toISOString() : null
+    await DB.prepare(`
+      UPDATE incidents SET status = ?, resolved_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(status, resolvedAt, id).run()
+    return c.json({ success: true })
+  } catch (e) {
+    return c.json({ error: '更新に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// 従来配分設定
+// ============================================
+/** GET /api/admin/revenue-config - 配分設定一覧 */
+app.get('/revenue-config', requireAdmin, async (c) => {
+  const { DB } = c.env
+  try {
+    const result = await DB.prepare('SELECT * FROM revenue_config ORDER BY target_month DESC LIMIT 12').all()
+    return c.json({ configs: result.results || [] })
+  } catch (e) {
+    return c.json({ error: '配分設定の取得に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/revenue-config - 配分設定作成・更新 */
+app.post('/revenue-config', requireAdmin, async (c) => {
+  const { DB } = c.env
+  try {
+    const body = await c.req.json()
+    const { target_month, therapist_percentage, host_percentage, affiliate_percentage, platform_percentage } = body
+    if (!target_month) return c.json({ error: 'target_month is required' }, 400)
+    const total = (therapist_percentage || 0) + (host_percentage || 0) + (affiliate_percentage || 0) + (platform_percentage || 0)
+    if (Math.abs(total - 100) > 0.01) return c.json({ error: '配分割合の合計は100%になる必要があります' }, 400)
+    const id = crypto.randomUUID()
+    await DB.prepare(`
+      INSERT INTO revenue_config (id, target_month, therapist_percentage, host_percentage, affiliate_percentage, platform_percentage)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(target_month) DO UPDATE SET
+        therapist_percentage = excluded.therapist_percentage,
+        host_percentage = excluded.host_percentage,
+        affiliate_percentage = excluded.affiliate_percentage,
+        platform_percentage = excluded.platform_percentage,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(id, target_month, therapist_percentage, host_percentage, affiliate_percentage, platform_percentage).run()
+    return c.json({ success: true })
+  } catch (e) {
+    return c.json({ error: '保存に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// 返金申請管理
+// ============================================
+
+/** GET /api/admin/refunds - 返金申請一覧 */
+app.get('/refunds', requireAdmin, async (c) => {
+  try {
+    const { status } = c.req.query()
+    const where = status ? `WHERE r.status = '${status}'` : ''
+    const result = await c.env.DB.prepare(`
+      SELECT r.*, u.name as user_name, u.email as user_email,
+             b.service_name, b.price as booking_price
+      FROM refund_requests r
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      ${where}
+      ORDER BY r.requested_at DESC
+      LIMIT 200
+    `).all()
+    return c.json({ requests: result.results || [] })
+  } catch (e) {
+    return c.json({ error: '返金申請一覧の取得に失敗しました' }, 500)
+  }
+})
+
+/** PATCH /api/admin/refunds/:id - 返金申請の承認/却下 */
+app.patch('/refunds/:id', requireAdmin, async (c) => {
+  try {
+    const { id } = c.req.param()
+    const { action } = await c.req.json() as { action: 'APPROVE' | 'REJECT' }
+    const adminId = c.get('userId')
+    if (!['APPROVE', 'REJECT'].includes(action)) return c.json({ error: '無効なアクション' }, 400)
+    const status = action === 'APPROVE' ? 'APPROVED' : 'REJECTED'
+    await c.env.DB.prepare(`
+      UPDATE refund_requests
+      SET status = ?, reviewed_at = datetime('now'), reviewed_by = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(status, adminId, id).run()
+    return c.json({ success: true, status })
+  } catch (e) {
+    return c.json({ error: '更新に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/refunds - 返金申請の新規作成（管理者が手動作成） */
+app.post('/refunds', requireAdmin, async (c) => {
+  try {
+    const { booking_id, user_id, amount, reason } = await c.req.json() as any
+    if (!booking_id || !user_id || !amount) return c.json({ error: 'booking_id, user_id, amountは必須です' }, 400)
+    const id = crypto.randomUUID()
+    await c.env.DB.prepare(`
+      INSERT INTO refund_requests (id, booking_id, user_id, amount, reason)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(id, booking_id, user_id, amount, reason || null).run()
+    return c.json({ success: true, id })
+  } catch (e) {
+    return c.json({ error: '返金申請の作成に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// 振込・精算管理（financial_statements）
+// ============================================
+
+/** GET /api/admin/payouts - 精算一覧 */
+app.get('/payouts', requireAdmin, async (c) => {
+  try {
+    const { month, status } = c.req.query()
+    let where = 'WHERE 1=1'
+    const params: any[] = []
+    if (month) { where += ' AND target_month = ?'; params.push(month) }
+    if (status) { where += ' AND status = ?'; params.push(status) }
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM financial_statements ${where} ORDER BY generated_at DESC LIMIT 500
+    `).bind(...params).all()
+    return c.json({ statements: result.results || [] })
+  } catch (e) {
+    return c.json({ error: '精算一覧の取得に失敗しました' }, 500)
+  }
+})
+
+/** PATCH /api/admin/payouts/:id - 精算ステータス更新 */
+app.patch('/payouts/:id', requireAdmin, async (c) => {
+  try {
+    const { id } = c.req.param()
+    const { status } = await c.req.json() as { status: string }
+    const paidAt = status === 'PAID' ? `datetime('now')` : 'NULL'
+    await c.env.DB.prepare(`
+      UPDATE financial_statements
+      SET status = ?, paid_at = ${paidAt}
+      WHERE id = ?
+    `).bind(status, id).run()
+    return c.json({ success: true })
+  } catch (e) {
+    return c.json({ error: '更新に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/payouts/calculate - 指定月の精算バッチ実行 */
+app.post('/payouts/calculate', requireAdmin, async (c) => {
+  try {
+    const { target_month } = await c.req.json() as { target_month: string }
+    if (!target_month) return c.json({ error: 'target_monthは必須です' }, 400)
+    // payment_splitsから集計してfinancial_statementsに挿入
+    const splits = await c.env.DB.prepare(`
+      SELECT user_id, user_role, SUM(amount) as total
+      FROM payment_splits
+      WHERE strftime('%Y-%m', created_at) = ?
+      GROUP BY user_id, user_role
+    `).bind(target_month).all()
+    let inserted = 0
+    for (const row of (splits.results || []) as any[]) {
+      const user = await c.env.DB.prepare('SELECT name FROM users WHERE id = ?').bind(row.user_id).first() as any
+      const id = crypto.randomUUID()
+      await c.env.DB.prepare(`
+        INSERT OR IGNORE INTO financial_statements
+          (id, user_id, user_role, user_name, target_month, total_sales, payout_amount, status, generated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', datetime('now'))
+      `).bind(id, row.user_id, row.user_role, user?.name || '', target_month, row.total, row.total).run()
+      inserted++
+    }
+    return c.json({ success: true, inserted })
+  } catch (e) {
+    return c.json({ error: '精算バッチの実行に失敗しました' }, 500)
+  }
+})
+
+/** GET /api/admin/financial-statements/:id - 帳票個別取得 */
+app.get('/financial-statements/:id', requireAdmin, async (c) => {
+  try {
+    const { id } = c.req.param()
+    const stmt = await c.env.DB.prepare('SELECT * FROM financial_statements WHERE id = ?').bind(id).first()
+    if (!stmt) return c.json({ error: '帳票が見つかりません' }, 404)
+    return c.json({ statement: stmt })
+  } catch (e) {
+    return c.json({ error: '帳票の取得に失敗しました' }, 500)
+  }
+})
+
 export default app

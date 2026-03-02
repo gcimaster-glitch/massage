@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { BookingStatus, Role } from '../../types';
-import { MOCK_BOOKINGS } from '../../constants';
 import { GoogleGenAI } from "@google/genai";
 
 interface Message {
@@ -46,8 +45,7 @@ const Chat: React.FC = () => {
         setBooking(bData);
         setMessages(mData);
       } catch (err) {
-        const mockB = MOCK_BOOKINGS.find(b => b.id === bookingId);
-        if (mockB) setBooking(mockB);
+        console.error('Failed to load booking:', err);
       } finally {
         setIsLoading(false);
       }
@@ -100,7 +98,22 @@ const Chat: React.FC = () => {
 
     setMessages([...messages, optimisticMsg]);
     setNewMessage('');
-    // 本来はAPI経由で送信
+    try {
+      const sent = await api.bookings.sendMessage(bookingId, textToSend);
+      // 楽観的更新を実際のメッセージで置き換え
+      setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? {
+        ...m,
+        id: sent.id || m.id,
+        senderId: sent.sender_id || m.senderId,
+        senderName: sent.sender_name || m.senderName,
+        senderRole: sent.sender_role || m.senderRole,
+        text: sent.content || m.text,
+        timestamp: sent.created_at || m.timestamp,
+        translatedText: translated
+      } : m));
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
   };
 
   if (isLoading && !booking) return (

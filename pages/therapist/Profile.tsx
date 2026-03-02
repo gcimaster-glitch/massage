@@ -1,11 +1,7 @@
 
 import React, { useState } from 'react';
 import { JapaneseYen, Clock, Save, ShieldCheck, AlertCircle, CheckCircle, Info, ArrowUpRight } from 'lucide-react';
-import { MOCK_THERAPISTS } from '../../constants';
-
 const TherapistProfile: React.FC = () => {
-  const therapist = MOCK_THERAPISTS[0];
-
   // --- Pricing State ---
   const [base60, setBase60] = useState(7000); // 60m base
   const [add30, setAdd30] = useState(3000);  // extension per 30m

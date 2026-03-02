@@ -438,4 +438,59 @@ app.get('/my-offices', requireAuth, async (c) => {
   }
 });
 
+/** GET /api/office-management/master-courses - マスターコース・オプション一覧 */
+app.get('/master-courses', requireAuth, async (c) => {
+  try {
+    const courses = await c.env.DB.prepare('SELECT * FROM master_courses ORDER BY category, duration').all();
+    const options = await c.env.DB.prepare('SELECT * FROM master_options ORDER BY name').all();
+    return c.json({ courses: courses.results || [], options: options.results || [] });
+  } catch (e) {
+    return c.json({ error: 'マスターデータの取得に失敗しました' }, 500);
+  }
+});
+
+/** GET /api/office-management/:officeId/therapist-menus/:therapistId - セラピストのメニュー取得 */
+app.get('/:officeId/therapist-menus/:therapistId', requireAuth, async (c) => {
+  try {
+    const { therapistId } = c.req.param();
+    const courses = await c.env.DB.prepare(
+      'SELECT * FROM therapist_menu_courses WHERE therapist_profile_id = ? AND is_active = 1 ORDER BY display_order'
+    ).bind(therapistId).all();
+    const options = await c.env.DB.prepare(
+      'SELECT * FROM therapist_menu_options WHERE therapist_profile_id = ? AND is_active = 1 ORDER BY display_order'
+    ).bind(therapistId).all();
+    return c.json({ courses: courses.results || [], options: options.results || [] });
+  } catch (e) {
+    return c.json({ error: 'メニューの取得に失敗しました' }, 500);
+  }
+});
+
+/** POST /api/office-management/:officeId/therapist-menus/:therapistId - セラピストのメニュー保存 */
+app.post('/:officeId/therapist-menus/:therapistId', requireAuth, async (c) => {
+  try {
+    const { therapistId } = c.req.param();
+    const { courses, options } = await c.req.json() as {
+      courses: { name: string; duration: number; price: number; description?: string }[];
+      options: { name: string; price: number; description?: string }[];
+    };
+    await c.env.DB.prepare('UPDATE therapist_menu_courses SET is_active = 0 WHERE therapist_profile_id = ?').bind(therapistId).run();
+    await c.env.DB.prepare('UPDATE therapist_menu_options SET is_active = 0 WHERE therapist_profile_id = ?').bind(therapistId).run();
+    for (let i = 0; i < (courses || []).length; i++) {
+      const cr = courses[i];
+      await c.env.DB.prepare(
+        "INSERT INTO therapist_menu_courses (id, therapist_profile_id, name, duration, price, description, display_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))"
+      ).bind(crypto.randomUUID(), therapistId, cr.name, cr.duration, cr.price, cr.description || '', i).run();
+    }
+    for (let i = 0; i < (options || []).length; i++) {
+      const op = options[i];
+      await c.env.DB.prepare(
+        "INSERT INTO therapist_menu_options (id, therapist_profile_id, name, price, description, display_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'))"
+      ).bind(crypto.randomUUID(), therapistId, op.name, op.price, op.description || '', i).run();
+    }
+    return c.json({ success: true, message: 'メニューを保存しました' });
+  } catch (e) {
+    return c.json({ error: 'メニューの保存に失敗しました' }, 500);
+  }
+});
+
 export default app;

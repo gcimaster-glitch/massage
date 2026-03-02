@@ -8,7 +8,7 @@ import {
   UserCheck, Sparkles, Quote, Check, ExternalLink, Scissors, LayoutGrid, Plus, MoreHorizontal, ArrowRight,
   Shield, Tag, Coffee, Wind, Music, User, Smartphone, Target, Move, AlertCircle, Ban, Loader
 } from 'lucide-react';
-import { MOCK_THERAPISTS, MASTER_COURSES, MASTER_OPTIONS, MOCK_AREAS } from '../../constants';
+import { MASTER_COURSES, MASTER_OPTIONS } from '../../constants';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { NotFoundError } from '../../components/ErrorState';
 import ErrorState from '../../components/ErrorState';

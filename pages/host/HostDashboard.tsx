@@ -1,139 +1,205 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Building, Zap, AlertCircle, Calendar,
+  MapPin, RefreshCw, TrendingUp, Clock
+} from 'lucide-react';
 
-import React, { useState } from 'react';
-import { MOCK_SITES } from '../../constants';
-// Added ChevronRight to fix "Cannot find name 'ChevronRight'" error on line 120
-import { Building, MapPin, Settings, Video, Clock, Zap, Droplets, CheckCircle2, AlertCircle, ShoppingCart, ChevronRight } from 'lucide-react';
+interface DashboardData {
+  total_sites: number;
+  active_sites: number;
+  total_bookings_this_month: number;
+  total_revenue_this_month: number;
+  upcoming_bookings: Array<{
+    id: string;
+    scheduled_at: string;
+    service_name: string;
+    price: number;
+    status: string;
+    therapist_name: string;
+    site_name: string;
+  }>;
+  sites: Array<{
+    id: string;
+    name: string;
+    type: string;
+    status: string;
+    room_count: number;
+  }>;
+}
 
 const HostDashboard: React.FC = () => {
-  const totalRevenue = 248000;
-  const [activeBooths] = useState(12);
-  const [totalBooths] = useState(15);
+  const navigate = useNavigate();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [boothStates] = useState([
-    { id: 'CUBE-001', status: '利用可能', cleanliness: '清掃済', towels: 12, oil: '80%' },
-    { id: 'CUBE-002', status: '施術中', cleanliness: '使用中', towels: 5, oil: '40%' },
-    { id: 'CUBE-003', status: '準備中', cleanliness: '要清掃', towels: 0, oil: '10%' },
-    { id: 'CUBE-004', status: '利用可能', cleanliness: '清掃済', towels: 15, oil: '95%' },
-  ]);
+  const fetchDashboard = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch('/api/host/dashboard', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('ダッシュボードデータの取得に失敗しました');
+      const json = await res.json();
+      setData(json);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'エラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDashboard(); }, []);
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': case 'CONFIRMED': return 'bg-green-100 text-green-700';
+      case 'INACTIVE': return 'bg-gray-100 text-gray-500';
+      case 'MAINTENANCE': case 'PENDING': return 'bg-orange-100 text-orange-700';
+      default: return 'bg-gray-100 text-gray-500';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      ACTIVE: '稼働中', INACTIVE: '停止中', MAINTENANCE: 'メンテナンス',
+      CONFIRMED: '確定', PENDING: '保留中', COMPLETED: '完了', CANCELLED: 'キャンセル',
+    };
+    return map[status] || status;
+  };
 
   return (
     <div className="space-y-10 animate-fade-in pb-20 text-gray-900 font-sans px-4">
       <div className="flex justify-between items-end">
         <div>
-           <h1 className="text-3xl font-black tracking-tighter">拠点運営統括ボード</h1>
-           <p className="text-gray-400 text-sm font-bold uppercase tracking-[0.3em] mt-2">Facility & Inventory Management</p>
+          <h1 className="text-3xl font-black tracking-tighter">拠点運営統括ボード</h1>
+          <p className="text-gray-400 text-sm font-bold uppercase tracking-[0.3em] mt-2">Facility & Operations Management</p>
         </div>
         <div className="flex items-center gap-3">
-           <div className="bg-teal-50 text-teal-700 px-8 py-4 rounded-3xl font-black text-xs shadow-sm border border-teal-100 flex items-center gap-3 transition-all hover:bg-teal-100">
-              <Zap size={16} className="text-teal-500" fill="currentColor" /> 
-              今月の受取収益(暫定): <span className="text-lg font-black ml-1">¥{totalRevenue.toLocaleString()}</span>
-           </div>
+          {data && (
+            <div className="bg-teal-50 text-teal-700 px-8 py-4 rounded-3xl font-black text-xs shadow-sm border border-teal-100 flex items-center gap-3">
+              <Zap size={16} className="text-teal-500" fill="currentColor" />
+              今月の売上: <span className="text-lg font-black ml-1">¥{(data.total_revenue_this_month || 0).toLocaleString()}</span>
+            </div>
+          )}
+          <button onClick={fetchDashboard} className="bg-gray-100 text-gray-700 px-4 py-3 rounded-2xl text-xs font-black flex items-center gap-2 hover:bg-gray-200 transition-all">
+            <RefreshCw size={14} /> 更新
+          </button>
         </div>
       </div>
 
-      {/* 状況・在庫オーバービュー */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         <div className="bg-white p-8 rounded-[48px] border border-gray-100 shadow-sm">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">現在の平均稼働率</p>
-            <h3 className="text-4xl font-black text-gray-900">{(activeBooths/totalBooths*100).toFixed(0)}<span className="text-lg ml-1 opacity-30">%</span></h3>
-         </div>
-         <div className="bg-white p-8 rounded-[48px] border border-gray-100 shadow-sm">
-            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1 flex items-center gap-2">
-               <AlertCircle size={10}/> 清掃・メンテナンス待ち
-            </p>
-            <h3 className="text-4xl font-black text-orange-600">3 <span className="text-lg font-black opacity-30">件</span></h3>
-         </div>
-         <div className="bg-white p-8 rounded-[48px] border border-gray-100 shadow-sm">
-            <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1 flex items-center gap-2">
-               <Droplets size={10}/> 消耗品不足アラート
-            </p>
-            <h3 className="text-4xl font-black text-red-600">1 <span className="text-lg font-black opacity-30">箇所</span></h3>
-         </div>
-         <div className="bg-gray-900 text-white p-8 rounded-[48px] flex flex-col justify-center items-center gap-3 shadow-xl hover:bg-teal-600 transition-all cursor-pointer active:scale-95 group">
-            <ShoppingCart size={24} className="text-teal-400 group-hover:text-white" />
-            <span className="text-[11px] font-black uppercase tracking-widest">備品を補充発注する</span>
-         </div>
-      </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+          <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
 
-      <div className="grid lg:grid-cols-3 gap-10">
-         <div className="lg:col-span-2 space-y-6">
-            <div className="flex justify-between items-center px-4 mb-2">
-               <h2 className="text-xl font-black flex items-center gap-3 tracking-tight"><Building size={24} className="text-teal-600" /> 各ブース・動態モニタリング</h2>
-               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">最終同期: 2分前</span>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">データを読み込み中...</p>
+        </div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-white p-8 rounded-[48px] border border-gray-100 shadow-sm">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">登録サイト数</p>
+              <h3 className="text-4xl font-black text-gray-900">{data.total_sites}</h3>
+              <p className="text-xs text-teal-600 font-bold mt-1">稼働中 {data.active_sites}件</p>
             </div>
-            
-            <div className="grid gap-4">
-               {boothStates.map(booth => (
-                 <div key={booth.id} className="bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-10 group hover:shadow-2xl hover:border-teal-500/20 transition-all">
-                    <div className="flex items-center gap-8">
-                       <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center font-black text-lg ${booth.cleanliness === '清掃済' ? 'bg-teal-50 text-teal-600 shadow-inner' : 'bg-orange-50 text-orange-600 shadow-inner'}`}>
-                          {booth.id.split('-')[1]}
-                       </div>
-                       <div className="space-y-1">
-                          <h4 className="font-black text-xl text-gray-900 tracking-tight">{booth.id}</h4>
-                          <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${booth.status === '利用可能' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                             {booth.status}
-                          </span>
-                       </div>
-                    </div>
-                    
-                    <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-10 md:px-12">
-                       <div>
-                          <p className="text-[9px] font-black text-gray-400 uppercase mb-2 tracking-widest">衛生状態</p>
-                          <p className={`text-sm font-black ${booth.cleanliness === '清掃済' ? 'text-teal-600' : 'text-orange-600 animate-pulse'}`}>
-                             {booth.cleanliness}
-                          </p>
-                       </div>
-                       <div>
-                          <p className="text-[9px] font-black text-gray-400 uppercase mb-2 tracking-widest">リネン在庫</p>
-                          <p className={`text-sm font-black ${booth.towels < 3 ? 'text-red-600' : 'text-gray-900'}`}>{booth.towels} 枚</p>
-                       </div>
-                       <div className="hidden md:block">
-                          <p className="text-[9px] font-black text-gray-400 uppercase mb-2 tracking-widest">オイル残量</p>
-                          <p className="text-sm font-black text-gray-900">{booth.oil}</p>
-                       </div>
-                    </div>
-
-                    <button className="bg-gray-50 text-gray-400 px-8 py-4 rounded-[24px] text-[10px] font-black hover:bg-gray-900 hover:text-white transition-all uppercase tracking-widest active:scale-95 shadow-sm">
-                       履歴
-                    </button>
-                 </div>
-               ))}
+            <div className="bg-white p-8 rounded-[48px] border border-gray-100 shadow-sm">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">今月の予約数</p>
+              <h3 className="text-4xl font-black text-gray-900">{data.total_bookings_this_month}<span className="text-lg ml-1 opacity-30">件</span></h3>
             </div>
-         </div>
+            <div className="bg-white p-8 rounded-[48px] border border-gray-100 shadow-sm">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">今月の売上</p>
+              <h3 className="text-4xl font-black text-teal-600">¥{(data.total_revenue_this_month || 0).toLocaleString()}</h3>
+            </div>
+            <div className="bg-gray-900 text-white p-8 rounded-[48px] flex flex-col justify-center items-center gap-3 shadow-xl hover:bg-teal-600 transition-all cursor-pointer active:scale-95 group" onClick={() => navigate('/h/sites')}>
+              <Building size={24} className="text-teal-400 group-hover:text-white" />
+              <span className="text-[11px] font-black uppercase tracking-widest text-center">サイト管理</span>
+            </div>
+          </div>
 
-         <div className="space-y-8">
-            <section className="bg-white p-10 rounded-[56px] shadow-sm border border-gray-100 space-y-10">
-               <div className="space-y-2">
-                  <h3 className="font-black text-gray-900 flex items-center gap-3 text-lg tracking-tight">
-                     <Droplets className="text-blue-500" /> メンテナンス指令
-                  </h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Maintenance Dispatch</p>
-               </div>
-               
-               <div className="space-y-4">
-                  <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
-                     <p className="text-[10px] font-black text-teal-600 uppercase mb-2 tracking-widest">直近のアクション</p>
-                     <p className="text-sm font-bold text-gray-700 leading-relaxed">
-                        田中 有紀さんが **CUBE-001** の清掃および除菌を完了しました。
-                     </p>
-                     <p className="text-[10px] text-gray-400 mt-2 font-mono">2025/05/21 14:05</p>
-                     <button className="mt-4 text-[10px] font-black text-teal-600 hover:underline flex items-center gap-2">エビデンス写真を確認 <ChevronRight size={12}/></button>
-                  </div>
-                  <div className="p-6 bg-red-50 rounded-[32px] border border-red-100">
-                     <p className="text-[10px] font-black text-red-600 uppercase mb-2 tracking-widest">異常検知</p>
-                     <p className="text-sm font-bold text-red-900 leading-relaxed">
-                        **CUBE-003**: タオル在庫がゼロになりました。次回の予約開始までに補充が必要です。
-                     </p>
-                  </div>
-               </div>
-            </section>
+          <div className="grid lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex justify-between items-center px-4 mb-2">
+                <h2 className="text-xl font-black flex items-center gap-3 tracking-tight"><Building size={24} className="text-teal-600" /> 登録サイト一覧</h2>
+                <button onClick={() => navigate('/h/sites')} className="text-xs font-black text-teal-600 hover:underline">全て管理 →</button>
+              </div>
+              {data.sites.length === 0 ? (
+                <div className="bg-white p-10 rounded-[48px] border border-gray-100 text-center">
+                  <Building className="mx-auto text-gray-300 mb-3" size={40} />
+                  <p className="text-gray-400 text-sm font-medium">登録されたサイトはありません</p>
+                  <button onClick={() => navigate('/h/sites')} className="mt-4 bg-teal-600 text-white px-6 py-2 rounded-xl text-xs font-black hover:bg-teal-700">サイトを追加する</button>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {data.sites.map((site) => (
+                    <div key={site.id} className="bg-white p-8 rounded-[48px] border border-gray-100 flex items-center justify-between group hover:shadow-xl hover:border-teal-500/20 transition-all">
+                      <div className="flex items-center gap-6">
+                        <div className="w-14 h-14 rounded-[20px] bg-teal-50 flex items-center justify-center">
+                          <Building size={24} className="text-teal-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-lg text-gray-900">{site.name}</h4>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${getStatusColor(site.status)}`}>{getStatusLabel(site.status)}</span>
+                            <span className="text-xs text-gray-400">{site.type}</span>
+                            <span className="text-xs text-gray-400">{site.room_count}室</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => navigate('/h/sites')} className="bg-gray-50 text-gray-400 px-6 py-3 rounded-[20px] text-[10px] font-black hover:bg-gray-900 hover:text-white transition-all uppercase tracking-widest">管理</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-            <button className="w-full py-8 bg-teal-600 text-white rounded-[40px] font-black text-lg shadow-xl shadow-teal-500/20 hover:bg-teal-700 transition-all flex items-center justify-center gap-4 active:scale-95">
-               <CheckCircle2 size={24} /> 全拠点の正常性を承認
-            </button>
-         </div>
-      </div>
+            <div className="space-y-6">
+              <h2 className="text-xl font-black flex items-center gap-3 tracking-tight px-4"><Calendar size={24} className="text-indigo-600" /> 直近の予約</h2>
+              {data.upcoming_bookings.length === 0 ? (
+                <div className="bg-white p-8 rounded-[40px] border border-gray-100 text-center">
+                  <Clock className="mx-auto text-gray-300 mb-2" size={32} />
+                  <p className="text-gray-400 text-sm font-medium">予定された予約はありません</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {data.upcoming_bookings.map((booking) => (
+                    <div key={booking.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">{booking.therapist_name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{booking.service_name}</p>
+                          <p className="text-xs text-teal-600 font-bold mt-1">{formatDate(booking.scheduled_at)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-black text-gray-900">¥{(booking.price || 0).toLocaleString()}</p>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getStatusColor(booking.status)}`}>{getStatusLabel(booking.status)}</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1"><MapPin size={10} /> {booking.site_name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => navigate('/h/earnings')} className="w-full py-6 bg-teal-600 text-white rounded-[32px] font-black text-sm shadow-xl shadow-teal-500/20 hover:bg-teal-700 transition-all flex items-center justify-center gap-3 active:scale-95">
+                <TrendingUp size={18} /> 収益レポートを見る
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 };
