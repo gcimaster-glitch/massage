@@ -79,6 +79,7 @@ import ActiveSession from './pages/therapist/ActiveSession';
 import SessionSummary from './pages/therapist/SessionSummary';
 import BioEditor from './pages/therapist/BioEditor';
 import BankSettings from './pages/therapist/settings/BankSettings';
+import StripeSettings from './pages/therapist/settings/StripeSettings';
 import ServiceSettings from './pages/therapist/settings/ServiceSettings';
 import OptionSettings from './pages/therapist/settings/OptionSettings';
 import PricingSettings from './pages/therapist/settings/PricingSettings';
@@ -406,6 +407,7 @@ const App: React.FC = () => {
         <Route path="/t/notifications" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistNotifications /></RequireAuth>} />
         <Route path="/t/settings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistPersonalSettings /></RequireAuth>} />
         <Route path="/t/settings/bank" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><BankSettings /></RequireAuth>} />
+        <Route path="/t/settings/stripe" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><StripeSettings /></RequireAuth>} />
         <Route path="/t/settings/services" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><ServiceSettings /></RequireAuth>} />
         <Route path="/t/settings/options" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><OptionSettings /></RequireAuth>} />
         <Route path="/t/settings/pricing" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><PricingSettings /></RequireAuth>} />

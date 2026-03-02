@@ -26,6 +26,15 @@ const TherapistPersonalSettings: React.FC = () => {
       path: '/t/settings/bank'
     },
     {
+      id: 'stripe',
+      title: '報酬受取設定（Stripe Connect）',
+      description: 'セッション報酬を受け取るための決済アカウント設定',
+      icon: CreditCard,
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-100',
+      path: '/t/settings/stripe'
+    },
+    {
       id: 'services',
       title: '対応可能メニュー',
       description: '提供できる施術メニューの設定',
