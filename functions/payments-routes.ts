@@ -4,6 +4,7 @@
  * - Stripe Connect オンボーディング
  * - 領収書HTML生成
  * - ユーザー支払い履歴取得
+ * - セラピスト報酬管理
  */
 
 import { Hono } from 'hono';
@@ -13,6 +14,7 @@ type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
   STRIPE_SECRET: string;
+  STRIPE_PUBLIC_KEY: string;
   RESEND_API_KEY: string;
 };
 
@@ -22,11 +24,25 @@ const app = new Hono<{ Bindings: Bindings }>();
 // Stripe 決済セッション作成
 // ============================================
 app.post('/create-session', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  const token = authHeader.replace('Bearer ', '');
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+  if (!payload) {
+    return c.json({ error: 'Invalid or expired token' }, 401);
+  }
+
   const { bookingId, amount } = await c.req.json<{ bookingId: string; amount: number }>();
   const { STRIPE_SECRET } = c.env;
 
   if (!STRIPE_SECRET) {
     return c.json({ error: 'Stripe is not configured' }, 503);
+  }
+
+  if (!bookingId || !amount || amount <= 0) {
+    return c.json({ error: 'bookingId and amount are required' }, 400);
   }
 
   const origin = new URL(c.req.url).origin;
@@ -45,24 +61,235 @@ app.post('/create-session', async (c) => {
       'line_items[0][price_data][product_data][name]': 'HOGUSY Wellness Session',
       'line_items[0][price_data][unit_amount]': amount.toString(),
       'line_items[0][quantity]': '1',
+      'metadata[booking_id]': bookingId,
+      'metadata[user_id]': payload.userId as string,
     }),
   });
 
-  const session = await response.json<{ url?: string; error?: { message: string } }>();
+  const session = await response.json<{ id?: string; url?: string; error?: { message: string } }>();
 
   if (!response.ok) {
     return c.json({ error: session.error?.message || 'Stripe error' }, 500);
   }
 
-  return c.json({ checkoutUrl: session.url });
+  // bookingsテーブルにstripe_session_idを記録
+  try {
+    await c.env.DB.prepare(`
+      UPDATE bookings SET stripe_session_id = ?, payment_status = 'PENDING', updated_at = datetime('now')
+      WHERE id = ? AND user_id = ?
+    `).bind(session.id || null, bookingId, payload.userId).run();
+  } catch (e) {
+    console.error('Failed to update booking stripe session:', e);
+  }
+
+  return c.json({ checkoutUrl: session.url, sessionId: session.id });
 });
 
 // ============================================
 // Stripe Connect オンボーディング
+// セラピストがStripe Connectアカウントを作成し、
+// 報酬を受け取れるようにするためのオンボーディングURL生成
 // ============================================
-app.get('/connect-onboarding', async (c) => {
-  // TODO: Stripe Connect アカウント作成とオンボーディングURL生成
-  return c.json({ url: 'https://connect.stripe.com/setup/...' });
+app.post('/connect-onboarding', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+  if (!payload) {
+    return c.json({ error: 'Invalid or expired token' }, 401);
+  }
+
+  const { STRIPE_SECRET, DB } = c.env;
+  if (!STRIPE_SECRET) {
+    return c.json({ error: 'Stripe is not configured' }, 503);
+  }
+
+  const userId = payload.userId as string;
+  const origin = new URL(c.req.url).origin;
+
+  try {
+    // 既存のStripe Connectアカウントを確認
+    const existing = await DB.prepare(`
+      SELECT stripe_account_id, charges_enabled, payouts_enabled, details_submitted
+      FROM stripe_connected_accounts
+      WHERE user_id = ?
+    `).bind(userId).first<{
+      stripe_account_id: string;
+      charges_enabled: number;
+      payouts_enabled: number;
+      details_submitted: number;
+    }>();
+
+    let stripeAccountId: string;
+
+    if (existing) {
+      stripeAccountId = existing.stripe_account_id;
+
+      // 既に完全に設定済みの場合
+      if (existing.charges_enabled && existing.payouts_enabled) {
+        return c.json({
+          status: 'complete',
+          message: 'Stripe Connectアカウントは既に設定済みです',
+          charges_enabled: true,
+          payouts_enabled: true,
+        });
+      }
+    } else {
+      // 新規Stripe Connectアカウント作成（Express型）
+      const user = await DB.prepare(
+        'SELECT email, name FROM users WHERE id = ?'
+      ).bind(userId).first<{ email: string; name: string }>();
+
+      const createRes = await fetch('https://api.stripe.com/v1/accounts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${STRIPE_SECRET}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          'type': 'express',
+          'country': 'JP',
+          'email': user?.email || '',
+          'capabilities[card_payments][requested]': 'true',
+          'capabilities[transfers][requested]': 'true',
+          'business_type': 'individual',
+          'metadata[user_id]': userId,
+        }),
+      });
+
+      const account = await createRes.json<{ id?: string; error?: { message: string } }>();
+      if (!createRes.ok || !account.id) {
+        return c.json({ error: account.error?.message || 'Stripe account creation failed' }, 500);
+      }
+
+      stripeAccountId = account.id;
+
+      // DBに保存
+      const now = new Date().toISOString();
+      const connId = `sca_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      await DB.prepare(`
+        INSERT INTO stripe_connected_accounts (id, user_id, stripe_account_id, type, charges_enabled, payouts_enabled, details_submitted, created_at, updated_at)
+        VALUES (?, ?, ?, 'express', 0, 0, 0, ?, ?)
+      `).bind(connId, userId, stripeAccountId, now, now).run();
+    }
+
+    // オンボーディングリンク生成
+    const linkRes = await fetch('https://api.stripe.com/v1/account_links', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${STRIPE_SECRET}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        'account': stripeAccountId,
+        'refresh_url': `${origin}/app/therapist/stripe-setup?refresh=true`,
+        'return_url': `${origin}/app/therapist/stripe-setup?success=true`,
+        'type': 'account_onboarding',
+      }),
+    });
+
+    const link = await linkRes.json<{ url?: string; error?: { message: string } }>();
+    if (!linkRes.ok || !link.url) {
+      return c.json({ error: link.error?.message || 'Failed to create onboarding link' }, 500);
+    }
+
+    return c.json({
+      url: link.url,
+      stripe_account_id: stripeAccountId,
+      status: 'pending',
+    });
+
+  } catch (e) {
+    console.error('Stripe Connect onboarding error:', e);
+    return c.json({ error: 'Stripe Connect setup failed' }, 500);
+  }
+});
+
+// ============================================
+// GET /api/payments/connect-status
+// セラピストのStripe Connect状況確認
+// ============================================
+app.get('/connect-status', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+  if (!payload) {
+    return c.json({ error: 'Invalid or expired token' }, 401);
+  }
+
+  const { STRIPE_SECRET, DB } = c.env;
+  const userId = payload.userId as string;
+
+  const account = await DB.prepare(`
+    SELECT stripe_account_id, charges_enabled, payouts_enabled, details_submitted, created_at
+    FROM stripe_connected_accounts
+    WHERE user_id = ?
+  `).bind(userId).first<{
+    stripe_account_id: string;
+    charges_enabled: number;
+    payouts_enabled: number;
+    details_submitted: number;
+    created_at: string;
+  }>();
+
+  if (!account) {
+    return c.json({ connected: false, status: 'not_started' });
+  }
+
+  // Stripeから最新状況を取得して同期
+  if (STRIPE_SECRET && account.stripe_account_id) {
+    try {
+      const res = await fetch(`https://api.stripe.com/v1/accounts/${account.stripe_account_id}`, {
+        headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+      });
+      if (res.ok) {
+        const stripeAccount = await res.json<{
+          charges_enabled: boolean;
+          payouts_enabled: boolean;
+          details_submitted: boolean;
+        }>();
+
+        // DBを最新状態に同期
+        await DB.prepare(`
+          UPDATE stripe_connected_accounts
+          SET charges_enabled = ?, payouts_enabled = ?, details_submitted = ?, updated_at = datetime('now')
+          WHERE user_id = ?
+        `).bind(
+          stripeAccount.charges_enabled ? 1 : 0,
+          stripeAccount.payouts_enabled ? 1 : 0,
+          stripeAccount.details_submitted ? 1 : 0,
+          userId
+        ).run();
+
+        return c.json({
+          connected: true,
+          stripe_account_id: account.stripe_account_id,
+          charges_enabled: stripeAccount.charges_enabled,
+          payouts_enabled: stripeAccount.payouts_enabled,
+          details_submitted: stripeAccount.details_submitted,
+          status: stripeAccount.charges_enabled && stripeAccount.payouts_enabled ? 'active' : 'pending',
+        });
+      }
+    } catch (e) {
+      console.error('Stripe account status sync error:', e);
+    }
+  }
+
+  return c.json({
+    connected: true,
+    stripe_account_id: account.stripe_account_id,
+    charges_enabled: !!account.charges_enabled,
+    payouts_enabled: !!account.payouts_enabled,
+    details_submitted: !!account.details_submitted,
+    status: account.charges_enabled && account.payouts_enabled ? 'active' : 'pending',
+  });
 });
 
 // ============================================
@@ -82,7 +309,6 @@ app.get('/receipts/:paymentId', async (c) => {
     return c.json({ error: 'Invalid or expired token' }, 401);
   }
 
-  // DBから支払い情報を取得
   const { DB } = c.env;
   const userId = payload.userId;
 
@@ -196,6 +422,76 @@ app.get('/user/payments', async (c) => {
   } catch (e: unknown) {
     console.error('Payment history fetch error:', e);
     return c.json({ error: 'Failed to fetch payment history' }, 500);
+  }
+});
+
+// ============================================
+// セラピスト報酬履歴取得
+// ============================================
+app.get('/therapist/earnings', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+  if (!payload) {
+    return c.json({ error: 'Invalid or expired token' }, 401);
+  }
+
+  const userId = payload.userId as string;
+  const { DB } = c.env;
+
+  try {
+    // therapist_profilesからprofile_idを取得
+    const profile = await DB.prepare(
+      'SELECT id FROM therapist_profiles WHERE user_id = ?'
+    ).bind(userId).first<{ id: string }>();
+
+    if (!profile) {
+      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
+    }
+
+    const result = await DB.prepare(`
+      SELECT
+        te.id,
+        te.booking_id,
+        te.booking_price,
+        te.therapist_amount,
+        te.therapist_rate,
+        te.status,
+        te.booking_date,
+        te.paid_at,
+        te.created_at,
+        b.service_name
+      FROM therapist_earnings te
+      LEFT JOIN bookings b ON te.booking_id = b.id
+      WHERE te.therapist_profile_id = ?
+      ORDER BY te.booking_date DESC
+      LIMIT 100
+    `).bind(profile.id).all<Record<string, unknown>>();
+
+    // 集計
+    const earnings = result.results || [];
+    const totalEarnings = earnings
+      .filter(e => e.status === 'PAID')
+      .reduce((sum, e) => sum + (e.therapist_amount as number || 0), 0);
+    const pendingEarnings = earnings
+      .filter(e => e.status === 'PENDING' || e.status === 'CONFIRMED')
+      .reduce((sum, e) => sum + (e.therapist_amount as number || 0), 0);
+
+    return c.json({
+      earnings,
+      summary: {
+        total_paid: totalEarnings,
+        total_pending: pendingEarnings,
+        total_bookings: earnings.length,
+      }
+    });
+  } catch (e) {
+    console.error('Therapist earnings fetch error:', e);
+    return c.json({ error: 'Failed to fetch earnings' }, 500);
   }
 });
 
