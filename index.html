@@ -46,8 +46,8 @@
         preconnect.href = 'https://maps.googleapis.com';
         document.head.appendChild(preconnect);
         // APIキーをVite環境変数から取得（ビルド時に置換される）
-        var apiKey = '__VITE_GOOGLE_MAPS_API_KEY__';
-        if (apiKey && apiKey !== '__VITE_GOOGLE_MAPS_API_KEY__') {
+        var apiKey = '%VITE_GOOGLE_MAPS_API_KEY%';
+        if (apiKey && apiKey !== '%VITE_GOOGLE_MAPS_API_KEY%') {
           var script = document.createElement('script');
           script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places,geometry&language=ja&region=JP&loading=async';
           script.async = true;
