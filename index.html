@@ -38,23 +38,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@400;600;900&display=swap" rel="stylesheet">
     <!-- Google Maps JavaScript API -->
     <!-- APIキーはVite環境変数 VITE_GOOGLE_MAPS_API_KEY から注入（ハードコード禁止） -->
-    <script>
-      (function() {
+    <script type="module">
+      // ビルド時にViteがimport.meta.env.VITE_GOOGLE_MAPS_API_KEYを実際のキーに置換する
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (apiKey) {
         // Preconnect for faster loading
-        var preconnect = document.createElement('link');
+        const preconnect = document.createElement('link');
         preconnect.rel = 'preconnect';
         preconnect.href = 'https://maps.googleapis.com';
         document.head.appendChild(preconnect);
-        // APIキーをVite環境変数から取得（ビルド時に置換される）
-        var apiKey = '%VITE_GOOGLE_MAPS_API_KEY%';
-        if (apiKey && apiKey !== '%VITE_GOOGLE_MAPS_API_KEY%') {
-          var script = document.createElement('script');
-          script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places,geometry&language=ja&region=JP&loading=async';
-          script.async = true;
-          script.defer = true;
-          document.head.appendChild(script);
-        }
-      })();
+        // Google Maps APIスクリプトを動的に読み込む
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP&loading=async`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
     </script>
     <style>
       :root {
