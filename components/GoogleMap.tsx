@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, Search, Navigation, Loader2 } from 'lucide-react';
+import { Search, Navigation, Loader2, AlertCircle } from 'lucide-react';
 
 interface GoogleMapProps {
   center?: { lat: number; lng: number };
@@ -16,6 +16,42 @@ declare global {
   }
 }
 
+// Google Maps APIスクリプトを動的に読み込む関数
+// ビルド時にViteのdefineオプションがimport.meta.env.VITE_GOOGLE_MAPS_API_KEYを実際のキーに置換する
+let loadPromise: Promise<void> | null = null;
+
+function loadGoogleMapsScript(): Promise<void> {
+  if (loadPromise) return loadPromise;
+
+  loadPromise = new Promise((resolve, reject) => {
+    // すでに読み込み済みの場合はすぐに解決
+    if (window.google && window.google.maps) {
+      resolve();
+      return;
+    }
+
+    // APIキーをVite環境変数から取得（ビルド時にdefineで置換される）
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      reject(new Error('Google Maps APIキーが設定されていません'));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => {
+      loadPromise = null; // 失敗時はリセットして再試行可能にする
+      reject(new Error('Google Maps APIの読み込みに失敗しました'));
+    };
+    document.head.appendChild(script);
+  });
+
+  return loadPromise;
+}
+
 const GoogleMap: React.FC<GoogleMapProps> = ({
   center = { lat: 35.6762, lng: 139.6503 }, // Tokyo default
   zoom = 14,
@@ -26,20 +62,21 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize map
+  // Google Maps APIを読み込んでマップを初期化
   useEffect(() => {
     if (!mapRef.current) return;
 
-    const checkGoogleMaps = setInterval(() => {
-      if (window.google && window.google.maps) {
-        clearInterval(checkGoogleMaps);
-        
-        const mapInstance = new window.google.maps.Map(mapRef.current!, {
+    let cancelled = false;
+
+    loadGoogleMapsScript()
+      .then(() => {
+        if (cancelled || !mapRef.current) return;
+
+        const mapInstance = new window.google.maps.Map(mapRef.current, {
           center,
           zoom,
           mapTypeControl: false,
@@ -57,27 +94,22 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
         setMap(mapInstance);
         setIsLoading(false);
 
-        // Initialize search box if enabled
+        // 検索ボックスの初期化
         if (showSearch && searchInputRef.current) {
           const searchBoxInstance = new window.google.maps.places.SearchBox(searchInputRef.current);
-          setSearchBox(searchBoxInstance);
 
-          // Bias search results towards current map viewport
           mapInstance.addListener('bounds_changed', () => {
             searchBoxInstance.setBounds(mapInstance.getBounds()!);
           });
 
-          // Listen for place selection
           searchBoxInstance.addListener('places_changed', () => {
             const places = searchBoxInstance.getPlaces();
             if (places && places.length > 0) {
               const place = places[0];
-              
               if (place.geometry && place.geometry.location) {
                 mapInstance.panTo(place.geometry.location);
                 mapInstance.setZoom(16);
 
-                // Add marker
                 new window.google.maps.Marker({
                   map: mapInstance,
                   position: place.geometry.location,
@@ -92,15 +124,24 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
             }
           });
         }
-      }
-    }, 100);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Google Maps初期化エラー:', err);
+        setError(err.message || 'マップの読み込みに失敗しました');
+        setIsLoading(false);
+      });
 
-    return () => clearInterval(checkGoogleMaps);
-  }, [center, zoom, showSearch, onPlaceSelected]);
+    return () => {
+      cancelled = true;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Add markers
+  // マーカーの追加
   useEffect(() => {
     if (!map) return;
+
+    const mapMarkers: google.maps.Marker[] = [];
 
     markers.forEach((marker) => {
       const mapMarker = new window.google.maps.Marker({
@@ -109,6 +150,8 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
         title: marker.title,
         animation: window.google.maps.Animation.DROP,
       });
+
+      mapMarkers.push(mapMarker);
 
       if (marker.info) {
         const infoWindow = new window.google.maps.InfoWindow({
@@ -120,56 +163,57 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
         });
       }
     });
+
+    return () => {
+      mapMarkers.forEach((m) => m.setMap(null));
+    };
   }, [map, markers]);
 
-  // Get current location
+  // 現在地を取得
   const handleGetCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const pos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          
-          setCurrentLocation(pos);
-
-          if (map) {
-            map.panTo(pos);
-            map.setZoom(15);
-
-            new window.google.maps.Marker({
-              map,
-              position: pos,
-              title: '現在地',
-              icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 10,
-                fillColor: '#14b8a6',
-                fillOpacity: 1,
-                strokeColor: '#ffffff',
-                strokeWeight: 2,
-              },
-            });
-
-            // Search for nearby massage places
-            searchNearby(pos);
-          }
-        },
-        () => {
-          alert('現在地の取得に失敗しました');
-        }
-      );
-    } else {
+    if (!navigator.geolocation) {
       alert('このブラウザは位置情報に対応していません');
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const pos = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        if (map) {
+          map.panTo(pos);
+          map.setZoom(15);
+
+          new window.google.maps.Marker({
+            map,
+            position: pos,
+            title: '現在地',
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: '#14b8a6',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            },
+          });
+
+          // 周辺のマッサージ店を検索
+          searchNearby(pos, map);
+        }
+      },
+      () => {
+        alert('現在地の取得に失敗しました');
+      }
+    );
   };
 
-  // Search nearby places
-  const searchNearby = (location: { lat: number; lng: number }) => {
-    if (!map) return;
-
-    const service = new window.google.maps.places.PlacesService(map);
+  // 周辺検索
+  const searchNearby = (location: { lat: number; lng: number }, mapInstance: google.maps.Map) => {
+    const service = new window.google.maps.places.PlacesService(mapInstance);
     const request = {
       location: new window.google.maps.LatLng(location.lat, location.lng),
       radius: 3000,
@@ -182,7 +226,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
         results.slice(0, 10).forEach((place) => {
           if (place.geometry && place.geometry.location) {
             const marker = new window.google.maps.Marker({
-              map,
+              map: mapInstance,
               position: place.geometry.location,
               title: place.name,
               icon: {
@@ -201,7 +245,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
             });
 
             marker.addListener('click', () => {
-              infoWindow.open(map, marker);
+              infoWindow.open(mapInstance, marker);
             });
           }
         });
@@ -216,6 +260,15 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="animate-spin text-teal-600" size={32} />
             <p className="text-sm font-bold text-gray-400">マップを読み込み中...</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-2xl z-10">
+          <div className="flex flex-col items-center gap-3 p-6 text-center">
+            <AlertCircle className="text-red-400" size={32} />
+            <p className="text-sm font-bold text-gray-500">{error}</p>
           </div>
         </div>
       )}

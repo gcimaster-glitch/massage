@@ -14,6 +14,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     // ビルド時にCloudflare Pagesの環境変数を埋め込む
+    // import.meta.env.VITE_GOOGLE_MAPS_API_KEY → 実際のAPIキー文字列に置換
     'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY || ''),
   },
   build: {
