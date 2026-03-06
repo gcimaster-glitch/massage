@@ -54,6 +54,10 @@ interface SimpleBookingV2Props {
   therapist: Therapist;
   bookingType?: 'ONSITE' | 'MOBILE';
   site?: Site | null;
+  /** カレンダーから遷移時に渡される初期日付 (YYYY-MM-DD) */
+  initialDate?: string;
+  /** カレンダーから遷移時に渡される初期時刻 (HH:MM) */
+  initialTime?: string;
 }
 
 // =============================================
@@ -63,12 +67,18 @@ interface SimpleBookingV2Props {
 const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({ 
   therapist, 
   bookingType = 'ONSITE', 
-  site = null 
+  site = null,
+  initialDate = '',
+  initialTime = ''
 }) => {
   console.log('🚀🚀🚀 [SimpleBookingV2] Component MOUNTED/RENDERING');
-  console.log('📊 Props:', { therapistId: therapist.id, bookingType, siteId: site?.id });
+  console.log('📊 Props:', { therapistId: therapist.id, bookingType, siteId: site?.id, initialDate, initialTime });
   
   const navigate = useNavigate();
+
+  // カレンダーから遷移時は日時が渡されるため、Step1（メニュー）から開始し、
+  // メニュー選択後はStep2（日時）をスキップしてStep3（お客様情報）へ進む
+  const hasPresetDateTime = !!(initialDate && initialTime);
   
   // =============================================
   // State Management
@@ -87,8 +97,8 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     therapist,
     course: null,
     options: [],
-    date: '',
-    time: '',
+    date: initialDate,
+    time: initialTime,
     totalPrice: 0,
     totalDuration: 0,
     bookingType,
@@ -348,7 +358,12 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
 
   const goBack = () => {
     if (currentStep > 1) {
-      goToStep(currentStep - 1);
+      // カレンダーから日時がプリセットされている場合、Step3→Step1（Step2スキップ）
+      if (hasPresetDateTime && currentStep === 3) {
+        goToStep(1);
+      } else {
+        goToStep(currentStep - 1);
+      }
     }
   };
 
@@ -392,7 +407,12 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
       setErrorMessage('📋 コースを選択してください');
       return;
     }
-    goToStep(2);
+    // カレンダーから日時が渡されている場合はStep2（日時選択）をスキップしてStep3へ
+    if (hasPresetDateTime) {
+      goToStep(3);
+    } else {
+      goToStep(2);
+    }
   };
 
   // =============================================
@@ -685,34 +705,40 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     return (
       <div className="mb-8">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
-          {steps.map((step, index) => (
-            <React.Fragment key={step.num}>
-              <div className="flex flex-col items-center">
-                <div className={`
-                  w-10 h-10 rounded-full flex items-center justify-center font-bold
-                  ${currentStep >= step.num 
-                    ? 'bg-teal-600 text-white' 
-                    : 'bg-gray-200 text-gray-500'
-                  }
-                `}>
-                  {currentStep > step.num ? '✓' : step.num}
+          {steps.map((step, index) => {
+            // プリセット日時がある場合、Step2は常に完了済み扱い
+            const isCompleted = currentStep > step.num || (hasPresetDateTime && step.num === 2);
+            const isActive = currentStep === step.num;
+            const isSkipped = hasPresetDateTime && step.num === 2;
+            return (
+              <React.Fragment key={step.num}>
+                <div className="flex flex-col items-center">
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center font-bold
+                    ${isCompleted || isActive
+                      ? 'bg-teal-600 text-white' 
+                      : 'bg-gray-200 text-gray-500'
+                    }
+                  `}>
+                    {isCompleted ? '✓' : step.num}
+                  </div>
+                  <span className={`
+                    text-xs mt-2 font-medium
+                    ${isCompleted || isActive ? 'text-teal-600' : 'text-gray-400'}
+                  `}>
+                    {isSkipped ? `日時確定` : step.label}
+                  </span>
                 </div>
-                <span className={`
-                  text-xs mt-2 font-medium
-                  ${currentStep >= step.num ? 'text-teal-600' : 'text-gray-400'}
-                `}>
-                  {step.label}
-                </span>
-              </div>
-              
-              {index < steps.length - 1 && (
-                <div className={`
-                  flex-1 h-1 mx-2
-                  ${currentStep > step.num ? 'bg-teal-600' : 'bg-gray-200'}
-                `} />
-              )}
-            </React.Fragment>
-          ))}
+                
+                {index < steps.length - 1 && (
+                  <div className={`
+                    flex-1 h-1 mx-2
+                    ${isCompleted ? 'bg-teal-600' : 'bg-gray-200'}
+                  `} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     );
@@ -886,7 +912,9 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
               onClick={handleNextFromMenu}
               className="w-full bg-white text-teal-600 font-bold py-4 px-6 rounded-lg hover:bg-teal-50 transition-colors"
             >
-              次へ（日時選択）
+              {hasPresetDateTime
+                ? `次へ（${bookingData.date} ${bookingData.time}で予約）`
+                : '次へ（日時選択）'}
             </button>
           </div>
         )}
@@ -1079,6 +1107,20 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     
     return (
       <div className="space-y-6">
+        {/* プリセット日時の確認バナー */}
+        {hasPresetDateTime && (
+          <div className="bg-teal-50 border-2 border-teal-300 p-4 rounded-xl">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📅</span>
+              <div>
+                <p className="font-bold text-teal-800">予約日時（カレンダーから選択）</p>
+                <p className="text-teal-700 text-sm">
+                  {new Date(bookingData.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}　{bookingData.time}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <h3 className="text-xl font-bold text-gray-800 mb-6">お客様情報を入力してください</h3>
           

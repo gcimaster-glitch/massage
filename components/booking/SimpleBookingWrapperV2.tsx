@@ -25,6 +25,10 @@ const SimpleBookingWrapperV2: React.FC = () => {
   const bookingType = (searchParams.get('type') || 'ONSITE') as 'ONSITE' | 'MOBILE';
   const siteId = searchParams.get('siteId');
 
+  // カレンダーから遷移した場合の初期日時
+  const initialDate = searchParams.get('date') || '';
+  const initialTime = searchParams.get('time') || '';
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -125,6 +129,8 @@ const SimpleBookingWrapperV2: React.FC = () => {
       therapist={therapist}
       bookingType={bookingType}
       site={site}
+      initialDate={initialDate}
+      initialTime={initialTime}
     />
   );
 };

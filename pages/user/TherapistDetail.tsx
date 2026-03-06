@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Star, MapPin, Award, CheckCircle, Clock, ArrowLeft, 
@@ -24,6 +24,11 @@ const TherapistDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'BIO' | 'MENU' | 'REVIEW' | 'GALLERY'>('BIO');
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // 空き状況カレンダー用の状態
+  // bookedSlots: { [dateStr: string]: string[] } - 予約済み時間スロットのマップ
+  const [bookedSlots, setBookedSlots] = useState<Record<string, string[]>>({});
+  const [scheduleLoading, setScheduleLoading] = useState(false);
 
   // Fetch therapist data from API
   useEffect(() => {
@@ -60,6 +65,13 @@ const TherapistDetail: React.FC = () => {
     };
     fetchTherapist();
   }, [therapistId]);
+
+  // セラピストIDが確定したら空き状況を取得
+  useEffect(() => {
+    if (therapistId) {
+      fetchSchedule(therapistId);
+    }
+  }, [therapistId, fetchSchedule]);
 
   // useMemo hooks must be before any conditional returns
   const displayTherapist = useMemo(() => {
@@ -111,31 +123,81 @@ const TherapistDetail: React.FC = () => {
     };
   }, [therapist]);
 
-  // 日本標準の空き状況シミュレーション
+  // 空き状況カレンダー用データ（7日分 × 30分刻み）
   const scheduleData = useMemo(() => {
     const today = new Date();
-    const days = [];
+    const days: { label: string; dateStr: string }[] = [];
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-    
+
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      let label: string;
       if (i === 0) {
-        days.push('本日');
+        label = '本日';
       } else if (i === 1) {
-        days.push('明日');
+        label = '明日';
       } else {
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
+        const m = date.getMonth() + 1;
+        const d = date.getDate();
         const dayName = dayNames[date.getDay()];
-        days.push(`${month}/${day}(${dayName})`);
+        label = `${m}/${d}(${dayName})`;
       }
+      days.push({ label, dateStr });
     }
-    
-    const times = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
+
+    // 30分刻み 10:00〜21:00
+    const times: string[] = [];
+    for (let h = 10; h <= 21; h++) {
+      times.push(`${String(h).padStart(2, '0')}:00`);
+      if (h < 21) times.push(`${String(h).padStart(2, '0')}:30`);
+    }
     return { days, times };
   }, []);
+
+  // 空き状況APIを7日分並列取得
+  const fetchSchedule = useCallback(async (tid: string) => {
+    setScheduleLoading(true);
+    try {
+      const results = await Promise.all(
+        scheduleData.days.map(({ dateStr }) =>
+          fetch(`/api/therapists/${tid}/schedule?date=${dateStr}`)
+            .then(r => r.ok ? r.json() : { date: dateStr, bookings: [] })
+            .catch(() => ({ date: dateStr, bookings: [] }))
+        )
+      );
+      // 予約済みスロットをマップに変換
+      const map: Record<string, string[]> = {};
+      results.forEach((res: any) => {
+        const booked: string[] = [];
+        (res.bookings || []).forEach((b: any) => {
+          // scheduled_at: "2026-03-07T10:00:00" → "10:00"
+          const t = new Date(b.scheduled_at);
+          const hh = String(t.getHours()).padStart(2, '0');
+          const mm = String(t.getMinutes()).padStart(2, '0');
+          booked.push(`${hh}:${mm}`);
+          // 施術時間分のスロットも埋める
+          const dur = b.duration || 60;
+          for (let offset = 30; offset < dur; offset += 30) {
+            const end = new Date(t.getTime() + offset * 60000);
+            const eh = String(end.getHours()).padStart(2, '0');
+            const em = String(end.getMinutes()).padStart(2, '0');
+            booked.push(`${eh}:${em}`);
+          }
+        });
+        map[res.date] = booked;
+      });
+      setBookedSlots(map);
+    } catch (e) {
+      console.error('Failed to fetch schedule:', e);
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [scheduleData.days]);
 
   // Loading state
   if (loading) {
@@ -327,38 +389,46 @@ const TherapistDetail: React.FC = () => {
                              <span className="w-2 h-8 bg-teal-500 rounded-full"></span> 
                              空き状況カレンダー
                           </h3>
-                          <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-4 py-2 rounded-full border border-teal-100">指名予約可能</span>
+                          <div className="flex items-center gap-2">
+                            {scheduleLoading && <Loader size={14} className="animate-spin text-teal-500" />}
+                            <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-4 py-2 rounded-full border border-teal-100">指名予約可能</span>
+                          </div>
                        </div>
                        
                        <div className="overflow-x-auto pb-4 no-scrollbar">
                           <table className="w-full text-center border-collapse min-w-[600px]">
                              <thead>
                                 <tr className="border-b border-gray-100">
-                                   <th className="py-4 px-2 bg-gray-50/50 rounded-tl-3xl">時間</th>
-                                   {scheduleData.days.map((d, i) => (
-                                      <th key={i} className={`py-4 px-2 font-black text-xs ${d.includes('土') ? 'text-blue-600' : d.includes('日') ? 'text-red-600' : 'text-gray-900'} ${i === scheduleData.days.length-1 ? 'rounded-tr-3xl' : ''}`}>
-                                         {d}
+                                   <th className="py-4 px-2 bg-gray-50/50 rounded-tl-3xl text-xs font-black text-gray-500">時間</th>
+                                   {scheduleData.days.map(({ label, dateStr }, i) => (
+                                      <th key={dateStr} className={`py-4 px-2 font-black text-xs ${
+                                        label.includes('土') ? 'text-blue-600' : label.includes('日') ? 'text-red-600' : 'text-gray-900'
+                                      } ${i === scheduleData.days.length-1 ? 'rounded-tr-3xl' : ''}`}>
+                                         {label}
                                       </th>
                                    ))}
                                 </tr>
                              </thead>
                              <tbody className="divide-y divide-gray-50">
-                                {scheduleData.times.map((t, ti) => (
-                                   <tr key={ti} className="hover:bg-gray-50/50 transition-colors">
-                                      <td className="py-4 px-2 font-black text-[11px] text-gray-400 bg-gray-50/30 font-mono">{t}</td>
-                                      {scheduleData.days.map((_, di) => {
-                                         const isAvailable = (ti + di) % 3 === 0;
-                                         const isBusy = (ti + di) % 5 === 0;
+                                {scheduleData.times.map((time) => (
+                                   <tr key={time} className="hover:bg-gray-50/50 transition-colors">
+                                      <td className="py-2 px-2 font-black text-[11px] text-gray-400 bg-gray-50/30 font-mono whitespace-nowrap">{time}</td>
+                                      {scheduleData.days.map(({ dateStr }) => {
+                                         const isBusy = (bookedSlots[dateStr] || []).includes(time);
+                                         const isAvailable = !isBusy;
                                          return (
-                                            <td key={di} className="py-4 px-2">
+                                            <td key={dateStr} className="py-2 px-1">
                                                <button 
-                                                 onClick={() => isAvailable && navigate(`/app/booking/from-therapist/${displayTherapist.id}`)}
-                                                 className={`w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all font-black ${
-                                                 isAvailable ? 'text-teal-600 hover:bg-teal-500 hover:text-white hover:shadow-lg scale-110' : 
-                                                 isBusy ? 'text-red-500 bg-red-50 cursor-not-allowed border-2 border-red-200' : 
-                                                 'text-gray-400 bg-gray-50 cursor-not-allowed border-2 border-gray-200'
+                                                 disabled={isBusy}
+                                                 onClick={() => navigate(`/app/booking/from-therapist/${displayTherapist.id}?date=${dateStr}&time=${encodeURIComponent(time)}`)}
+                                                 className={`w-9 h-9 mx-auto flex items-center justify-center rounded-xl transition-all font-black text-sm ${
+                                                 isAvailable
+                                                   ? 'text-teal-600 hover:bg-teal-500 hover:text-white hover:shadow-lg cursor-pointer'
+                                                   : 'text-red-400 bg-red-50 cursor-not-allowed border border-red-200'
                                                }`}>
-                                                  {isAvailable ? <span className="text-2xl leading-none">○</span> : isBusy ? <Ban size={18} className="text-red-500" strokeWidth={3} /> : <span className="text-2xl leading-none text-gray-400">×</span>}
+                                                  {isAvailable
+                                                    ? <span className="text-xl leading-none">○</span>
+                                                    : <Ban size={14} className="text-red-400" strokeWidth={2} />}
                                                </button>
                                             </td>
                                          );
@@ -368,7 +438,7 @@ const TherapistDetail: React.FC = () => {
                              </tbody>
                           </table>
                        </div>
-                       <p className="text-[10px] text-gray-400 font-bold text-center italic">「○」をクリックするとその時間帯で予約画面へ進みます</p>
+                       <p className="text-[10px] text-gray-400 font-bold text-center italic">「○」をクリックすると、その日時でメニュー選択・予約画面へ進みます</p>
                     </section>
 
                     <hr className="border-gray-50" />
