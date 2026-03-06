@@ -18,7 +18,7 @@ declare global {
 }
 
 // タブの種類
-type TabType = 'map' | 'therapist';
+type TabType = 'map' | 'therapist' | 'sites';
 
 // 施設の型カラーマッピング
 const SITE_TYPE_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -310,6 +310,26 @@ const PortalHome: React.FC = () => {
                 <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-indigo-500 rounded-t-full"></div>
               )}
             </button>
+            {/* 施設から探すタブ */}
+            <button
+              onClick={() => handleTabChange('sites')}
+              className={`flex-1 py-4 md:py-5 flex items-center justify-center gap-2 md:gap-3 font-black text-sm md:text-lg transition-all relative ${
+                activeTab === 'sites' 
+                  ? 'text-orange-600' 
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <Building2 size={20} className={activeTab === 'sites' ? 'text-orange-500' : ''} />
+              <span>施設から探す</span>
+              {!sitesLoading && (
+                <span className={`text-[10px] md:text-xs px-2 py-0.5 rounded-full font-black ${
+                  activeTab === 'sites' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'
+                }`}>{sites.length}</span>
+              )}
+              {activeTab === 'sites' && (
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-orange-500 rounded-t-full"></div>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -435,6 +455,91 @@ const PortalHome: React.FC = () => {
           </div>
         )}
 
+        {/* ────── 施設から探すタブ ────── */}
+        {activeTab === 'sites' && (
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            {/* タイプフィルター */}
+            <div className="flex gap-2 flex-wrap mb-6">
+              {(['ALL', 'CARE_CUBE', 'HOTEL', 'OFFICE', 'OTHER'] as const).map(type => {
+                const style = type === 'ALL' ? null : SITE_TYPE_COLORS[type];
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedSiteType(type)}
+                    className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${
+                      selectedSiteType === type
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-md'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
+                    }`}
+                  >
+                    {type === 'ALL' ? `すべて (${sites.length})` : `${style?.label} (${siteTypeCounts[type] || 0})`}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 施設グリッド */}
+            {sitesLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center space-y-3">
+                  <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-orange-500 border-t-transparent"></div>
+                  <p className="text-gray-500 font-bold text-sm">施設を読み込み中...</p>
+                </div>
+              </div>
+            ) : filteredSites.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">
+                <Building2 size={48} className="mx-auto mb-4 opacity-30" />
+                <p className="font-bold">該当する施設がありません</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredSites.map(site => {
+                    const style = SITE_TYPE_COLORS[site.site_type] || SITE_TYPE_COLORS.OTHER;
+                    return (
+                      <div
+                        key={site.id}
+                        onClick={() => navigate(`/app/site/${site.id}`)}
+                        className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg cursor-pointer transition-all group hover:-translate-y-1"
+                      >
+                        <div className="p-5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${style.bg} ${style.text}`}>{style.label}</span>
+                            <ChevronRight size={16} className="text-gray-300 group-hover:text-orange-500 transition-colors" />
+                          </div>
+                          <div className={`w-12 h-12 ${style.bg} rounded-xl flex items-center justify-center`}>
+                            <Building2 size={22} className={style.text} />
+                          </div>
+                          <div>
+                            <h4 className="font-black text-sm text-gray-900 group-hover:text-orange-600 transition-colors leading-tight">{site.name}</h4>
+                            {site.address && (
+                              <p className="text-[11px] text-gray-400 mt-1.5 flex items-start gap-1 leading-tight">
+                                <MapPin size={10} className="shrink-0 mt-0.5" /> {site.address}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/app/booking/new?siteId=${site.id}`); }}
+                            className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-black py-2 rounded-xl transition-all"
+                          >
+                            この施設で予約
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-center pt-10">
+                  <button
+                    onClick={() => navigate('/app/map')}
+                    className="inline-flex items-center gap-3 bg-gray-900 hover:bg-orange-500 text-white font-black py-4 px-10 rounded-full text-sm transition-all shadow-lg hover:scale-105"
+                  >
+                    マップで全施設を見る <ArrowRight size={18} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {/* ────── セラピストタブ ────── */}
         {activeTab === 'therapist' && (
           <div>
