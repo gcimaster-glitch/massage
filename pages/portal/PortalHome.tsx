@@ -20,12 +20,27 @@ declare global {
 // タブの種類
 type TabType = 'map' | 'therapist' | 'sites';
 
-// 施設の型カラーマッピング
+// 施設タイプ → 表示用マッピング（APIの type フィールドに対応）
 const SITE_TYPE_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
   CARE_CUBE: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500', label: 'CARE CUBE' },
   HOTEL: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500', label: 'ホテル' },
   OFFICE: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500', label: 'オフィス' },
+  CHARGE: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500', label: 'CHARGE' },
+  PAUWAU: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500', label: 'パウワウ' },
+  HOGUSY: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500', label: 'HOGUSY' },
   OTHER: { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500', label: 'その他' },
+};
+
+// 施設タイプ → サムネイル画像マッピング
+const getSiteImage = (type: string): string => {
+  switch (type) {
+    case 'CARE_CUBE': return '/care-cube-site.jpg';
+    case 'CHARGE': return '/charge-site.jpg';
+    case 'HOGUSY': return '/hogusy-site.jpg';
+    case 'HOTEL': return '/business-hotel.jpg';
+    case 'PAUWAU': return '/hogusy-site.jpg';
+    default: return 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=600';
+  }
 };
 
 const PortalHome: React.FC = () => {
@@ -52,7 +67,11 @@ const PortalHome: React.FC = () => {
   // Google Maps APIを動的に読み込む
   // ============================================
   useEffect(() => {
-    if (window.google && window.google.maps) return; // 既に読み込み済み
+    if (window.google && window.google.maps) {
+      // 既にロード済みの場合は即座にマップ初期化
+      setTimeout(initMap, 50);
+      return;
+    }
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
       console.error('Google Maps APIキーが設定されていません（VITE_GOOGLE_MAPS_API_KEY未設定）');
@@ -63,9 +82,22 @@ const PortalHome: React.FC = () => {
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
       script.async = true;
       script.defer = true;
+      // ロード完了時にマップ初期化
+      script.onload = () => {
+        setTimeout(initMap, 100);
+      };
       document.head.appendChild(script);
+    } else {
+      // スクリプトタグは存在するがまだロード中の場合はポーリング
+      const checkInterval = setInterval(() => {
+        if (window.google?.maps) {
+          clearInterval(checkInterval);
+          setTimeout(initMap, 100);
+        }
+      }, 200);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // initMapはマウント後に定義されるためdepsから除外
 
   // ============================================
   // データ取得
@@ -135,14 +167,12 @@ const PortalHome: React.FC = () => {
     setMapReady(true);
   }, [userLocation]);
 
-  // タブ切り替え時にマップ初期化
+  // タブ切り替え時にマップ初期化（mapタブに戻った場合も対応）
   useEffect(() => {
     if (activeTab === 'map' && !googleMapRef.current) {
-      // Google Maps APIがロード済みかチェック
       if (window.google?.maps) {
         setTimeout(initMap, 100);
       } else {
-        // APIロード待ち
         const checkInterval = setInterval(() => {
           if (window.google?.maps) {
             clearInterval(checkInterval);
@@ -152,7 +182,7 @@ const PortalHome: React.FC = () => {
         return () => clearInterval(checkInterval);
       }
     }
-  }, [activeTab, initMap]);
+  }, [activeTab, initMap]);  // mapRefのDOM描画後にinitMapが呼ばれるよう依存
 
   // マーカー更新
   useEffect(() => {
@@ -164,7 +194,7 @@ const PortalHome: React.FC = () => {
 
     const filteredSites = selectedSiteType === 'ALL' 
       ? sites 
-      : sites.filter(s => s.site_type === selectedSiteType);
+      : sites.filter(s => (s.type || s.site_type) === selectedSiteType);
 
     const bounds = new window.google.maps.LatLngBounds();
 
@@ -173,8 +203,10 @@ const PortalHome: React.FC = () => {
       
       const colorMap: Record<string, string> = {
         CARE_CUBE: '#00C896', HOTEL: '#5B4FFF', OFFICE: '#FF8C00', OTHER: '#6B7280',
+        CHARGE: '#00BCD4', PAUWAU: '#9C27B0', HOGUSY: '#00C896',
       };
-      const color = colorMap[site.site_type] || '#6B7280';
+      const siteType = site.type || site.site_type || 'OTHER';
+      const color = colorMap[siteType] || '#6B7280';
 
       const marker = new window.google.maps.Marker({
         position: { lat: parseFloat(site.latitude), lng: parseFloat(site.longitude) },
@@ -218,7 +250,7 @@ const PortalHome: React.FC = () => {
   // ============================================
   // フィルターされたデータ
   // ============================================
-  const filteredSites = selectedSiteType === 'ALL' ? sites : sites.filter(s => s.site_type === selectedSiteType);
+  const filteredSites = selectedSiteType === 'ALL' ? sites : sites.filter(s => (s.type || s.site_type) === selectedSiteType);
   
   const filteredTherapists = searchQuery 
     ? therapists.filter(t => 
@@ -237,11 +269,15 @@ const PortalHome: React.FC = () => {
     }, 100);
   };
 
-  // サイトタイプ統計
+  // サイトタイプ統計（APIのtypeフィールドを使用）
   const siteTypeCounts = sites.reduce((acc: Record<string, number>, s) => {
-    acc[s.site_type] = (acc[s.site_type] || 0) + 1;
+    const t = s.type || s.site_type || 'OTHER';
+    acc[t] = (acc[t] || 0) + 1;
     return acc;
   }, {});
+
+  // 施設タブ用フィルター（実際のtypeに基づくユニーク値）
+  const siteTypeKeys = ['ALL', ...Array.from(new Set(sites.map((s: any) => s.type || s.site_type || 'OTHER')))] as string[];
 
   return (
     <PortalLayout>
@@ -412,7 +448,7 @@ const PortalHome: React.FC = () => {
                 </div>
                 <div className="divide-y divide-gray-50">
                   {filteredSites.slice(0, 20).map(site => {
-                    const style = SITE_TYPE_COLORS[site.site_type] || SITE_TYPE_COLORS.OTHER;
+                    const style = SITE_TYPE_COLORS[site.type || site.site_type] || SITE_TYPE_COLORS.OTHER;
                     return (
                       <div
                         key={site.id}
@@ -458,10 +494,10 @@ const PortalHome: React.FC = () => {
         {/* ────── 施設から探すタブ ────── */}
         {activeTab === 'sites' && (
           <div className="max-w-7xl mx-auto px-4 py-8">
-            {/* タイプフィルター */}
+            {/* タイプフィルター（実データのtypeに基づく） */}
             <div className="flex gap-2 flex-wrap mb-6">
-              {(['ALL', 'CARE_CUBE', 'HOTEL', 'OFFICE', 'OTHER'] as const).map(type => {
-                const style = type === 'ALL' ? null : SITE_TYPE_COLORS[type];
+              {siteTypeKeys.map(type => {
+                const style = type === 'ALL' ? null : (SITE_TYPE_COLORS[type] || SITE_TYPE_COLORS.OTHER);
                 return (
                   <button
                     key={type}
@@ -472,7 +508,7 @@ const PortalHome: React.FC = () => {
                         : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
                     }`}
                   >
-                    {type === 'ALL' ? `すべて (${sites.length})` : `${style?.label} (${siteTypeCounts[type] || 0})`}
+                    {type === 'ALL' ? `すべて (${sites.length})` : `${style?.label || type} (${siteTypeCounts[type] || 0})`}
                   </button>
                 );
               })}
@@ -494,25 +530,35 @@ const PortalHome: React.FC = () => {
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {filteredSites.map(site => {
-                    const style = SITE_TYPE_COLORS[site.site_type] || SITE_TYPE_COLORS.OTHER;
+                    const siteType = site.type || site.site_type || 'OTHER';
+                    const style = SITE_TYPE_COLORS[siteType] || SITE_TYPE_COLORS.OTHER;
+                    const imgSrc = site.image_url || getSiteImage(siteType);
                     return (
                       <div
                         key={site.id}
                         onClick={() => navigate(`/app/site/${site.id}`)}
-                        className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg cursor-pointer transition-all group hover:-translate-y-1"
+                        className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg cursor-pointer transition-all group hover:-translate-y-1 overflow-hidden"
                       >
-                        <div className="p-5 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${style.bg} ${style.text}`}>{style.label}</span>
-                            <ChevronRight size={16} className="text-gray-300 group-hover:text-orange-500 transition-colors" />
+                        {/* 施設サムネイル画像 */}
+                        <div className="relative h-36 overflow-hidden">
+                          <img
+                            src={imgSrc}
+                            alt={site.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=600'; }}
+                          />
+                          <div className="absolute top-2 left-2">
+                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${style.bg} ${style.text} shadow-sm`}>{style.label}</span>
                           </div>
-                          <div className={`w-12 h-12 ${style.bg} rounded-xl flex items-center justify-center`}>
-                            <Building2 size={22} className={style.text} />
+                          <div className="absolute top-2 right-2">
+                            <ChevronRight size={16} className="text-white drop-shadow group-hover:text-orange-300 transition-colors" />
                           </div>
+                        </div>
+                        <div className="p-4 space-y-2">
                           <div>
                             <h4 className="font-black text-sm text-gray-900 group-hover:text-orange-600 transition-colors leading-tight">{site.name}</h4>
                             {site.address && (
-                              <p className="text-[11px] text-gray-400 mt-1.5 flex items-start gap-1 leading-tight">
+                              <p className="text-[11px] text-gray-400 mt-1 flex items-start gap-1 leading-tight">
                                 <MapPin size={10} className="shrink-0 mt-0.5" /> {site.address}
                               </p>
                             )}
