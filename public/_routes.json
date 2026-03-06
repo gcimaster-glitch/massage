@@ -2,6 +2,13 @@
   "version": 1,
   "include": [
     "/api/*",
+    "/app/*",
+    "/t/*",
+    "/admin/*",
+    "/login",
+    "/signup",
+    "/logout",
+    "/auth/*",
     "/recruit",
     "/about",
     "/legal",
