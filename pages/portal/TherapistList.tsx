@@ -297,7 +297,7 @@ const TherapistListPage: React.FC = () => {
                 <>
                   <div className="grid gap-6 md:gap-10">
                     {filteredAndSortedTherapists.map(t => (
-                      <TherapistCatalogCard key={t.id} therapist={t} onBook={() => navigate(`/app/therapist/${t.id}`)} />
+                      <TherapistCatalogCard key={t.id} therapist={t} onBook={() => navigate(`/app/therapist/${t.id}`)} areas={areas} />
                     ))}
                   </div>
 
@@ -319,7 +319,7 @@ const TherapistListPage: React.FC = () => {
 
 // --- サブコンポーネント: 高密度カタログカード ---
 
-const TherapistCatalogCard: React.FC<{ therapist: any, onBook: () => void }> = ({ therapist, onBook }) => {
+const TherapistCatalogCard: React.FC<{ therapist: any, onBook: () => void, areas: any[] }> = ({ therapist, onBook, areas }) => {
   // 表示用メニュー（上位2つ）
   const featuredMenus = (therapist as any).approvedMenu?.courses.slice(0, 2).map((c: any) => ({
     ...MASTER_COURSES.find(mc => mc.id === c.masterId),
