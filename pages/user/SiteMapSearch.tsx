@@ -620,7 +620,7 @@ const SiteMapSearch: React.FC = () => {
 
       {/* フィルターパネル */}
       {showFilters && (
-        <div className="absolute top-44 left-4 right-4 md:left-8 md:right-auto md:w-96 z-30 animate-fade-in">
+        <div className="absolute top-44 left-4 right-4 md:left-8 md:right-auto md:w-96 z-30 animate-fade-in" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
           <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-gray-200 space-y-6">
             {/* ヘッダー */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-200">

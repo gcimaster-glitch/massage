@@ -49,6 +49,25 @@ const PortalHome: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // ============================================
+  // Google Maps APIを動的に読み込む
+  // ============================================
+  useEffect(() => {
+    if (window.google && window.google.maps) return; // 既に読み込み済み
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      console.error('Google Maps APIキーが設定されていません（VITE_GOOGLE_MAPS_API_KEY未設定）');
+      return;
+    }
+    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // ============================================
   // データ取得
   // ============================================
   useEffect(() => {
