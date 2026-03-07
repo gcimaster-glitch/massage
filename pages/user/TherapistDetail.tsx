@@ -66,13 +66,6 @@ const TherapistDetail: React.FC = () => {
     fetchTherapist();
   }, [therapistId]);
 
-  // セラピストIDが確定したら空き状況を取得
-  useEffect(() => {
-    if (therapistId) {
-      fetchSchedule(therapistId);
-    }
-  }, [therapistId, fetchSchedule]);
-
   // useMemo hooks must be before any conditional returns
   const displayTherapist = useMemo(() => {
     // CRITICAL: Check if therapist exists FIRST
@@ -124,6 +117,7 @@ const TherapistDetail: React.FC = () => {
   }, [therapist]);
 
   // 空き状況カレンダー用データ（7日分 × 30分刻み）
+  // NOTE: scheduleData は fetchSchedule より前に定義する必要がある（TDZ回避）
   const scheduleData = useMemo(() => {
     const today = new Date();
     const days: { label: string; dateStr: string }[] = [];
@@ -198,6 +192,14 @@ const TherapistDetail: React.FC = () => {
       setScheduleLoading(false);
     }
   }, [scheduleData.days]);
+
+  // セラピストIDが確定したら空き状況を取得する
+  // NOTE: fetchScheduleのuseCallback定義の後に配置することでTDZエラーを回避
+  useEffect(() => {
+    if (therapistId) {
+      fetchSchedule(therapistId);
+    }
+  }, [therapistId, fetchSchedule]);
 
   // Loading state
   if (loading) {
