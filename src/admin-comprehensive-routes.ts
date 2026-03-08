@@ -670,10 +670,18 @@ app.get('/payouts', requireAdmin, async (c) => {
     const { month, status } = c.req.query()
     let where = 'WHERE 1=1'
     const params: any[] = []
-    if (month) { where += ' AND target_month = ?'; params.push(month) }
+    // period_startの年月でフィルタリング
+    if (month) { where += " AND strftime('%Y-%m', ps.period_start) = ?"; params.push(month) }
     if (status) { where += ' AND status = ?'; params.push(status) }
+    // 新テーブル(payout_statements)から取得
     const result = await c.env.DB.prepare(`
-      SELECT * FROM financial_statements ${where} ORDER BY generated_at DESC LIMIT 500
+      SELECT ps.*,
+        u.name AS user_name,
+        u.email AS user_email
+      FROM payout_statements ps
+      LEFT JOIN users u ON ps.user_id = u.id
+      ${where}
+      ORDER BY ps.created_at DESC LIMIT 500
     `).bind(...params).all()
     return c.json({ statements: result.results || [] })
   } catch (e) {
@@ -687,9 +695,10 @@ app.patch('/payouts/:id', requireAdmin, async (c) => {
     const { id } = c.req.param()
     const { status } = await c.req.json() as { status: string }
     const paidAt = status === 'PAID' ? `datetime('now')` : 'NULL'
+    // 新テーブル(payout_statements)を更新
     await c.env.DB.prepare(`
-      UPDATE financial_statements
-      SET status = ?, paid_at = ${paidAt}
+      UPDATE payout_statements
+      SET status = ?, paid_at = ${paidAt}, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(status, id).run()
     return c.json({ success: true })
@@ -703,37 +712,105 @@ app.post('/payouts/calculate', requireAdmin, async (c) => {
   try {
     const { target_month } = await c.req.json() as { target_month: string }
     if (!target_month) return c.json({ error: 'target_monthは必須です' }, 400)
-    // payment_splitsから集計してfinancial_statementsに挿入
+    // transaction_splitsから集計してpayout_statementsに挿入（新エンジン対応）
     const splits = await c.env.DB.prepare(`
-      SELECT user_id, user_role, SUM(amount) as total
-      FROM payment_splits
-      WHERE strftime('%Y-%m', created_at) = ?
-      GROUP BY user_id, user_role
+      SELECT
+        ts.user_id AS user_id,
+        ts.role AS user_role,
+        SUM(ts.amount) AS total_gross,
+        SUM(ts.amount) AS total_net,
+        COUNT(*) AS split_count
+      FROM transaction_splits ts
+      JOIN transactions t ON ts.transaction_id = t.id
+      WHERE strftime('%Y-%m', t.created_at) = ?
+        AND ts.payout_status IN ('PENDING', 'PROCESSING')
+      GROUP BY ts.user_id, ts.role
     `).bind(target_month).all()
+    // 対象期間の開始日・終了日を計算
+    const [year, month] = target_month.split('-').map(Number)
+    const periodStart = `${target_month}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const periodEnd = `${target_month}-${String(lastDay).padStart(2, '0')}`
     let inserted = 0
     for (const row of (splits.results || []) as any[]) {
-      const user = await c.env.DB.prepare('SELECT name FROM users WHERE id = ?').bind(row.user_id).first() as any
-      const id = crypto.randomUUID()
+      const statementId = 'pst_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20)
+      const statementNumber = `PS-${target_month.replace('-', '')}-${statementId.slice(-6).toUpperCase()}`
       await c.env.DB.prepare(`
-        INSERT OR IGNORE INTO financial_statements
-          (id, user_id, user_role, user_name, target_month, total_sales, payout_amount, status, generated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', datetime('now'))
-      `).bind(id, row.user_id, row.user_role, user?.name || '', target_month, row.total, row.total).run()
+        INSERT OR IGNORE INTO payout_statements
+          (id, user_id, role, period_start, period_end, statement_number,
+           gross_amount, deductions, net_amount, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'DRAFT', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).bind(
+        statementId,
+        row.user_id,
+        row.user_role,
+        periodStart,
+        periodEnd,
+        statementNumber,
+        row.total_gross,
+        row.total_net
+      ).run()
+      // payout_statement_line_itemsに明細を挿入
+      const splitDetails = await c.env.DB.prepare(`
+        SELECT ts.id, ts.amount, ts.rate, t.booking_id, t.created_at,
+          b.scheduled_at AS booking_date
+        FROM transaction_splits ts
+        JOIN transactions t ON ts.transaction_id = t.id
+        LEFT JOIN bookings b ON t.booking_id = b.id
+        WHERE ts.user_id = ?
+          AND strftime('%Y-%m', t.created_at) = ?
+          AND ts.payout_status IN ('PENDING', 'PROCESSING')
+      `).bind(row.user_id, target_month).all()
+      for (const split of (splitDetails.results || []) as any[]) {
+        const lineId = 'pli_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20)
+        await c.env.DB.prepare(`
+          INSERT OR IGNORE INTO payout_statement_line_items
+            (id, payout_statement_id, transaction_split_id, booking_id,
+             booking_date, gross_amount, rate, net_amount, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(
+          lineId, statementId, split.id, split.booking_id,
+          split.booking_date, split.amount, split.rate || 0, split.amount
+        ).run()
+      }
+      // transaction_splitsのstatusをPROCESSINGに更新
+      await c.env.DB.prepare(`
+        UPDATE transaction_splits SET payout_status = 'PROCESSING', updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+          AND payout_status = 'PENDING'
+          AND transaction_id IN (
+            SELECT id FROM transactions WHERE strftime('%Y-%m', created_at) = ?
+          )
+      `).bind(row.user_id, target_month).run()
       inserted++
     }
-    return c.json({ success: true, inserted })
-  } catch (e) {
-    return c.json({ error: '精算バッチの実行に失敗しました' }, 500)
+    return c.json({ success: true, inserted, month: target_month })
+  } catch (e: any) {
+    console.error('payouts/calculate error:', e)
+    return c.json({ error: '精算バッチの実行に失敗しました: ' + e.message }, 500)
   }
 })
 
-/** GET /api/admin/financial-statements/:id - 帳票個別取得 */
+/** GET /api/admin/financial-statements/:id - 帳票個別取得（新テーブル対応） */
 app.get('/financial-statements/:id', requireAdmin, async (c) => {
   try {
     const { id } = c.req.param()
-    const stmt = await c.env.DB.prepare('SELECT * FROM financial_statements WHERE id = ?').bind(id).first()
+    const stmt = await c.env.DB.prepare(`
+      SELECT ps.*, u.name AS user_name, u.email AS user_email
+      FROM payout_statements ps
+      LEFT JOIN users u ON ps.user_id = u.id
+      WHERE ps.id = ?
+    `).bind(id).first()
     if (!stmt) return c.json({ error: '帳票が見つかりません' }, 404)
-    return c.json({ statement: stmt })
+    // 明細も取得
+    const lines = await c.env.DB.prepare(`
+      SELECT pli.*, b.scheduled_at, b.total_price
+      FROM payout_statement_line_items pli
+      LEFT JOIN bookings b ON pli.booking_id = b.id
+      WHERE pli.payout_statement_id = ?
+      ORDER BY pli.created_at ASC
+    `).bind(id).all()
+    return c.json({ statement: stmt, line_items: lines.results || [] })
   } catch (e) {
     return c.json({ error: '帳票の取得に失敗しました' }, 500)
   }

@@ -108,10 +108,11 @@ payment.post('/confirm', async (c) => {
       console.log(`[Confirm] Transaction already exists for PI ${paymentIntentId}, skipping split`);
     }
 
-    // 予約レコードのステータスを更新
+    // 予約レコードのステータスを更新（payment_status=PAID, status=CONFIRMED）
     await c.env.DB.prepare(`
       UPDATE bookings 
-      SET payment_status = 'PAID', 
+      SET payment_status = 'PAID',
+          status = 'CONFIRMED',
           payment_intent_id = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
