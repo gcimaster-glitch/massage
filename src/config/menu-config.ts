@@ -77,6 +77,7 @@ export const MENU_CONFIG: MenuConfig = {
       title: '報酬・設定',
       items: [
         { label: '報酬明細', path: '/t/earnings', icon: JapaneseYen, description: '収益確認' },
+        { label: '収益管理', path: '/t/finance', icon: PieChart, description: '分配収益・支払明細書' },
         { label: 'プロフィール設定', path: '/t/profile', icon: Settings, description: 'プロフィール編集' },
         { label: '自己PR編集', path: '/t/bio', icon: Palette, description: 'プロフィール詳細' },
       ]
@@ -105,6 +106,7 @@ export const MENU_CONFIG: MenuConfig = {
       title: '財務・メニュー',
       items: [
         { label: '収益管理', path: '/o/earnings', icon: JapaneseYen, description: '収益分配' },
+        { label: '財務管理', path: '/o/finance', icon: PieChart, description: '分配明細・支払明細書' },
         { label: '料金・メニュー', path: '/o/menu', icon: ClipboardCheck, description: '価格設定' },
       ]
     },
@@ -138,6 +140,7 @@ export const MENU_CONFIG: MenuConfig = {
       title: '財務・安全',
       items: [
         { label: '収益明細', path: '/h/earnings', icon: JapaneseYen, description: '収益確認' },
+        { label: '財務管理', path: '/h/finance', icon: PieChart, description: '分配明細・支払明細書' },
         { label: 'インシデント報告', path: '/h/incidents', icon: ShieldAlert, description: '異常報告' },
       ]
     }
@@ -181,6 +184,7 @@ export const MENU_CONFIG: MenuConfig = {
       title: '財務・売上',
       items: [
         { label: '売上・支払い', path: '/admin/payouts', icon: JapaneseYen, description: '全精算の管理' },
+        { label: '報酬分配ダッシュボード', path: '/admin/finance', icon: PieChart, description: '分配明細・ルール・精算管理' },
         { label: '売上配分設定', path: '/admin/revenue-config', icon: Settings, description: '収益配分ルール' },
         { label: 'Stripe管理', path: '/admin/stripe', icon: CreditCard, description: '決済管理' },
       ]

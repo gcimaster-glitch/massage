@@ -23,6 +23,7 @@ import kycApp from './kyc-routes'
 import notifyApp from './notify-routes'
 import mockDataApp from './mock-data-routes'
 import paymentsApp from './payments-routes'
+import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
 
 // ============================================
@@ -49,6 +50,7 @@ type Bindings = {
   LINE_CLIENT_SECRET: string
   APPLE_CLIENT_ID: string
   APPLE_CLIENT_SECRET: string
+  STRIPE_WEBHOOK_SECRET: string // Stripe Webhookの署名検証シークレット
   ALLOWED_ORIGINS: string // カンマ区切りの許可オリジンリスト（Cloudflare環境変数で上書き可能）
   ASSETS: Fetcher // Cloudflare Pages 静的アセットバインディング
 }
@@ -186,6 +188,11 @@ app.route('/api/payment', paymentApp)
 app.route('/api/payments', paymentsApp)
 app.route('/api/receipts', paymentsApp)
 app.route('/api/user', paymentsApp)
+
+// ============================================
+// Revenue Engine Routes (報酬分配エンジン)
+// ============================================
+app.route('/api/revenue', revenueEngineApp)
 
 // ============================================
 // Email Routes

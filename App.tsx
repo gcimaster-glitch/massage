@@ -67,6 +67,7 @@ import TherapistBookingList from './pages/therapist/BookingList';
 import TherapistBookingDetail from './pages/therapist/BookingDetail';
 import TherapistCalendar from './pages/therapist/Calendar';
 import TherapistEarnings from './pages/therapist/Earnings';
+import TherapistFinance from './pages/therapist/TherapistFinance';
 import TherapistSafety from './pages/therapist/Safety';
 import TherapistProfile from './pages/therapist/Profile';
 import TherapistProfileManagement from './pages/therapist/ProfileManagement';
@@ -90,6 +91,7 @@ import HostDashboard from './pages/host/HostDashboard';
 import HostSites from './pages/host/Sites';
 import HostIncidents from './pages/host/HostIncidents';
 import HostEarnings from './pages/host/HostEarnings';
+import HostFinance from './pages/host/HostFinance';
 
 // --- Affiliate ---
 import AffiliateDashboard from './pages/affiliate/Dashboard';
@@ -101,6 +103,7 @@ import OfficeTherapists from './pages/office/Therapists';
 import OfficeRecruitment from './pages/office/Recruitment';
 import OfficeRecruitmentDetail from './pages/office/RecruitmentDetail';
 import OfficeEarnings from './pages/office/OfficeEarnings';
+import OfficeFinance from './pages/office/OfficeFinance';
 import OfficeSettings from './pages/office/OfficeSettings';
 import OfficeSupportInbox from './pages/office/OfficeSupportInbox';
 import OfficeMenuManagement from './pages/office/MenuManagement';
@@ -135,6 +138,7 @@ import AdminSupportInbox from './pages/admin/SupportInbox';
 import AdminMarketingDashboard from './pages/admin/MarketingDashboard';
 import MockDataManager from './pages/admin/MockDataManager';
 import ImageUpload from './pages/admin/ImageUpload';
+import AdminFinanceDashboard from './pages/admin/FinanceDashboard';
 
 // --- Shared ---
 import Chat from './pages/shared/Chat';
@@ -464,8 +468,8 @@ const App: React.FC = () => {
         <Route path="/t/settings/qualifications" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><QualificationSettings /></RequireAuth>} />
         <Route path="/t/travel-settings" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistTravelSettings /></RequireAuth>} />
         <Route path="/t/session-management" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSessionManagement /></RequireAuth>} />
-        <Route path="/t/support" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSupport /></RequireAuth>} />
-
+         <Route path="/t/support" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistSupport /></RequireAuth>} />
+        <Route path="/t/finance" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistFinance /></RequireAuth>} />
         {/* Agency (Office) App */}
         <Route path="/o" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeDashboard /></RequireAuth>} />
         <Route path="/o/therapists" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeTherapists /></RequireAuth>} />
@@ -475,14 +479,14 @@ const App: React.FC = () => {
         <Route path="/o/settings" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE]} currentUser={currentUser} onLogout={handleLogout}><OfficeSettings /></RequireAuth>} />
         <Route path="/o/support" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeSupportInbox /></RequireAuth>} />
         <Route path="/o/menu" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeMenuManagement /></RequireAuth>} />
-        <Route path="/o/safety" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeSafety /></RequireAuth>} />
-
+         <Route path="/o/safety" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeSafety /></RequireAuth>} />
+        <Route path="/o/finance" element={<RequireAuth allowedRoles={[Role.THERAPIST_OFFICE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><OfficeFinance /></RequireAuth>} />
         {/* Host App */}
         <Route path="/h" element={<RequireAuth allowedRoles={[Role.HOST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><HostDashboard /></RequireAuth>} />
         <Route path="/h/sites" element={<RequireAuth allowedRoles={[Role.HOST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><HostSites /></RequireAuth>} />
         <Route path="/h/incidents" element={<RequireAuth allowedRoles={[Role.HOST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><HostIncidents /></RequireAuth>} />
-        <Route path="/h/earnings" element={<RequireAuth allowedRoles={[Role.HOST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><HostEarnings /></RequireAuth>} />
-
+         <Route path="/h/earnings" element={<RequireAuth allowedRoles={[Role.HOST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><HostEarnings /></RequireAuth>} />
+        <Route path="/h/finance" element={<RequireAuth allowedRoles={[Role.HOST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><HostFinance /></RequireAuth>} />
         {/* Affiliate App */}
         <Route path="/affiliate" element={<RequireAuth allowedRoles={[Role.AFFILIATE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AffiliateDashboard /></RequireAuth>} />
         <Route path="/affiliate/earnings" element={<RequireAuth allowedRoles={[Role.AFFILIATE, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AffiliateEarnings /></RequireAuth>} />
@@ -516,7 +520,7 @@ const App: React.FC = () => {
         <Route path="/admin/marketing" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminMarketingDashboard /></RequireAuth>} />
         <Route path="/admin/images" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><ImageUpload /></RequireAuth>} />
         <Route path="/admin/mock-data" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><MockDataManager /></RequireAuth>} />
-
+        <Route path="/admin/finance" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminFinanceDashboard /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
