@@ -45,10 +45,85 @@ const authApp = new Hono<{ Bindings: Bindings }>()
 // ============================================
 // OAuth Initiation
 // ============================================
+// OAuth経由で許可されるロール（ADMIN・AFFILIATE等の特権ロールは除外）
+const OAUTH_ALLOWED_ROLES = ['USER', 'THERAPIST', 'HOST', 'THERAPIST_OFFICE'] as const
+type OAuthAllowedRole = typeof OAUTH_ALLOWED_ROLES[number]
+
+/**
+ * HOG-SEC-001: roleパラメータのホワイトリスト検証
+ * OAuth経由での新規登録は一般ユーザーロールのみ許可し、ADMIN等の特権ロールへの昇格を防ぐ
+ */
+function sanitizeOAuthRole(role: string | undefined): OAuthAllowedRole {
+  if (!role) return 'USER'
+  const upperRole = role.toUpperCase()
+  if ((OAUTH_ALLOWED_ROLES as readonly string[]).includes(upperRole)) {
+    return upperRole as OAuthAllowedRole
+  }
+  // 許可されていないロール（ADMIN, AFFILIATE等）が指定された場合はUSERに強制
+  console.warn(`[SEC] Rejected unauthorized OAuth role request: "${role}". Defaulting to USER.`)
+  return 'USER'
+}
+
+/**
+ * HOG-SEC-002: redirectパラメータのホワイトリスト検証
+ * 外部ドメインへのオープンリダイレクトを防ぐため、相対パスのみを許可する
+ */
+function sanitizeOAuthRedirect(redirect: string | undefined): string {
+  const DEFAULT_REDIRECT = '/app'
+  if (!redirect) return DEFAULT_REDIRECT
+
+  // プロトコル相対URL（//example.com）や絶対URLを拒否
+  if (redirect.startsWith('//') || /^https?:\/\//i.test(redirect)) {
+    console.warn(`[SEC] Rejected open redirect attempt: "${redirect}". Defaulting to ${DEFAULT_REDIRECT}.`)
+    return DEFAULT_REDIRECT
+  }
+
+  // スラッシュ始まりの相対パスのみ許可
+  if (!redirect.startsWith('/')) {
+    console.warn(`[SEC] Rejected non-absolute redirect path: "${redirect}". Defaulting to ${DEFAULT_REDIRECT}.`)
+    return DEFAULT_REDIRECT
+  }
+
+  // 許可する内部パスのホワイトリスト
+  const ALLOWED_REDIRECT_PREFIXES = ['/app', '/t', '/h', '/admin', '/affiliate', '/login', '/auth']
+  const isAllowed = ALLOWED_REDIRECT_PREFIXES.some(prefix => redirect.startsWith(prefix))
+  if (!isAllowed) {
+    console.warn(`[SEC] Rejected unlisted redirect path: "${redirect}". Defaulting to ${DEFAULT_REDIRECT}.`)
+    return DEFAULT_REDIRECT
+  }
+
+  return redirect
+}
+
+/**
+ * HOG-SEC-003: OAuthプロバイダーから返されるerrorパラメータのホワイトリスト検証
+ * 任意の文字列をURLに含めることによる反射型XSSを防ぐ
+ */
+function sanitizeOAuthError(error: string | undefined): string {
+  const ALLOWED_OAUTH_ERRORS = [
+    'access_denied',
+    'temporarily_unavailable',
+    'server_error',
+    'invalid_request',
+    'unauthorized_client',
+    'unsupported_response_type',
+    'invalid_scope',
+  ] as const
+  if (!error) return 'auth_failed'
+  const lowerError = error.toLowerCase()
+  if ((ALLOWED_OAUTH_ERRORS as readonly string[]).includes(lowerError)) {
+    return lowerError
+  }
+  // 未知のエラーコードは汎用エラーに変換（任意文字列の反射を防ぐ）
+  return 'auth_failed'
+}
+
 authApp.get('/oauth/:provider', async (c) => {
   const providerName = c.req.param('provider').toUpperCase()
-  const role = c.req.query('role') || 'USER' // Optional: set role on signup
-  const redirect = c.req.query('redirect') || '/app'
+  // HOG-SEC-001: roleをホワイトリストで検証（ADMIN等の特権ロールへの昇格を防止）
+  const role = sanitizeOAuthRole(c.req.query('role'))
+  // HOG-SEC-002: redirectをホワイトリストで検証（オープンリダイレクトを防止）
+  const redirect = sanitizeOAuthRedirect(c.req.query('redirect'))
 
   const provider = getProvider(providerName, c.env)
   if (!provider) {
@@ -88,7 +163,9 @@ authApp.get('/oauth/:provider/callback', async (c) => {
   const error = c.req.query('error')
 
   if (error) {
-    return c.redirect(`/?error=${error}`)
+    // HOG-SEC-003: プロバイダーからのerrorパラメータをホワイトリストでサニタイズ（反射型XSS防止）
+    const safeError = sanitizeOAuthError(error)
+    return c.redirect(`/?error=${safeError}`)
   }
 
   if (!code || !state) {
@@ -102,7 +179,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
   // Verify state (CSRF protection)
   let redirectPath = '/app'
-  let userRole = 'USER'
+  let userRole: OAuthAllowedRole = 'USER'
   
   if (c.env.DB) {
     try {
@@ -113,8 +190,10 @@ authApp.get('/oauth/:provider/callback', async (c) => {
         .all()
 
       if (results && results.length > 0) {
-        redirectPath = (results[0] as Record<string, unknown>).redirect_uri || '/app'
-        userRole = (results[0] as Record<string, unknown>).role || 'USER'
+        // HOG-SEC-002: DBから取得した値にも再検証を適用（将来的なDB汚染・インジェクション対策）
+        redirectPath = sanitizeOAuthRedirect((results[0] as Record<string, unknown>).redirect_uri as string | undefined)
+        // HOG-SEC-001: DBから取得したロールにも再検証を適用
+        userRole = sanitizeOAuthRole((results[0] as Record<string, unknown>).role as string | undefined)
 
         // Delete used state
         await c.env.DB.prepare('DELETE FROM oauth_states WHERE state = ?').bind(state).run()

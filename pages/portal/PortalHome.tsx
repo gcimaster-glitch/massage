@@ -49,15 +49,30 @@ const PortalHome: React.FC = () => {
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('map');
 
-  // OAuthエラーパラメータを処理する
+  // HOG-SEC-003: OAuthエラーパラメータをホワイトリストで検証して表示する
+  // 未知のエラーコードをそのまま表示するとXSSの起点になるため、
+  // 許可されたエラーコードのみ人間可読なメッセージにマッピングする
   useEffect(() => {
     const error = searchParams.get('error');
     if (error) {
-      const errorMessages: Record<string, string> = {
-        'auth_failed': 'OAuth認証に失敗しました。再度お試しください。',
-        'access_denied': '認証がキャンセルされました。',
+      // 許可されたエラーコードとそのメッセージのマッピング（ホワイトリスト）
+      const ALLOWED_ERROR_MESSAGES: Record<string, string> = {
+        'auth_failed':              'ログインに失敗しました。再度お試しください。',
+        'access_denied':            '認証がキャンセルされました。',
+        'temporarily_unavailable':  '認証サービスが一時的に利用できません。しばらく後に再試行してください。',
+        'server_error':             '認証サーバーでエラーが発生しました。再度お試しください。',
+        'invalid_request':          '認証リクエストが無効です。再度お試しください。',
+        'unauthorized_client':      '認証クライアントが無効です。サポートにお問い合わせください。',
+        'unsupported_response_type':'サポートされていない認証方式です。',
+        'invalid_scope':            '要求された権限が無効です。',
+        'auth_required':            'ログインが必要です。',
+        'invalid_token':            'セッションが無効です。再度ログインしてください。',
+        'unsupported_provider':     'サポートされていない認証プロバイダーです。',
       };
-      setOauthError(errorMessages[error] || `ログインエラーが発生しました: ${error}`);
+      // ホワイトリストに含まれるエラーコードのみメッセージを表示
+      // 未知のエラーコードは汎用メッセージに変換（任意文字列の反射を防ぐ）
+      const message = ALLOWED_ERROR_MESSAGES[error] ?? 'ログインエラーが発生しました。再度お試しください。';
+      setOauthError(message);
     }
   }, [searchParams]);
   const tabContentRef = useRef<HTMLDivElement>(null);
