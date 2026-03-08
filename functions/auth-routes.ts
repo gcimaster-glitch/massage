@@ -1147,8 +1147,15 @@ authApp.post('/admin/delete-users', async (c) => {
 // ============================================
 authApp.post('/refresh', async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}))
-    const sessionToken = body.sessionToken as string | undefined
+    // c.req.json()はCloudflare Workers環境でPromise rejectを起こす場合があるため
+    // try/catchで安全にパースする
+    let sessionToken: string | undefined
+    try {
+      const body = await c.req.json()
+      sessionToken = body?.sessionToken as string | undefined
+    } catch {
+      return c.json({ error: 'Session token is required' }, 400)
+    }
 
     if (!sessionToken) {
       return c.json({ error: 'Session token is required' }, 400)
