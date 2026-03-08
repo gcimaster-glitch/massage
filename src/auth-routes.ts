@@ -18,6 +18,7 @@ import {
   verifyJWT,
   hashPassword,
   verifyPassword,
+  encryptToken, // HOG-SEC-006: access_token暗号化
 } from './auth-helpers'
 import { checkRateLimit, RATE_LIMITS } from './rate-limit'
 import { validateEmail, validatePassword } from './validation'
@@ -45,10 +46,85 @@ const authApp = new Hono<{ Bindings: Bindings }>()
 // ============================================
 // OAuth Initiation
 // ============================================
+// OAuth経由で許可されるロール（ADMIN・AFFILIATE等の特権ロールは除外）
+const OAUTH_ALLOWED_ROLES = ['USER', 'THERAPIST', 'HOST', 'THERAPIST_OFFICE'] as const
+type OAuthAllowedRole = typeof OAUTH_ALLOWED_ROLES[number]
+
+/**
+ * HOG-SEC-001: roleパラメータのホワイトリスト検証
+ * OAuth経由での新規登録は一般ユーザーロールのみ許可し、ADMIN等の特権ロールへの昇格を防ぐ
+ */
+function sanitizeOAuthRole(role: string | undefined): OAuthAllowedRole {
+  if (!role) return 'USER'
+  const upperRole = role.toUpperCase()
+  if ((OAUTH_ALLOWED_ROLES as readonly string[]).includes(upperRole)) {
+    return upperRole as OAuthAllowedRole
+  }
+  // 許可されていないロール（ADMIN, AFFILIATE等）が指定された場合はUSERに強制
+  console.warn(`[SEC] Rejected unauthorized OAuth role request: "${role}". Defaulting to USER.`)
+  return 'USER'
+}
+
+/**
+ * HOG-SEC-002: redirectパラメータのホワイトリスト検証
+ * 外部ドメインへのオープンリダイレクトを防ぐため、相対パスのみを許可する
+ */
+function sanitizeOAuthRedirect(redirect: string | undefined): string {
+  const DEFAULT_REDIRECT = '/app'
+  if (!redirect) return DEFAULT_REDIRECT
+
+  // プロトコル相対URL（//example.com）や絶対URLを拒否
+  if (redirect.startsWith('//') || /^https?:\/\//i.test(redirect)) {
+    console.warn(`[SEC] Rejected open redirect attempt: "${redirect}". Defaulting to ${DEFAULT_REDIRECT}.`)
+    return DEFAULT_REDIRECT
+  }
+
+  // スラッシュ始まりの相対パスのみ許可
+  if (!redirect.startsWith('/')) {
+    console.warn(`[SEC] Rejected non-absolute redirect path: "${redirect}". Defaulting to ${DEFAULT_REDIRECT}.`)
+    return DEFAULT_REDIRECT
+  }
+
+  // 許可する内部パスのホワイトリスト
+  const ALLOWED_REDIRECT_PREFIXES = ['/app', '/t', '/h', '/admin', '/affiliate', '/login', '/auth']
+  const isAllowed = ALLOWED_REDIRECT_PREFIXES.some(prefix => redirect.startsWith(prefix))
+  if (!isAllowed) {
+    console.warn(`[SEC] Rejected unlisted redirect path: "${redirect}". Defaulting to ${DEFAULT_REDIRECT}.`)
+    return DEFAULT_REDIRECT
+  }
+
+  return redirect
+}
+
+/**
+ * HOG-SEC-003: OAuthプロバイダーから返されるerrorパラメータのホワイトリスト検証
+ * 任意の文字列をURLに含めることによる反射型XSSを防ぐ
+ */
+function sanitizeOAuthError(error: string | undefined): string {
+  const ALLOWED_OAUTH_ERRORS = [
+    'access_denied',
+    'temporarily_unavailable',
+    'server_error',
+    'invalid_request',
+    'unauthorized_client',
+    'unsupported_response_type',
+    'invalid_scope',
+  ] as const
+  if (!error) return 'auth_failed'
+  const lowerError = error.toLowerCase()
+  if ((ALLOWED_OAUTH_ERRORS as readonly string[]).includes(lowerError)) {
+    return lowerError
+  }
+  // 未知のエラーコードは汎用エラーに変換（任意文字列の反射を防ぐ）
+  return 'auth_failed'
+}
+
 authApp.get('/oauth/:provider', async (c) => {
   const providerName = c.req.param('provider').toUpperCase()
-  const role = c.req.query('role') || 'USER' // Optional: set role on signup
-  const redirect = c.req.query('redirect') || '/app'
+  // HOG-SEC-001: roleをホワイトリストで検証（ADMIN等の特権ロールへの昇格を防止）
+  const role = sanitizeOAuthRole(c.req.query('role'))
+  // HOG-SEC-002: redirectをホワイトリストで検証（オープンリダイレクトを防止）
+  const redirect = sanitizeOAuthRedirect(c.req.query('redirect'))
 
   const provider = getProvider(providerName, c.env)
   if (!provider) {
@@ -88,7 +164,9 @@ authApp.get('/oauth/:provider/callback', async (c) => {
   const error = c.req.query('error')
 
   if (error) {
-    return c.redirect(`/?error=${error}`)
+    // HOG-SEC-003: プロバイダーからのerrorパラメータをホワイトリストでサニタイズ（反射型XSS防止）
+    const safeError = sanitizeOAuthError(error)
+    return c.redirect(`/?error=${safeError}`)
   }
 
   if (!code || !state) {
@@ -102,7 +180,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
   // Verify state (CSRF protection)
   let redirectPath = '/app'
-  let userRole = 'USER'
+  let userRole: OAuthAllowedRole = 'USER'
   
   if (c.env.DB) {
     try {
@@ -113,8 +191,10 @@ authApp.get('/oauth/:provider/callback', async (c) => {
         .all()
 
       if (results && results.length > 0) {
-        redirectPath = (results[0] as Record<string, unknown>).redirect_uri || '/app'
-        userRole = (results[0] as Record<string, unknown>).role || 'USER'
+        // HOG-SEC-002: DBから取得した値にも再検証を適用（将来的なDB汚染・インジェクション対策）
+        redirectPath = sanitizeOAuthRedirect((results[0] as Record<string, unknown>).redirect_uri as string | undefined)
+        // HOG-SEC-001: DBから取得したロールにも再検証を適用
+        userRole = sanitizeOAuthRole((results[0] as Record<string, unknown>).role as string | undefined)
 
         // Delete used state
         await c.env.DB.prepare('DELETE FROM oauth_states WHERE state = ?').bind(state).run()
@@ -178,11 +258,15 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url)
           .run()
 
-        // Create social account link
+         // Create social account link
         const expiresAt = tokenData.expires_in
           ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
           : null
-
+        // HOG-SEC-006: access_tokenとrefresh_tokenをAES-GCMで暗号化して保存（平文保存を排除）
+        const encryptedAccessToken = await encryptToken(tokenData.access_token, c.env.JWT_SECRET)
+        const encryptedRefreshToken = tokenData.refresh_token
+          ? await encryptToken(tokenData.refresh_token, c.env.JWT_SECRET)
+          : null
         await c.env.DB.prepare(
           'INSERT INTO social_accounts (id, user_id, provider, provider_user_id, provider_email, provider_name, provider_avatar_url, access_token, refresh_token, token_expires_at, last_used_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
         )
@@ -194,8 +278,8 @@ authApp.get('/oauth/:provider/callback', async (c) => {
             providerUser.email,
             providerUser.name,
             providerUser.avatar_url,
-            tokenData.access_token,
-            tokenData.refresh_token || null,
+            encryptedAccessToken,
+            encryptedRefreshToken,
             expiresAt
           )
           .run()
@@ -230,14 +314,12 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           sessionId: sessionId,
         },
         c.env.JWT_SECRET,
-        30 // 30 days
+        7 // HOG-SEC-005: JWT有効期限を短縮 (30日 → 7日)。セッションは30日間有効なので、/api/auth/refreshでJWTを更新する
       )
-
       // Redirect with token
       const redirectUrl = new URL(redirectPath, new URL(c.req.url).origin)
       redirectUrl.searchParams.set('token', jwt)
       redirectUrl.searchParams.set('isNewUser', isNewUser.toString())
-
       return c.redirect(redirectUrl.toString())
       } catch (dbError) {
         console.error('Database error, falling back to mock mode:', dbError)
@@ -245,31 +327,15 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       }
     }
     
-    // Development mode - no DB or DB error
-    const mockUser = {
-      id: generateUserId(),
-      email: providerUser.email,
-      name: providerUser.name,
-      role: userRole,
-      avatar_url: providerUser.avatar_url,
+       // HOG-SEC-004: JWT_SECRETが設定されていない場合は認証を拒否する
+    // 「dev-secret」フォールバックは除去。未設定のまま本番デプロイされた場合に漏洩したトークンが発行されるリスクを排除する
+    if (!c.env.JWT_SECRET) {
+      console.error('[SEC] JWT_SECRET is not configured. Refusing to issue token.')
+      return c.redirect(`/?error=auth_failed`)
     }
-
-    const jwt = await createJWT(
-      {
-        userId: mockUser.id,
-        email: mockUser.email,
-        userName: mockUser.name,
-        role: mockUser.role,
-      },
-      c.env.JWT_SECRET || 'dev-secret',
-      30
-    )
-
-    const redirectUrl = new URL(redirectPath, new URL(c.req.url).origin)
-    redirectUrl.searchParams.set('token', jwt)
-    redirectUrl.searchParams.set('isNewUser', 'true')
-
-    return c.redirect(redirectUrl.toString())
+    // DBエラー時のフォールバック（開発モードは廃止）— DB接続失敗としてエラーを返す
+    console.error('[SEC] Database connection failed during OAuth callback. Cannot create user session.')
+    return c.redirect(`/?error=auth_failed`)
   } catch (e) {
     console.error('OAuth callback error:', e)
     return c.redirect(`/?error=auth_failed`)
@@ -649,7 +715,7 @@ authApp.get('/verify-email', async (c) => {
       .run()
 
     // Create JWT token
-    const jwt = await createJWT(
+     const jwt = await createJWT(
       {
         userId: user.id,
         email: user.email,
@@ -658,9 +724,8 @@ authApp.get('/verify-email', async (c) => {
         sessionId: sessionId,
       },
       c.env.JWT_SECRET,
-      30
+      7 // HOG-SEC-005: JWT有効期限を短縮 (30日 → 7日)
     )
-
     console.log(`✅ Auto-login session created for user: ${userId}`)
 
     // Redirect to dashboard with JWT token in URL
@@ -708,27 +773,15 @@ authApp.post('/login', async (c) => {
       }, 429);
     }
 
+    // HOG-SEC-004: DB未接続時は認証を拒否する（開発モードモックログインは廃止）
+    // 「dev-secret」フォールバックを除去。JWT_SECRET未設定またはDB未接続のまま本番デプロイされた場合のリスクを排除
     if (!c.env.DB) {
-      // Development mode - mock login
-      return c.json({
-        success: true,
-        token: await createJWT(
-          {
-            userId: 'dev-user',
-            email: email,
-            userName: 'デモユーザー',
-            role: 'USER',
-          },
-          c.env.JWT_SECRET || 'dev-secret',
-          30
-        ),
-        user: {
-          id: 'dev-user',
-          email: email,
-          name: 'デモユーザー',
-          role: 'USER',
-        },
-      })
+      console.error('[SEC] Database is not configured. Refusing to authenticate.')
+      return c.json({ error: 'Service temporarily unavailable' }, 503)
+    }
+    if (!c.env.JWT_SECRET) {
+      console.error('[SEC] JWT_SECRET is not configured. Refusing to issue token.')
+      return c.json({ error: 'Service temporarily unavailable' }, 503)
     }
 
     try {
@@ -779,9 +832,8 @@ authApp.post('/login', async (c) => {
           sessionId: sessionId,
         },
         c.env.JWT_SECRET,
-        30
+        7 // HOG-SEC-005: JWT有効期限を短縮 (30日 → 7日)
       )
-
       return c.json({
         success: true,
         token: jwt,
@@ -1085,6 +1137,70 @@ authApp.post('/admin/delete-users', async (c) => {
     })
   } catch (e) {
     console.error('Delete users error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
+// ============================================
+// HOG-SEC-005: JWTリフレッシュエンドポイント
+// セッショントークンでJWTを更新する。セッションは30日間有効で、JWTは7日ごとに更新する
+// ============================================
+authApp.post('/refresh', async (c) => {
+  try {
+    // c.req.json()はCloudflare Workers環境でPromise rejectを起こす場合があるため
+    // try/catchで安全にパースする
+    let sessionToken: string | undefined
+    try {
+      const body = await c.req.json()
+      sessionToken = body?.sessionToken as string | undefined
+    } catch {
+      return c.json({ error: 'Session token is required' }, 400)
+    }
+
+    if (!sessionToken) {
+      return c.json({ error: 'Session token is required' }, 400)
+    }
+
+    if (!c.env.DB || !c.env.JWT_SECRET) {
+      return c.json({ error: 'Service temporarily unavailable' }, 503)
+    }
+
+    // セッショントークンでDBを検索し、有効なセッションか確認する
+    const { results: sessionResults } = await c.env.DB.prepare(
+      `SELECT s.id, s.user_id, s.expires_at,
+              u.email, u.name, u.role
+       FROM auth_sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.token = ? AND s.expires_at > datetime('now')`
+    )
+      .bind(sessionToken)
+      .all()
+
+    if (!sessionResults || sessionResults.length === 0) {
+      return c.json({ error: 'Session expired or not found. Please log in again.' }, 401)
+    }
+
+    const session = sessionResults[0] as Record<string, unknown>
+
+    // 新しいJWTを発行（7日有効）
+    const newJwt = await createJWT(
+      {
+        userId: session.user_id as string,
+        email: session.email as string,
+        userName: session.name as string,
+        role: session.role as string,
+        sessionId: session.id as string,
+      },
+      c.env.JWT_SECRET,
+      7
+    )
+
+    return c.json({
+      success: true,
+      token: newJwt,
+    })
+  } catch (e) {
+    console.error('Token refresh error:', e)
     return c.json({ error: 'サーバーエラーが発生しました' }, 500)
   }
 })
