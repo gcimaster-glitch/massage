@@ -68,8 +68,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ bookingId, paymentIntentId,
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            payment_intent_id: paymentIntentId,
-            booking_id: bookingId,
+            paymentIntentId,
+            bookingId,
           }),
         });
 
