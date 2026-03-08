@@ -18,6 +18,7 @@ import {
   verifyJWT,
   hashPassword,
   verifyPassword,
+  encryptToken, // HOG-SEC-006: access_token暗号化
 } from './auth-helpers'
 import { checkRateLimit, RATE_LIMITS } from './rate-limit'
 import { validateEmail, validatePassword } from './validation'
@@ -257,11 +258,15 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url)
           .run()
 
-        // Create social account link
+         // Create social account link
         const expiresAt = tokenData.expires_in
           ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
           : null
-
+        // HOG-SEC-006: access_tokenとrefresh_tokenをAES-GCMで暗号化して保存（平文保存を排除）
+        const encryptedAccessToken = await encryptToken(tokenData.access_token, c.env.JWT_SECRET)
+        const encryptedRefreshToken = tokenData.refresh_token
+          ? await encryptToken(tokenData.refresh_token, c.env.JWT_SECRET)
+          : null
         await c.env.DB.prepare(
           'INSERT INTO social_accounts (id, user_id, provider, provider_user_id, provider_email, provider_name, provider_avatar_url, access_token, refresh_token, token_expires_at, last_used_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
         )
@@ -273,8 +278,8 @@ authApp.get('/oauth/:provider/callback', async (c) => {
             providerUser.email,
             providerUser.name,
             providerUser.avatar_url,
-            tokenData.access_token,
-            tokenData.refresh_token || null,
+            encryptedAccessToken,
+            encryptedRefreshToken,
             expiresAt
           )
           .run()
@@ -309,14 +314,12 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           sessionId: sessionId,
         },
         c.env.JWT_SECRET,
-        30 // 30 days
+        7 // HOG-SEC-005: JWT有効期限を短縮 (30日 → 7日)。セッションは30日間有効なので、/api/auth/refreshでJWTを更新する
       )
-
       // Redirect with token
       const redirectUrl = new URL(redirectPath, new URL(c.req.url).origin)
       redirectUrl.searchParams.set('token', jwt)
       redirectUrl.searchParams.set('isNewUser', isNewUser.toString())
-
       return c.redirect(redirectUrl.toString())
       } catch (dbError) {
         console.error('Database error, falling back to mock mode:', dbError)
@@ -324,31 +327,15 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       }
     }
     
-    // Development mode - no DB or DB error
-    const mockUser = {
-      id: generateUserId(),
-      email: providerUser.email,
-      name: providerUser.name,
-      role: userRole,
-      avatar_url: providerUser.avatar_url,
+       // HOG-SEC-004: JWT_SECRETが設定されていない場合は認証を拒否する
+    // 「dev-secret」フォールバックは除去。未設定のまま本番デプロイされた場合に漏洩したトークンが発行されるリスクを排除する
+    if (!c.env.JWT_SECRET) {
+      console.error('[SEC] JWT_SECRET is not configured. Refusing to issue token.')
+      return c.redirect(`/?error=auth_failed`)
     }
-
-    const jwt = await createJWT(
-      {
-        userId: mockUser.id,
-        email: mockUser.email,
-        userName: mockUser.name,
-        role: mockUser.role,
-      },
-      c.env.JWT_SECRET || 'dev-secret',
-      30
-    )
-
-    const redirectUrl = new URL(redirectPath, new URL(c.req.url).origin)
-    redirectUrl.searchParams.set('token', jwt)
-    redirectUrl.searchParams.set('isNewUser', 'true')
-
-    return c.redirect(redirectUrl.toString())
+    // DBエラー時のフォールバック（開発モードは廃止）— DB接続失敗としてエラーを返す
+    console.error('[SEC] Database connection failed during OAuth callback. Cannot create user session.')
+    return c.redirect(`/?error=auth_failed`)
   } catch (e) {
     console.error('OAuth callback error:', e)
     return c.redirect(`/?error=auth_failed`)
@@ -728,7 +715,7 @@ authApp.get('/verify-email', async (c) => {
       .run()
 
     // Create JWT token
-    const jwt = await createJWT(
+     const jwt = await createJWT(
       {
         userId: user.id,
         email: user.email,
@@ -737,9 +724,8 @@ authApp.get('/verify-email', async (c) => {
         sessionId: sessionId,
       },
       c.env.JWT_SECRET,
-      30
+      7 // HOG-SEC-005: JWT有効期限を短縮 (30日 → 7日)
     )
-
     console.log(`✅ Auto-login session created for user: ${userId}`)
 
     // Redirect to dashboard with JWT token in URL
@@ -787,27 +773,15 @@ authApp.post('/login', async (c) => {
       }, 429);
     }
 
+    // HOG-SEC-004: DB未接続時は認証を拒否する（開発モードモックログインは廃止）
+    // 「dev-secret」フォールバックを除去。JWT_SECRET未設定またはDB未接続のまま本番デプロイされた場合のリスクを排除
     if (!c.env.DB) {
-      // Development mode - mock login
-      return c.json({
-        success: true,
-        token: await createJWT(
-          {
-            userId: 'dev-user',
-            email: email,
-            userName: 'デモユーザー',
-            role: 'USER',
-          },
-          c.env.JWT_SECRET || 'dev-secret',
-          30
-        ),
-        user: {
-          id: 'dev-user',
-          email: email,
-          name: 'デモユーザー',
-          role: 'USER',
-        },
-      })
+      console.error('[SEC] Database is not configured. Refusing to authenticate.')
+      return c.json({ error: 'Service temporarily unavailable' }, 503)
+    }
+    if (!c.env.JWT_SECRET) {
+      console.error('[SEC] JWT_SECRET is not configured. Refusing to issue token.')
+      return c.json({ error: 'Service temporarily unavailable' }, 503)
     }
 
     try {
@@ -858,9 +832,8 @@ authApp.post('/login', async (c) => {
           sessionId: sessionId,
         },
         c.env.JWT_SECRET,
-        30
+        7 // HOG-SEC-005: JWT有効期限を短縮 (30日 → 7日)
       )
-
       return c.json({
         success: true,
         token: jwt,
@@ -1164,6 +1137,63 @@ authApp.post('/admin/delete-users', async (c) => {
     })
   } catch (e) {
     console.error('Delete users error:', e)
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500)
+  }
+})
+
+// ============================================
+// HOG-SEC-005: JWTリフレッシュエンドポイント
+// セッショントークンでJWTを更新する。セッションは30日間有効で、JWTは7日ごとに更新する
+// ============================================
+authApp.post('/refresh', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}))
+    const sessionToken = body.sessionToken as string | undefined
+
+    if (!sessionToken) {
+      return c.json({ error: 'Session token is required' }, 400)
+    }
+
+    if (!c.env.DB || !c.env.JWT_SECRET) {
+      return c.json({ error: 'Service temporarily unavailable' }, 503)
+    }
+
+    // セッショントークンでDBを検索し、有効なセッションか確認する
+    const { results: sessionResults } = await c.env.DB.prepare(
+      `SELECT s.id, s.user_id, s.expires_at,
+              u.email, u.name, u.role
+       FROM auth_sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.token = ? AND s.expires_at > datetime('now')`
+    )
+      .bind(sessionToken)
+      .all()
+
+    if (!sessionResults || sessionResults.length === 0) {
+      return c.json({ error: 'Session expired or not found. Please log in again.' }, 401)
+    }
+
+    const session = sessionResults[0] as Record<string, unknown>
+
+    // 新しいJWTを発行（7日有効）
+    const newJwt = await createJWT(
+      {
+        userId: session.user_id as string,
+        email: session.email as string,
+        userName: session.name as string,
+        role: session.role as string,
+        sessionId: session.id as string,
+      },
+      c.env.JWT_SECRET,
+      7
+    )
+
+    return c.json({
+      success: true,
+      token: newJwt,
+    })
+  } catch (e) {
+    console.error('Token refresh error:', e)
     return c.json({ error: 'サーバーエラーが発生しました' }, 500)
   }
 })

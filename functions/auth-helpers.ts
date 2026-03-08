@@ -318,3 +318,80 @@ export function generateSessionToken(): string {
 export function generateState(): string {
   return randomHex(32)
 }
+
+// ============================================
+// HOG-SEC-006: OAuthアクセストークン暗号化ユーティリティ（AES-GCM）
+// social_accountsテーブルのaccess_tokenを平文で保存しないための暗号化関数
+// 暗号化キーはJWT_SECRETから導出する（別途TOKEN_ENCRYPT_KEYを設定することも可能）
+// ============================================
+
+/**
+ * 暗号化キーをシークレット文字列から導出する（PBKDF2 → AES-GCM）
+ */
+async function deriveEncryptionKey(secret: string): Promise<CryptoKey> {
+  const enc = new TextEncoder()
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  )
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: enc.encode('hogusy-token-encrypt-v1'),
+      iterations: 100_000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  )
+}
+
+/**
+ * OAuthアクセストークンをAES-GCMで暗号化する
+ * @param plaintext - 暗号化するトークン文字列
+ * @param secret    - 暗号化キーの導出に使うシークレット（JWT_SECRET推奨）
+ * @returns         - iv+ciphertextを連結したBase64エンコード文字列
+ */
+export async function encryptToken(plaintext: string, secret: string): Promise<string> {
+  const key = await deriveEncryptionKey(secret)
+  const iv = crypto.getRandomValues(new Uint8Array(12)) // AES-GCM推奨IVサイズ
+  const enc = new TextEncoder()
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    enc.encode(plaintext)
+  )
+  // iv + ciphertext をBase64エンコードして保存
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength)
+  combined.set(iv, 0)
+  combined.set(new Uint8Array(ciphertext), iv.length)
+  return btoa(String.fromCharCode(...combined))
+}
+
+/**
+ * AES-GCMで暗号化されたOAuthアクセストークンを復号する
+ * @param encrypted - encryptTokenで生成したBase64エンコード文字列
+ * @param secret    - 暗号化キーの導出に使ったシークレット
+ * @returns         - 復号されたトークン文字列、失敗時はnull
+ */
+export async function decryptToken(encrypted: string, secret: string): Promise<string | null> {
+  try {
+    const key = await deriveEncryptionKey(secret)
+    const combined = Uint8Array.from(atob(encrypted), (c) => c.charCodeAt(0))
+    const iv = combined.slice(0, 12)
+    const ciphertext = combined.slice(12)
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      ciphertext
+    )
+    return new TextDecoder().decode(plaintext)
+  } catch {
+    return null
+  }
+}
