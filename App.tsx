@@ -181,8 +181,58 @@ const RedirectToSiteDetail: React.FC = () => {
   );
 };
 
-const RequireAuth: React.FC<any> = ({ children, allowedRoles, currentUser, onLogout }) => {
+const RequireAuth: React.FC<any> = ({ children, allowedRoles, currentUser, onLogin, onLogout }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // OAuthコールバック後のtokenパラメータを処理する
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    if (token && !currentUser) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+        );
+        const payload = JSON.parse(jsonPayload);
+        let role = Role.USER;
+        if (payload.role === 'ADMIN') role = Role.ADMIN;
+        else if (payload.role === 'THERAPIST') role = Role.THERAPIST;
+        else if (payload.role === 'HOST') role = Role.HOST;
+        else if (payload.role === 'THERAPIST_OFFICE') role = Role.THERAPIST_OFFICE;
+        else if (payload.role === 'AFFILIATE') role = Role.AFFILIATE;
+        const displayName = payload.userName || payload.name || 'ユーザー';
+        // localStorageに保存
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('currentUser', JSON.stringify({ role, displayName }));
+        // AppのcurrentUserを更新
+        if (onLogin) onLogin(role, displayName);
+        // URLからtokenパラメータを除去
+        params.delete('token');
+        params.delete('isNewUser');
+        const newSearch = params.toString();
+        navigate(location.pathname + (newSearch ? '?' + newSearch : ''), { replace: true });
+      } catch (e) {
+        console.error('Failed to process OAuth token:', e);
+      }
+    }
+  }, [location.search, currentUser, onLogin, navigate, location.pathname]);
+
+  // tokenパラメータがある場合はローディング中表示
+  const params = new URLSearchParams(location.search);
+  if (params.get('token') && !currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-bold">ログイン中...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentUser) return <Navigate to="/auth/login" state={{ from: location }} replace />;
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
      return <div className="p-20 text-center font-black bg-white rounded-[40px] m-10 shadow-xl border border-red-100 text-red-600">Access Denied: Insufficient Permissions</div>;
@@ -328,7 +378,7 @@ const App: React.FC = () => {
         <Route path="/auth/signup/office" element={<Navigate to="/office/join" replace />} />
 
         {/* User App - Public pages (no auth required) */}
-        <Route path="/app" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><UserDashboard onLogout={handleLogout} /></RequireAuth>} />
+        <Route path="/app" element={<RequireAuth allowedRoles={[Role.USER, Role.ADMIN]} currentUser={currentUser} onLogin={handleLogin} onLogout={handleLogout}><UserDashboard onLogout={handleLogout} /></RequireAuth>} />
         <Route path="/app/home-new" element={<Navigate to="/app" replace />} />
         <Route path="/app/map" element={<SiteMapSearch />} />
         <Route path="/app/sites" element={<SitesList />} />

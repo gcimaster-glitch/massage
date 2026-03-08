@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   MapPin, Star, ArrowRight, ShieldCheck, Users, 
   CheckCircle, Zap, Search, Calendar, Heart, ChevronRight, Sparkles, 
@@ -45,7 +45,21 @@ const getSiteImage = (type: string): string => {
 
 const PortalHome: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('map');
+
+  // OAuthエラーパラメータを処理する
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error) {
+      const errorMessages: Record<string, string> = {
+        'auth_failed': 'OAuth認証に失敗しました。再度お試しください。',
+        'access_denied': '認証がキャンセルされました。',
+      };
+      setOauthError(errorMessages[error] || `ログインエラーが発生しました: ${error}`);
+    }
+  }, [searchParams]);
   const tabContentRef = useRef<HTMLDivElement>(null);
   
   // Map state
@@ -281,6 +295,13 @@ const PortalHome: React.FC = () => {
 
   return (
     <PortalLayout>
+      {/* OAuthエラー表示 */}
+      {oauthError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 max-w-md w-full mx-4">
+          <span className="font-bold text-sm">{oauthError}</span>
+          <button onClick={() => setOauthError(null)} className="ml-auto text-white/80 hover:text-white font-black text-lg leading-none">×</button>
+        </div>
+      )}
       {/* ===== HERO (コンパクト) ===== */}
       <section className="relative min-h-[50vh] md:min-h-[55vh] flex items-center justify-center overflow-hidden bg-slate-900">
         <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-40">
