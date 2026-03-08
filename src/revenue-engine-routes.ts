@@ -1,1170 +1,1003 @@
 /**
  * revenue-engine-routes.ts
- * 報酬分配エンジン
+ * 収益分配エンジン API
  *
- * 責務:
- * 1. Stripe Webhookを受信し、決済完了を検知する
- * 2. 決済完了時に transactions テーブルに CHARGE レコードを記録する
- * 3. revenue_share_rules に基づいて transaction_splits を自動生成する
- * 4. 請求書・領収書・支払明細の生成エンドポイントを提供する
- *
- * マウントパス: /api/revenue
+ * エンドポイント:
+ *   POST /api/revenue/webhook/stripe       - Stripe Webhookハンドラ
+ *   POST /api/revenue/process/:bookingId   - 手動で収益分配を実行（管理者用）
+ *   GET  /api/revenue/splits/:bookingId    - 予約の分配情報取得
+ *   GET  /api/revenue/statements           - 精算書一覧（ロール別）
+ *   POST /api/revenue/statements/generate  - 月次精算書生成（管理者用）
+ *   PATCH /api/revenue/statements/:id      - 精算書ステータス更新（管理者用）
+ *   GET  /api/revenue/rules                - 収益分配ルール一覧（管理者用）
+ *   POST /api/revenue/rules                - 収益分配ルール作成（管理者用）
+ *   PATCH /api/revenue/rules/:id           - 収益分配ルール更新（管理者用）
  */
-
-import { Hono } from 'hono'
-import { verifyJWT } from './auth-helpers'
+import { Hono } from 'hono';
+import Stripe from 'stripe';
+import { verifyJWT } from './auth-middleware';
 
 type Bindings = {
-  DB: D1Database
-  STRIPE_SECRET: string
-  STRIPE_WEBHOOK_SECRET: string
-  JWT_SECRET: string
-}
+  DB: D1Database;
+  JWT_SECRET: string;
+  STRIPE_SECRET: string;
+  STRIPE_WEBHOOK_SECRET: string;
+};
 
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<{ Bindings: Bindings }>();
 
-// ============================================================
-// ユーティリティ: ID生成
-// ============================================================
-function generateId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-}
-
-// ============================================================
-// ユーティリティ: 適用すべき分配ルールを取得
-// 優先度: オフィス固有ルール > 予約タイプ固有ルール > デフォルト
-// ============================================================
-async function getRevenueShareRule(
-  db: D1Database,
-  officeId: string | null,
-  bookingType: string | null
-): Promise<{
-  id: string
-  therapist_rate: number
-  office_rate: number
-  host_rate: number
-  platform_rate: number
-  promotion_rate: number
-} | null> {
-  // 優先度の高いルールから順に検索
-  const rule = await db.prepare(`
-    SELECT id, therapist_rate, office_rate, host_rate, platform_rate, promotion_rate
-    FROM revenue_share_rules
-    WHERE is_active = 1
-      AND (valid_until IS NULL OR valid_until > datetime('now'))
-      AND (
-        (office_id = ? AND booking_type = ?)  -- 最優先: オフィス+タイプ固有
-        OR (office_id = ? AND booking_type IS NULL)  -- オフィス固有
-        OR (office_id IS NULL AND booking_type = ?)  -- タイプ固有
-        OR (office_id IS NULL AND booking_type IS NULL)  -- デフォルト
-      )
-    ORDER BY priority DESC
-    LIMIT 1
-  `).bind(
-    officeId || null,
-    bookingType || null,
-    officeId || null,
-    bookingType || null
-  ).first<{
-    id: string
-    therapist_rate: number
-    office_rate: number
-    host_rate: number
-    platform_rate: number
-    promotion_rate: number
-  }>()
-
-  return rule || null
-}
-
-// ============================================================
-// ユーティリティ: 予約に紐づくユーザーIDを取得
-// ============================================================
-async function getBookingStakeholders(db: D1Database, bookingId: string): Promise<{
-  userId: string | null          // 顧客
-  therapistUserId: string | null // セラピスト（usersテーブルのID）
-  officeUserId: string | null    // オフィス（usersテーブルのID）
-  hostUserId: string | null      // ホスト（usersテーブルのID）
-  officeId: string | null
-  bookingType: string | null
-  amount: number
-  serviceName: string
-  scheduledAt: string
-} | null> {
-  const booking = await db.prepare(`
-    SELECT
-      b.user_id,
-      b.therapist_id,
-      b.office_id,
-      b.host_user_id,
-      b.type AS booking_type,
-      b.price AS amount,
-      b.service_name,
-      b.scheduled_at,
-      tp.user_id AS therapist_user_id,
-      o.user_id AS office_user_id
-    FROM bookings b
-    LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
-    LEFT JOIN offices o ON b.office_id = o.user_id
-    WHERE b.id = ?
-  `).bind(bookingId).first<{
-    user_id: string
-    therapist_id: string
-    office_id: string | null
-    host_user_id: string | null
-    booking_type: string
-    amount: number
-    service_name: string
-    scheduled_at: string
-    therapist_user_id: string | null
-    office_user_id: string | null
-  }>()
-
-  if (!booking) return null
-
-  return {
-    userId: booking.user_id,
-    therapistUserId: booking.therapist_user_id,
-    officeUserId: booking.office_user_id,
-    hostUserId: booking.host_user_id,
-    officeId: booking.office_id,
-    bookingType: booking.booking_type,
-    amount: booking.amount,
-    serviceName: booking.service_name,
-    scheduledAt: booking.scheduled_at,
+// ============================================
+// 認証ミドルウェア
+// ============================================
+const requireAuth = async (
+  c: Parameters<typeof app.get>[1],
+  next: () => Promise<void>
+) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: '認証が必要です' }, 401);
   }
-}
+  const token = authHeader.substring(7);
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+  if (!payload) {
+    return c.json({ error: '無効なトークンです' }, 401);
+  }
+  c.set('userId', payload.userId);
+  c.set('userRole', payload.role);
+  await next();
+};
 
-// ============================================================
-// コア処理: 決済完了後の報酬分配を実行する
-// ============================================================
-export async function processPaymentSplit(
+const requireAdmin = async (
+  c: Parameters<typeof app.get>[1],
+  next: () => Promise<void>
+) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: '認証が必要です' }, 401);
+  }
+  const token = authHeader.substring(7);
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
+  if (!payload) {
+    return c.json({ error: '無効なトークンです' }, 401);
+  }
+  if (payload.role !== 'ADMIN' && payload.role !== 'Admin') {
+    return c.json({ error: '管理者権限が必要です' }, 403);
+  }
+  c.set('userId', payload.userId);
+  c.set('userRole', payload.role);
+  await next();
+};
+
+// ============================================
+// 収益分配処理コア関数
+// ============================================
+async function processPaymentSplit(
   db: D1Database,
   bookingId: string,
-  chargeAmount: number,
   stripePaymentIntentId: string,
-  stripeChargeId: string | null
-): Promise<{ transactionId: string; splits: Array<{ role: string; amount: number }> }> {
-  const stakeholders = await getBookingStakeholders(db, bookingId)
-  if (!stakeholders) {
-    throw new Error(`Booking not found: ${bookingId}`)
-  }
-
-  const rule = await getRevenueShareRule(db, stakeholders.officeId, stakeholders.bookingType)
-  if (!rule) {
-    throw new Error('No revenue share rule found')
-  }
-
-  // 1. transactions テーブルに CHARGE レコードを記録
-  const transactionId = generateId('txn')
-  const now = new Date().toISOString()
-
-  await db.prepare(`
-    INSERT INTO transactions (
-      id, type, amount, currency, booking_id,
-      stripe_payment_intent_id, stripe_charge_id,
-      status, description, processed_at, created_at
-    ) VALUES (?, 'CHARGE', ?, 'jpy', ?, ?, ?, 'COMPLETED', ?, ?, ?)
-  `).bind(
-    transactionId,
-    chargeAmount,
-    bookingId,
-    stripePaymentIntentId,
-    stripeChargeId,
-    `予約ID: ${bookingId} / ${stakeholders.serviceName}`,
-    now,
-    now
-  ).run()
-
-  // 2. 分配額を計算
-  const therapistAmount = Math.floor(chargeAmount * rule.therapist_rate / 100)
-  const officeAmount = Math.floor(chargeAmount * rule.office_rate / 100)
-  const hostAmount = Math.floor(chargeAmount * rule.host_rate / 100)
-  const promotionAmount = Math.floor(chargeAmount * rule.promotion_rate / 100)
-  // 端数は本部に帰属
-  const platformAmount = chargeAmount - therapistAmount - officeAmount - hostAmount - promotionAmount
-
-  // 3. transaction_splits に分配明細を記録
-  const splits: Array<{ role: string; userId: string | null; amount: number; rate: number }> = [
-    { role: 'THERAPIST', userId: stakeholders.therapistUserId, amount: therapistAmount, rate: rule.therapist_rate },
-    { role: 'OFFICE', userId: stakeholders.officeUserId, amount: officeAmount, rate: rule.office_rate },
-    { role: 'HOST', userId: stakeholders.hostUserId, amount: hostAmount, rate: rule.host_rate },
-    { role: 'PLATFORM', userId: null, amount: platformAmount, rate: rule.platform_rate },
-    { role: 'PROMOTION', userId: null, amount: promotionAmount, rate: rule.promotion_rate },
-  ]
-
-  for (const split of splits) {
-    // ユーザーIDが不明な場合（ホストなし等）はスキップしない、NULLで記録
-    const splitId = generateId('spl')
-    await db.prepare(`
-      INSERT INTO transaction_splits (
-        id, transaction_id, user_id, role,
-        revenue_share_rule_id, amount, rate,
-        payout_status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
-    `).bind(
-      splitId,
-      transactionId,
-      split.userId,
-      split.role,
-      rule.id,
-      split.amount,
-      split.rate,
-      now
-    ).run()
-  }
-
-  // 4. bookingsテーブルのpayment_statusを更新
-  await db.prepare(`
-    UPDATE bookings
-    SET payment_status = 'PAID',
-        revenue_share_rule_id = ?,
-        updated_at = ?
-    WHERE id = ?
-  `).bind(rule.id, now, bookingId).run()
-
-  // 5. 領収書を自動生成
-  await generateReceipt(db, transactionId, bookingId, stakeholders.userId!, chargeAmount)
-
-  return {
-    transactionId,
-    splits: splits.map(s => ({ role: s.role, amount: s.amount })),
-  }
-}
-
-// ============================================================
-// ユーティリティ: 領収書を自動生成
-// ============================================================
-async function generateReceipt(
-  db: D1Database,
-  transactionId: string,
-  bookingId: string,
-  userId: string,
-  amount: number
-): Promise<void> {
-  // 領収書番号を生成（REC-YYYYMMDD-XXXXX形式）
-  const now = new Date()
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
-  const seq = Math.floor(Math.random() * 99999).toString().padStart(5, '0')
-  const receiptNumber = `REC-${dateStr}-${seq}`
-
-  // 顧客名を取得
-  const user = await db.prepare('SELECT name FROM users WHERE id = ?').bind(userId).first<{ name: string }>()
-  const recipientName = user?.name || '不明'
-
-  // 消費税計算（10%）
-  const taxAmount = Math.floor(amount * 10 / 110)
-
-  const receiptId = generateId('rec')
-  await db.prepare(`
-    INSERT INTO receipts (
-      id, transaction_id, booking_id, user_id,
-      receipt_number, amount, tax_amount, recipient_name,
-      issued_at, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    receiptId,
-    transactionId,
-    bookingId,
-    userId,
-    receiptNumber,
-    amount,
-    taxAmount,
-    recipientName,
-    now.toISOString(),
-    now.toISOString()
-  ).run()
-}
-
-// ============================================================
-// POST /api/revenue/webhook/stripe
-// Stripe Webhookエンドポイント
-// ============================================================
-app.post('/webhook/stripe', async (c) => {
-  const { STRIPE_SECRET, STRIPE_WEBHOOK_SECRET, DB } = c.env
-
-  if (!STRIPE_SECRET) {
-    return c.json({ error: 'Stripe not configured' }, 503)
-  }
-
-  const body = await c.req.text()
-  const signature = c.req.header('stripe-signature')
-
-  // Webhook署名の検証（STRIPE_WEBHOOK_SECRETが設定されている場合のみ）
-  if (STRIPE_WEBHOOK_SECRET && signature) {
-    try {
-      // Stripe署名検証（Web Crypto APIを使用）
-      const isValid = await verifyStripeWebhookSignature(body, signature, STRIPE_WEBHOOK_SECRET)
-      if (!isValid) {
-        console.error('[Webhook] Invalid signature')
-        return c.json({ error: 'Invalid signature' }, 400)
-      }
-    } catch (e) {
-      console.error('[Webhook] Signature verification error:', e)
-      return c.json({ error: 'Signature verification failed' }, 400)
-    }
-  }
-
-  let event: { type: string; data: { object: Record<string, unknown> } }
+  grossAmount: number
+): Promise<{ success: boolean; transactionId?: string; error?: string }> {
   try {
-    event = JSON.parse(body)
-  } catch (e) {
-    return c.json({ error: 'Invalid JSON' }, 400)
+    // 予約情報を取得
+    const booking = await db.prepare(`
+      SELECT
+        b.id,
+        b.therapist_id,
+        b.host_user_id,
+        b.office_id,
+        b.revenue_share_rule_id,
+        b.type,
+        b.price,
+        tp.user_id as therapist_user_id
+      FROM bookings b
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
+      WHERE b.id = ?
+    `).bind(bookingId).first<{
+      id: string;
+      therapist_id: string;
+      host_user_id: string | null;
+      office_id: string | null;
+      revenue_share_rule_id: string | null;
+      type: string;
+      price: number;
+      therapist_user_id: string | null;
+    }>();
+
+    if (!booking) {
+      return { success: false, error: `予約が見つかりません: ${bookingId}` };
+    }
+
+    // 既存のトランザクションを確認（重複処理防止）
+    const existingTx = await db.prepare(`
+      SELECT id FROM transactions WHERE stripe_payment_intent_id = ?
+    `).bind(stripePaymentIntentId).first<{ id: string }>();
+
+    if (existingTx) {
+      console.log(`[Revenue] Transaction already exists for PI: ${stripePaymentIntentId}`);
+      return { success: true, transactionId: existingTx.id };
+    }
+
+    // 適用する収益分配ルールを取得
+    const ruleId = booking.revenue_share_rule_id || 'rule_default_001';
+    let rule = await db.prepare(`
+      SELECT * FROM revenue_share_rules WHERE id = ? AND is_active = 1
+    `).bind(ruleId).first<{
+      id: string;
+      therapist_rate: number;
+      host_rate: number;
+      office_rate: number;
+      platform_rate: number;
+    }>();
+
+    // ルールが見つからない場合はデフォルトを使用
+    if (!rule) {
+      rule = await db.prepare(`
+        SELECT * FROM revenue_share_rules
+        WHERE is_active = 1
+        ORDER BY priority DESC
+        LIMIT 1
+      `).first<{
+        id: string;
+        therapist_rate: number;
+        host_rate: number;
+        office_rate: number;
+        platform_rate: number;
+      }>();
+    }
+
+    // フォールバック: ハードコードされたデフォルト
+    const rates = rule || {
+      id: 'fallback',
+      therapist_rate: 70.0,
+      host_rate: 0.0,
+      office_rate: 0.0,
+      platform_rate: 30.0,
+    };
+
+    // 金額計算（端数は platform に加算）
+    const therapistAmount = Math.floor(grossAmount * rates.therapist_rate / 100);
+    const hostAmount = Math.floor(grossAmount * rates.host_rate / 100);
+    const officeAmount = Math.floor(grossAmount * rates.office_rate / 100);
+    const platformAmount = grossAmount - therapistAmount - hostAmount - officeAmount;
+
+    // トランザクションIDを生成
+    const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // トランザクションレコードを作成
+    await db.prepare(`
+      INSERT INTO transactions (
+        id, booking_id, stripe_payment_intent_id,
+        gross_amount, net_amount, currency,
+        status, paid_at, created_at, updated_at
+      ) VALUES (
+        ?, ?, ?,
+        ?, ?, 'jpy',
+        'SUCCEEDED', datetime('now'), datetime('now'), datetime('now')
+      )
+    `).bind(
+      transactionId,
+      bookingId,
+      stripePaymentIntentId,
+      grossAmount,
+      grossAmount // net_amount（将来的にStripe手数料を控除）
+    ).run();
+
+    // セラピストのuser_idを決定
+    const therapistUserId = booking.therapist_user_id || booking.therapist_id;
+
+    // 分割レコードを作成
+    const splits: Array<{
+      userId: string;
+      role: string;
+      amount: number;
+      rate: number;
+    }> = [];
+
+    if (therapistUserId && therapistAmount > 0) {
+      splits.push({
+        userId: therapistUserId,
+        role: 'THERAPIST',
+        amount: therapistAmount,
+        rate: rates.therapist_rate,
+      });
+    }
+
+    if (booking.host_user_id && hostAmount > 0) {
+      splits.push({
+        userId: booking.host_user_id,
+        role: 'HOST',
+        amount: hostAmount,
+        rate: rates.host_rate,
+      });
+    }
+
+    // オフィスのuser_idを取得
+    if (booking.office_id && officeAmount > 0) {
+      const office = await db.prepare(`
+        SELECT user_id FROM offices WHERE id = ?
+      `).bind(booking.office_id).first<{ user_id: string }>();
+      if (office?.user_id) {
+        splits.push({
+          userId: office.user_id,
+          role: 'OFFICE',
+          amount: officeAmount,
+          rate: rates.office_rate,
+        });
+      }
+    }
+
+    // プラットフォーム分（管理者アカウントに紐付け）
+    if (platformAmount > 0) {
+      const platformUser = await db.prepare(`
+        SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1
+      `).first<{ id: string }>();
+      if (platformUser) {
+        splits.push({
+          userId: platformUser.id,
+          role: 'PLATFORM',
+          amount: platformAmount,
+          rate: rates.platform_rate,
+        });
+      }
+    }
+
+    // 分割レコードを一括挿入
+    for (const split of splits) {
+      const splitId = `split_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      await db.prepare(`
+        INSERT INTO transaction_splits (
+          id, transaction_id, user_id, role,
+          amount, rate, payout_status,
+          created_at, updated_at
+        ) VALUES (
+          ?, ?, ?, ?,
+          ?, ?, 'PENDING',
+          datetime('now'), datetime('now')
+        )
+      `).bind(
+        splitId,
+        transactionId,
+        split.userId,
+        split.role,
+        split.amount,
+        split.rate
+      ).run();
+    }
+
+    // therapist_earningsテーブルにも記録（既存システムとの互換性）
+    if (therapistUserId && therapistAmount > 0) {
+      try {
+        const therapistProfile = await db.prepare(`
+          SELECT id FROM therapist_profiles WHERE user_id = ? LIMIT 1
+        `).bind(therapistUserId).first<{ id: string }>();
+
+        if (therapistProfile) {
+          const earningsId = `earn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          await db.prepare(`
+            INSERT OR IGNORE INTO therapist_earnings (
+              id, therapist_profile_id, booking_id, office_id,
+              booking_price, therapist_amount, office_amount, platform_amount,
+              therapist_rate, office_rate, platform_rate,
+              status, booking_date,
+              created_at, updated_at
+            ) VALUES (
+              ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?,
+              'CONFIRMED', date('now'),
+              datetime('now'), datetime('now')
+            )
+          `).bind(
+            earningsId,
+            therapistProfile.id,
+            bookingId,
+            booking.office_id || null,
+            grossAmount,
+            therapistAmount,
+            officeAmount,
+            platformAmount,
+            rates.therapist_rate,
+            rates.office_rate,
+            rates.platform_rate
+          ).run();
+        }
+      } catch (e) {
+        // therapist_earningsへの書き込みは失敗しても続行
+        console.warn('[Revenue] therapist_earnings insert failed (non-critical):', e);
+      }
+    }
+
+    // 予約ステータスをCONFIRMEDに更新
+    await db.prepare(`
+      UPDATE bookings
+      SET status = 'CONFIRMED',
+          payment_status = 'PAID',
+          payment_intent_id = ?,
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(stripePaymentIntentId, bookingId).run();
+
+    console.log(`[Revenue] Split processed: booking=${bookingId}, tx=${transactionId}, amount=${grossAmount}`);
+    return { success: true, transactionId };
+  } catch (error: unknown) {
+    console.error('[Revenue] processPaymentSplit error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+// ============================================
+// Stripe Webhook ハンドラ
+// ============================================
+app.post('/webhook/stripe', async (c) => {
+  const body = await c.req.text();
+  const sig = c.req.header('stripe-signature');
+
+  if (!sig) {
+    return c.json({ error: 'Missing stripe-signature header' }, 400);
   }
 
-  console.log(`[Webhook] Received event: ${event.type}`)
+  let event: Stripe.Event;
+
+  try {
+    const stripe = new Stripe(c.env.STRIPE_SECRET, {
+      apiVersion: '2024-12-18.acacia',
+    });
+
+    // Webhook署名の検証
+    event = await stripe.webhooks.constructEventAsync(
+      body,
+      sig,
+      c.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err: unknown) {
+    console.error('[Webhook] Signature verification failed:', err);
+    return c.json(
+      { error: `Webhook Error: ${err instanceof Error ? err.message : 'Unknown'}` },
+      400
+    );
+  }
+
+  console.log(`[Webhook] Event received: ${event.type}, id: ${event.id}`);
 
   try {
     switch (event.type) {
-      // ============================================================
-      // 顧客決済完了: 報酬分配を実行
-      // ============================================================
-      case 'checkout.session.completed': {
-        const session = event.data.object as {
-          id: string
-          payment_intent: string
-          payment_status: string
-          metadata?: { booking_id?: string }
-          amount_total: number
-        }
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const bookingId = paymentIntent.metadata?.booking_id;
 
-        if (session.payment_status !== 'paid') {
-          console.log('[Webhook] Session not paid, skipping')
-          break
-        }
-
-        const bookingId = session.metadata?.booking_id
         if (!bookingId) {
-          console.error('[Webhook] No booking_id in session metadata')
-          break
+          console.warn('[Webhook] payment_intent.succeeded: no booking_id in metadata');
+          break;
         }
-
-        // Stripe Charge IDを取得
-        const chargeId = await getChargeIdFromPaymentIntent(STRIPE_SECRET, session.payment_intent)
 
         const result = await processPaymentSplit(
-          DB,
+          c.env.DB,
           bookingId,
-          session.amount_total,
-          session.payment_intent,
-          chargeId
-        )
+          paymentIntent.id,
+          paymentIntent.amount
+        );
 
-        console.log(`[Webhook] Payment split completed for booking ${bookingId}:`, result.splits)
-        break
+        if (!result.success) {
+          console.error('[Webhook] processPaymentSplit failed:', result.error);
+        }
+        break;
       }
 
-      // ============================================================
-      // PaymentIntent成功（Checkout以外のケース）
-      // ============================================================
-      case 'payment_intent.succeeded': {
-        const pi = event.data.object as {
-          id: string
-          amount: number
-          charges?: { data: Array<{ id: string }> }
-          metadata?: { booking_id?: string }
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const bookingId = session.metadata?.booking_id;
+
+        if (!bookingId || !session.payment_intent) {
+          console.warn('[Webhook] checkout.session.completed: missing booking_id or payment_intent');
+          break;
         }
 
-        const bookingId = pi.metadata?.booking_id
-        if (!bookingId) {
-          console.log('[Webhook] No booking_id in payment_intent metadata, skipping')
-          break
+        const paymentIntentId = typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent.id;
+
+        const result = await processPaymentSplit(
+          c.env.DB,
+          bookingId,
+          paymentIntentId,
+          session.amount_total || 0
+        );
+
+        if (!result.success) {
+          console.error('[Webhook] processPaymentSplit failed:', result.error);
         }
-
-        // 既にCHARGEレコードが存在する場合はスキップ（二重処理防止）
-        const existing = await DB.prepare(
-          'SELECT id FROM transactions WHERE stripe_payment_intent_id = ? AND type = ?'
-        ).bind(pi.id, 'CHARGE').first()
-
-        if (existing) {
-          console.log(`[Webhook] Transaction already exists for PI ${pi.id}, skipping`)
-          break
-        }
-
-        const chargeId = pi.charges?.data?.[0]?.id || null
-        await processPaymentSplit(DB, bookingId, pi.amount, pi.id, chargeId)
-        break
+        break;
       }
 
-      // ============================================================
-      // 返金処理
-      // ============================================================
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const bookingId = paymentIntent.metadata?.booking_id;
+
+        if (bookingId) {
+          await c.env.DB.prepare(`
+            UPDATE bookings
+            SET payment_status = 'FAILED', updated_at = datetime('now')
+            WHERE id = ?
+          `).bind(bookingId).run();
+          console.log(`[Webhook] Payment failed for booking: ${bookingId}`);
+        }
+        break;
+      }
+
       case 'charge.refunded': {
-        const charge = event.data.object as {
-          id: string
-          payment_intent: string
-          amount_refunded: number
-          refunds?: { data: Array<{ id: string }> }
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId = typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : charge.payment_intent?.id;
+
+        if (paymentIntentId) {
+          await c.env.DB.prepare(`
+            UPDATE transactions
+            SET status = 'REFUNDED', refunded_at = datetime('now'), updated_at = datetime('now')
+            WHERE stripe_payment_intent_id = ?
+          `).bind(paymentIntentId).run();
+
+          // 分割レコードもキャンセル
+          await c.env.DB.prepare(`
+            UPDATE transaction_splits
+            SET payout_status = 'CANCELLED', updated_at = datetime('now')
+            WHERE transaction_id IN (
+              SELECT id FROM transactions WHERE stripe_payment_intent_id = ?
+            ) AND payout_status = 'PENDING'
+          `).bind(paymentIntentId).run();
+
+          console.log(`[Webhook] Refund processed for PI: ${paymentIntentId}`);
         }
-
-        // 元のCHARGEトランザクションを検索
-        const originalTxn = await DB.prepare(
-          'SELECT id, booking_id FROM transactions WHERE stripe_payment_intent_id = ? AND type = ?'
-        ).bind(charge.payment_intent, 'CHARGE').first<{ id: string; booking_id: string }>()
-
-        if (!originalTxn) {
-          console.error('[Webhook] Original transaction not found for refund')
-          break
-        }
-
-        // REFUNDトランザクションを記録
-        const refundTxnId = generateId('txn')
-        const now = new Date().toISOString()
-        const refundId = charge.refunds?.data?.[0]?.id || null
-
-        await DB.prepare(`
-          INSERT INTO transactions (
-            id, type, amount, currency, booking_id,
-            stripe_payment_intent_id, stripe_refund_id,
-            status, description, processed_at, created_at
-          ) VALUES (?, 'REFUND', ?, 'jpy', ?, ?, ?, 'COMPLETED', ?, ?, ?)
-        `).bind(
-          refundTxnId,
-          charge.amount_refunded,
-          originalTxn.booking_id,
-          charge.payment_intent,
-          refundId,
-          `返金: 元取引ID ${originalTxn.id}`,
-          now,
-          now
-        ).run()
-
-        // 元のsplitsをCANCELLEDに更新
-        await DB.prepare(`
-          UPDATE transaction_splits
-          SET payout_status = 'CANCELLED'
-          WHERE transaction_id = ? AND payout_status = 'PENDING'
-        `).bind(originalTxn.id).run()
-
-        // 予約のpayment_statusを更新
-        await DB.prepare(`
-          UPDATE bookings SET payment_status = 'REFUNDED', updated_at = ? WHERE id = ?
-        `).bind(now, originalTxn.booking_id).run()
-
-        console.log(`[Webhook] Refund processed for transaction ${originalTxn.id}`)
-        break
-      }
-
-      // ============================================================
-      // サブスクリプション更新（契約管理）
-      // ============================================================
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object as {
-          id: string
-          status: string
-          current_period_start: number
-          current_period_end: number
-          canceled_at: number | null
-        }
-
-        const statusMap: Record<string, string> = {
-          active: 'ACTIVE',
-          past_due: 'PAST_DUE',
-          canceled: 'CANCELLED',
-          unpaid: 'PAST_DUE',
-          trialing: 'ACTIVE',
-        }
-
-        const contractStatus = statusMap[sub.status] || 'CANCELLED'
-        const now = new Date().toISOString()
-
-        await DB.prepare(`
-          UPDATE contracts
-          SET status = ?,
-              current_period_start = ?,
-              current_period_end = ?,
-              cancelled_at = ?,
-              updated_at = ?
-          WHERE stripe_subscription_id = ?
-        `).bind(
-          contractStatus,
-          new Date(sub.current_period_start * 1000).toISOString(),
-          new Date(sub.current_period_end * 1000).toISOString(),
-          sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
-          now,
-          sub.id
-        ).run()
-
-        console.log(`[Webhook] Subscription ${sub.id} updated to ${contractStatus}`)
-        break
+        break;
       }
 
       default:
-        console.log(`[Webhook] Unhandled event type: ${event.type}`)
+        console.log(`[Webhook] Unhandled event type: ${event.type}`);
     }
-  } catch (e) {
-    console.error('[Webhook] Processing error:', e)
-    // Stripeには200を返して再試行を防ぐ（処理エラーはログで管理）
-    return c.json({ received: true, error: String(e) }, 200)
+  } catch (err: unknown) {
+    console.error('[Webhook] Event processing error:', err);
+    // Webhookは200を返してStripeの再送を防ぐ
   }
 
-  return c.json({ received: true })
-})
+  return c.json({ received: true });
+});
 
-// ============================================================
-// Stripe Webhook署名検証（Web Crypto API使用）
-// ============================================================
-async function verifyStripeWebhookSignature(
-  payload: string,
-  signature: string,
-  secret: string
-): Promise<boolean> {
-  const parts = signature.split(',')
-  const timestampPart = parts.find(p => p.startsWith('t='))
-  const signaturePart = parts.find(p => p.startsWith('v1='))
+// ============================================
+// 手動収益分配実行（管理者用）
+// ============================================
+app.post('/process/:bookingId', requireAdmin, async (c) => {
+  const bookingId = c.req.param('bookingId');
 
-  if (!timestampPart || !signaturePart) return false
-
-  const timestamp = timestampPart.slice(2)
-  const expectedSig = signaturePart.slice(3)
-
-  // タイムスタンプが5分以内であることを確認（リプレイアタック防止）
-  const now = Math.floor(Date.now() / 1000)
-  if (Math.abs(now - parseInt(timestamp)) > 300) {
-    console.error('[Webhook] Timestamp too old')
-    return false
-  }
-
-  const signedPayload = `${timestamp}.${payload}`
-  const encoder = new TextEncoder()
-  const keyData = encoder.encode(secret)
-  const messageData = encoder.encode(signedPayload)
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData)
-  const computedSig = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-
-  return computedSig === expectedSig
-}
-
-// ============================================================
-// Stripe Charge IDをPaymentIntentから取得
-// ============================================================
-async function getChargeIdFromPaymentIntent(
-  stripeSecret: string,
-  paymentIntentId: string
-): Promise<string | null> {
   try {
-    const res = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
-      headers: { 'Authorization': `Bearer ${stripeSecret}` },
-    })
-    const pi = await res.json<{ latest_charge?: string }>()
-    return pi.latest_charge || null
-  } catch {
-    return null
+    const booking = await c.env.DB.prepare(`
+      SELECT id, price, payment_intent_id, payment_status
+      FROM bookings WHERE id = ?
+    `).bind(bookingId).first<{
+      id: string;
+      price: number;
+      payment_intent_id: string | null;
+      payment_status: string;
+    }>();
+
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404);
+    }
+
+    const paymentIntentId = booking.payment_intent_id || `manual_${Date.now()}`;
+
+    const result = await processPaymentSplit(
+      c.env.DB,
+      bookingId,
+      paymentIntentId,
+      booking.price
+    );
+
+    if (!result.success) {
+      return c.json({ error: result.error }, 500);
+    }
+
+    return c.json({ success: true, transactionId: result.transactionId });
+  } catch (e: unknown) {
+    console.error('[Revenue] Manual process error:', e);
+    return c.json({ error: '収益分配の実行に失敗しました' }, 500);
   }
-}
+});
 
-// ============================================================
-// 認証ミドルウェア
-// ============================================================
-async function requireAuth(c: any, next: () => Promise<void>) {
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401)
-  const token = authHeader.replace('Bearer ', '')
-  const payload = await verifyJWT(token, c.env.JWT_SECRET)
-  if (!payload) return c.json({ error: 'Invalid or expired token' }, 401)
-  c.set('jwtPayload', payload)
-  await next()
-}
+// ============================================
+// 予約の分配情報取得
+// ============================================
+app.get('/splits/:bookingId', requireAuth, async (c) => {
+  const bookingId = c.req.param('bookingId');
+  const userId = c.get('userId') as string;
+  const userRole = c.get('userRole') as string;
 
-async function requireAdmin(c: any, next: () => Promise<void>) {
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401)
-  const token = authHeader.replace('Bearer ', '')
-  const payload = await verifyJWT(token, c.env.JWT_SECRET)
-  if (!payload || payload.role !== 'ADMIN') return c.json({ error: 'Admin required' }, 403)
-  c.set('jwtPayload', payload)
-  await next()
-}
+  try {
+    // 管理者以外は自分の予約のみ参照可能
+    if (userRole !== 'ADMIN' && userRole !== 'Admin') {
+      const booking = await c.env.DB.prepare(`
+        SELECT user_id, therapist_id FROM bookings WHERE id = ?
+      `).bind(bookingId).first<{ user_id: string; therapist_id: string }>();
 
-// ============================================================
-// GET /api/revenue/transactions
-// 取引台帳の取得（管理者・オフィス・セラピスト・ホスト）
-// ============================================================
-app.get('/transactions', requireAuth, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string; role: string }
-  const { DB } = c.env
-  const { page = '1', limit = '20', type, status } = c.req.query()
-  const offset = (parseInt(page) - 1) * parseInt(limit)
+      if (!booking) {
+        return c.json({ error: '予約が見つかりません' }, 404);
+      }
 
-  let query: string
-  let params: unknown[]
+      // therapist_profilesからuser_idを取得
+      const therapistProfile = await c.env.DB.prepare(`
+        SELECT user_id FROM therapist_profiles WHERE id = ?
+      `).bind(booking.therapist_id).first<{ user_id: string }>();
 
-  if (payload.role === 'ADMIN') {
-    // 管理者: 全取引を閲覧可能
-    query = `
-      SELECT t.*, b.service_name, b.scheduled_at
+      const therapistUserId = therapistProfile?.user_id || booking.therapist_id;
+
+      if (booking.user_id !== userId && therapistUserId !== userId) {
+        return c.json({ error: 'アクセス権限がありません' }, 403);
+      }
+    }
+
+    const transaction = await c.env.DB.prepare(`
+      SELECT t.*, ts_list.splits
       FROM transactions t
-      LEFT JOIN bookings b ON t.booking_id = b.id
+      LEFT JOIN (
+        SELECT transaction_id,
+          json_group_array(json_object(
+            'id', id,
+            'user_id', user_id,
+            'role', role,
+            'amount', amount,
+            'rate', rate,
+            'payout_status', payout_status,
+            'paid_at', paid_at
+          )) as splits
+        FROM transaction_splits
+        GROUP BY transaction_id
+      ) ts_list ON t.id = ts_list.transaction_id
+      WHERE t.booking_id = ?
+      ORDER BY t.created_at DESC
+      LIMIT 1
+    `).bind(bookingId).first<{
+      id: string;
+      booking_id: string;
+      stripe_payment_intent_id: string;
+      gross_amount: number;
+      status: string;
+      paid_at: string;
+      splits: string;
+    }>();
+
+    if (!transaction) {
+      return c.json({ transaction: null, splits: [] });
+    }
+
+    const splits = transaction.splits ? JSON.parse(transaction.splits) : [];
+
+    return c.json({
+      transaction: {
+        id: transaction.id,
+        booking_id: transaction.booking_id,
+        stripe_payment_intent_id: transaction.stripe_payment_intent_id,
+        gross_amount: transaction.gross_amount,
+        status: transaction.status,
+        paid_at: transaction.paid_at,
+      },
+      splits,
+    });
+  } catch (e: unknown) {
+    console.error('[Revenue] splits fetch error:', e);
+    return c.json({ error: '分配情報の取得に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 精算書一覧取得（ロール別）
+// ============================================
+app.get('/statements', requireAuth, async (c) => {
+  const userId = c.get('userId') as string;
+  const userRole = c.get('userRole') as string;
+  const { month, status, target_user_id } = c.req.query();
+
+  try {
+    let targetUserId = userId;
+
+    // 管理者は任意のユーザーの精算書を参照可能
+    if ((userRole === 'ADMIN' || userRole === 'Admin') && target_user_id) {
+      targetUserId = target_user_id;
+    }
+
+    let query = `
+      SELECT
+        ps.*,
+        u.name as user_name,
+        u.email as user_email
+      FROM payout_statements ps
+      LEFT JOIN users u ON ps.user_id = u.id
       WHERE 1=1
-        ${type ? "AND t.type = ?" : ""}
-        ${status ? "AND t.status = ?" : ""}
-      ORDER BY t.created_at DESC
-      LIMIT ? OFFSET ?
-    `
-    params = [
-      ...(type ? [type] : []),
-      ...(status ? [status] : []),
-      parseInt(limit),
-      offset,
-    ]
-  } else {
-    // 一般ユーザー: 自分に関連する取引のみ
-    query = `
-      SELECT t.*, b.service_name, b.scheduled_at
-      FROM transactions t
-      LEFT JOIN bookings b ON t.booking_id = b.id
-      WHERE b.user_id = ?
-        ${type ? "AND t.type = ?" : ""}
-        ${status ? "AND t.status = ?" : ""}
-      ORDER BY t.created_at DESC
-      LIMIT ? OFFSET ?
-    `
-    params = [
-      payload.userId,
-      ...(type ? [type] : []),
-      ...(status ? [status] : []),
-      parseInt(limit),
-      offset,
-    ]
+    `;
+    const params: (string | number)[] = [];
+
+    if (userRole !== 'ADMIN' && userRole !== 'Admin') {
+      query += ' AND ps.user_id = ?';
+      params.push(targetUserId);
+    } else if (target_user_id) {
+      query += ' AND ps.user_id = ?';
+      params.push(target_user_id);
+    }
+
+    if (month) {
+      query += ` AND strftime('%Y-%m', ps.period_start) = ?`;
+      params.push(month);
+    }
+
+    if (status) {
+      query += ' AND ps.status = ?';
+      params.push(status);
+    }
+
+    query += ' ORDER BY ps.period_start DESC LIMIT 100';
+
+    const result = await c.env.DB.prepare(query).bind(...params).all<Record<string, unknown>>();
+
+    return c.json({ statements: result.results || [] });
+  } catch (e: unknown) {
+    console.error('[Revenue] statements fetch error:', e);
+    return c.json({ error: '精算書の取得に失敗しました' }, 500);
   }
+});
 
-  const transactions = await DB.prepare(query).bind(...params).all()
-  return c.json({ transactions: transactions.results, page: parseInt(page) })
-})
+// ============================================
+// 月次精算書生成（管理者用）
+// ============================================
+app.post('/statements/generate', requireAdmin, async (c) => {
+  try {
+    const { target_month } = await c.req.json() as { target_month: string };
 
-// ============================================================
-// GET /api/revenue/splits/my
-// 自分への分配明細を取得（セラピスト・オフィス・ホスト）
-// ============================================================
-app.get('/splits/my', requireAuth, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string; role: string }
-  const { DB } = c.env
-  const { page = '1', limit = '20', payout_status } = c.req.query()
-  const offset = (parseInt(page) - 1) * parseInt(limit)
+    if (!target_month || !/^\d{4}-\d{2}$/.test(target_month)) {
+      return c.json({ error: 'target_monthは YYYY-MM 形式で指定してください' }, 400);
+    }
 
-  const splits = await DB.prepare(`
-    SELECT
-      ts.*,
-      t.amount AS transaction_amount,
-      t.created_at AS transaction_date,
-      b.service_name,
-      b.scheduled_at,
-      u.name AS customer_name
-    FROM transaction_splits ts
-    JOIN transactions t ON ts.transaction_id = t.id
-    LEFT JOIN bookings b ON t.booking_id = b.id
-    LEFT JOIN users u ON b.user_id = u.id
-    WHERE ts.user_id = ?
-      ${payout_status ? "AND ts.payout_status = ?" : ""}
-    ORDER BY ts.created_at DESC
-    LIMIT ? OFFSET ?
-  `).bind(
-    payload.userId,
-    ...(payout_status ? [payout_status] : []),
-    parseInt(limit),
-    offset
-  ).all()
+    const [year, month] = target_month.split('-');
+    const periodStart = `${year}-${month}-01`;
+    // 月末日を計算
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-  // サマリー計算
-  const summary = await DB.prepare(`
-    SELECT
-      SUM(CASE WHEN payout_status = 'PENDING' THEN amount ELSE 0 END) AS pending_amount,
-      SUM(CASE WHEN payout_status = 'PAID' THEN amount ELSE 0 END) AS paid_amount,
-      COUNT(CASE WHEN payout_status = 'PENDING' THEN 1 END) AS pending_count
-    FROM transaction_splits
-    WHERE user_id = ?
-  `).bind(payload.userId).first<{
-    pending_amount: number
-    paid_amount: number
-    pending_count: number
-  }>()
+    // 対象期間のtransaction_splitsを集計
+    const splits = await c.env.DB.prepare(`
+      SELECT
+        ts.user_id,
+        ts.role,
+        SUM(ts.amount) as total_amount
+      FROM transaction_splits ts
+      JOIN transactions t ON ts.transaction_id = t.id
+      WHERE t.status = 'SUCCEEDED'
+        AND t.paid_at >= ?
+        AND t.paid_at <= ?
+        AND ts.payout_status = 'PENDING'
+      GROUP BY ts.user_id, ts.role
+    `).bind(`${periodStart} 00:00:00`, `${periodEnd} 23:59:59`).all<{
+      user_id: string;
+      role: string;
+      total_amount: number;
+    }>();
 
-  return c.json({
-    splits: splits.results,
-    summary,
-    page: parseInt(page),
-  })
-})
+    let inserted = 0;
+    let updated = 0;
 
-// ============================================================
-// GET /api/revenue/receipts/my
-// 自分の領収書一覧を取得（顧客）
-// ============================================================
-app.get('/receipts/my', requireAuth, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string }
-  const { DB } = c.env
-  const { page = '1', limit = '20' } = c.req.query()
-  const offset = (parseInt(page) - 1) * parseInt(limit)
+    for (const row of (splits.results || [])) {
+      const statementId = `stmt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-  const receipts = await DB.prepare(`
-    SELECT r.*, b.service_name, b.scheduled_at
-    FROM receipts r
-    LEFT JOIN bookings b ON r.booking_id = b.id
-    WHERE r.user_id = ?
-    ORDER BY r.issued_at DESC
-    LIMIT ? OFFSET ?
-  `).bind(payload.userId, parseInt(limit), offset).all()
+      // UPSERT
+      const existing = await c.env.DB.prepare(`
+        SELECT id FROM payout_statements
+        WHERE user_id = ? AND period_start = ? AND period_end = ?
+      `).bind(row.user_id, periodStart, periodEnd).first<{ id: string }>();
 
-  return c.json({ receipts: receipts.results, page: parseInt(page) })
-})
+      if (existing) {
+        await c.env.DB.prepare(`
+          UPDATE payout_statements
+          SET gross_amount = ?, net_amount = ?, updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(row.total_amount, row.total_amount, existing.id).run();
+        updated++;
+      } else {
+        await c.env.DB.prepare(`
+          INSERT INTO payout_statements (
+            id, user_id, role,
+            period_start, period_end,
+            gross_amount, net_amount, fee_amount,
+            status, created_at, updated_at
+          ) VALUES (
+            ?, ?, ?,
+            ?, ?,
+            ?, ?, 0,
+            'DRAFT', datetime('now'), datetime('now')
+          )
+        `).bind(
+          statementId,
+          row.user_id,
+          row.role,
+          periodStart,
+          periodEnd,
+          row.total_amount,
+          row.total_amount
+        ).run();
+        inserted++;
+      }
+    }
 
-// ============================================================
-// GET /api/revenue/receipts/:receiptId
-// 領収書の詳細取得
-// ============================================================
-app.get('/receipts/:receiptId', requireAuth, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string; role: string }
-  const { DB } = c.env
-  const receiptId = c.req.param('receiptId')
-
-  const receipt = await DB.prepare(`
-    SELECT r.*, b.service_name, b.scheduled_at, b.duration, b.type AS booking_type
-    FROM receipts r
-    LEFT JOIN bookings b ON r.booking_id = b.id
-    WHERE r.id = ?
-      ${payload.role !== 'ADMIN' ? 'AND r.user_id = ?' : ''}
-  `).bind(receiptId, ...(payload.role !== 'ADMIN' ? [payload.userId] : [])).first()
-
-  if (!receipt) return c.json({ error: 'Receipt not found' }, 404)
-  return c.json({ receipt })
-})
-
-// ============================================================
-// POST /api/revenue/payout-statements/generate
-// 支払明細書を生成（管理者のみ）
-// ============================================================
-app.post('/payout-statements/generate', requireAdmin, async (c) => {
-  const { DB } = c.env
-  const { userId, role, periodStart, periodEnd } = await c.req.json()
-
-  if (!userId || !role || !periodStart || !periodEnd) {
-    return c.json({ error: 'userId, role, periodStart, periodEnd are required' }, 400)
+    return c.json({
+      success: true,
+      target_month,
+      period_start: periodStart,
+      period_end: periodEnd,
+      inserted,
+      updated,
+      total: inserted + updated,
+    });
+  } catch (e: unknown) {
+    console.error('[Revenue] statements generate error:', e);
+    return c.json({ error: '精算書の生成に失敗しました' }, 500);
   }
+});
 
-  // 対象期間の未払い分配を集計
-  const splits = await DB.prepare(`
-    SELECT ts.*, t.booking_id, b.service_name, b.scheduled_at, u.name AS customer_name
-    FROM transaction_splits ts
-    JOIN transactions t ON ts.transaction_id = t.id
-    LEFT JOIN bookings b ON t.booking_id = b.id
-    LEFT JOIN users u ON b.user_id = u.id
-    WHERE ts.user_id = ?
-      AND ts.role = ?
-      AND ts.payout_status = 'PENDING'
-      AND DATE(ts.created_at) BETWEEN ? AND ?
-    ORDER BY ts.created_at ASC
-  `).bind(userId, role, periodStart, periodEnd).all<{
-    id: string
-    amount: number
-    rate: number
-    booking_id: string | null
-    service_name: string | null
-    scheduled_at: string | null
-    customer_name: string | null
-    created_at: string
-  }>()
-
-  if (!splits.results || splits.results.length === 0) {
-    return c.json({ error: 'No pending splits found for the specified period' }, 404)
-  }
-
-  const grossAmount = splits.results.reduce((sum, s) => sum + s.amount, 0)
-  const deductions = 0 // 将来的に手数料等を控除
-  const netAmount = grossAmount - deductions
-
-  // 明細書番号を生成
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const seq = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-  const statementNumber = `PAY-${dateStr}-${seq}`
-
-  const statementId = generateId('pst')
-  const now = new Date().toISOString()
-
-  // 支払明細書を作成
-  await DB.prepare(`
-    INSERT INTO payout_statements (
-      id, user_id, role, period_start, period_end,
-      statement_number, gross_amount, deductions, net_amount,
-      status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', ?, ?)
-  `).bind(
-    statementId, userId, role, periodStart, periodEnd,
-    statementNumber, grossAmount, deductions, netAmount,
-    now, now
-  ).run()
-
-  // 明細行を作成
-  for (const split of splits.results) {
-    const lineId = generateId('pli')
-    await DB.prepare(`
-      INSERT INTO payout_statement_line_items (
-        id, payout_statement_id, transaction_split_id,
-        booking_id, booking_date, service_name, customer_name,
-        gross_amount, rate, net_amount, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      lineId, statementId, split.id,
-      split.booking_id,
-      split.scheduled_at ? split.scheduled_at.slice(0, 10) : null,
-      split.service_name,
-      split.customer_name,
-      split.amount, split.rate, split.amount,
-      now
-    ).run()
-  }
-
-  return c.json({
-    statementId,
-    statementNumber,
-    grossAmount,
-    netAmount,
-    lineCount: splits.results.length,
-    status: 'DRAFT',
-  })
-})
-
-// ============================================================
-// GET /api/revenue/payout-statements/my
-// 自分の支払明細書一覧を取得
-// ============================================================
-app.get('/payout-statements/my', requireAuth, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string }
-  const { DB } = c.env
-  const { page = '1', limit = '20' } = c.req.query()
-  const offset = (parseInt(page) - 1) * parseInt(limit)
-
-  const statements = await DB.prepare(`
-    SELECT * FROM payout_statements
-    WHERE user_id = ?
-    ORDER BY created_at DESC
-    LIMIT ? OFFSET ?
-  `).bind(payload.userId, parseInt(limit), offset).all()
-
-  return c.json({ statements: statements.results, page: parseInt(page) })
-})
-
-// ============================================================
-// GET /api/revenue/payout-statements/:statementId
-// 支払明細書の詳細取得（明細行含む）
-// ============================================================
-app.get('/payout-statements/:statementId', requireAuth, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string; role: string }
-  const { DB } = c.env
-  const statementId = c.req.param('statementId')
-
-  const statement = await DB.prepare(`
-    SELECT ps.*, u.name AS user_name, u.email AS user_email
-    FROM payout_statements ps
-    JOIN users u ON ps.user_id = u.id
-    WHERE ps.id = ?
-      ${payload.role !== 'ADMIN' ? 'AND ps.user_id = ?' : ''}
-  `).bind(statementId, ...(payload.role !== 'ADMIN' ? [payload.userId] : [])).first()
-
-  if (!statement) return c.json({ error: 'Statement not found' }, 404)
-
-  const lineItems = await DB.prepare(`
-    SELECT * FROM payout_statement_line_items
-    WHERE payout_statement_id = ?
-    ORDER BY booking_date ASC
-  `).bind(statementId).all()
-
-  return c.json({ statement, lineItems: lineItems.results })
-})
-
-// ============================================================
-// GET /api/revenue/dashboard/summary
-// 報酬サマリー（管理者用）
-// ============================================================
-app.get('/dashboard/summary', requireAdmin, async (c) => {
-  const { DB } = c.env
-  const { year, month } = c.req.query()
-
-  const periodFilter = year && month
-    ? `AND strftime('%Y', t.created_at) = '${year}' AND strftime('%m', t.created_at) = '${month.padStart(2, '0')}'`
-    : ''
-
-  const summary = await DB.prepare(`
-    SELECT
-      SUM(CASE WHEN t.type = 'CHARGE' THEN t.amount ELSE 0 END) AS total_revenue,
-      SUM(CASE WHEN t.type = 'REFUND' THEN t.amount ELSE 0 END) AS total_refunds,
-      COUNT(CASE WHEN t.type = 'CHARGE' THEN 1 END) AS charge_count,
-      SUM(CASE WHEN ts.role = 'THERAPIST' AND ts.payout_status = 'PENDING' THEN ts.amount ELSE 0 END) AS pending_therapist_payout,
-      SUM(CASE WHEN ts.role = 'OFFICE' AND ts.payout_status = 'PENDING' THEN ts.amount ELSE 0 END) AS pending_office_payout,
-      SUM(CASE WHEN ts.role = 'HOST' AND ts.payout_status = 'PENDING' THEN ts.amount ELSE 0 END) AS pending_host_payout,
-      SUM(CASE WHEN ts.role = 'PLATFORM' THEN ts.amount ELSE 0 END) AS platform_revenue
-    FROM transactions t
-    LEFT JOIN transaction_splits ts ON t.id = ts.transaction_id
-    WHERE t.status = 'COMPLETED' ${periodFilter}
-  `).first<{
-    total_revenue: number
-    total_refunds: number
-    charge_count: number
-    pending_therapist_payout: number
-    pending_office_payout: number
-    pending_host_payout: number
-    platform_revenue: number
-  }>()
-
-  return c.json({ summary })
-})
-
-// ============================================================
-// GET /api/revenue/revenue-share-rules
-// 分配ルール一覧（管理者）
-// ============================================================
-app.get('/revenue-share-rules', requireAdmin, async (c) => {
-  const { DB } = c.env
-  const rules = await DB.prepare(`
-    SELECT rsr.*, o.name AS office_name
-    FROM revenue_share_rules rsr
-    LEFT JOIN offices o ON rsr.office_id = o.id
-    ORDER BY rsr.priority DESC, rsr.created_at DESC
-  `).all()
-  return c.json({ rules: rules.results })
-})
-
-// ============================================================
-// POST /api/revenue/revenue-share-rules
-// 分配ルールの新規作成（管理者）
-// ============================================================
-app.post('/revenue-share-rules', requireAdmin, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string }
-  const { DB } = c.env
-  const body = await c.req.json()
-
-  const {
-    officeId = null,
-    bookingType = null,
-    therapistRate,
-    officeRate,
-    hostRate,
-    platformRate,
-    promotionRate,
-    validFrom,
-    validUntil = null,
-    priority = 0,
-    notes = null,
-  } = body
-
-  // 合計が100になることを検証
-  const total = (therapistRate || 0) + (officeRate || 0) + (hostRate || 0) + (platformRate || 0) + (promotionRate || 0)
-  if (total !== 100) {
-    return c.json({ error: `分配率の合計が100になりません（現在: ${total}）` }, 400)
-  }
-
-  const ruleId = generateId('rsr')
-  const now = new Date().toISOString()
-
-  await DB.prepare(`
-    INSERT INTO revenue_share_rules (
-      id, office_id, booking_type,
-      therapist_rate, office_rate, host_rate, platform_rate, promotion_rate,
-      valid_from, valid_until, priority, is_active, created_by, notes,
-      created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
-  `).bind(
-    ruleId, officeId, bookingType,
-    therapistRate, officeRate, hostRate, platformRate, promotionRate,
-    validFrom || now, validUntil, priority, payload.userId, notes,
-    now, now
-  ).run()
-
-  return c.json({ ruleId, message: '分配ルールを作成しました' }, 201)
-})
-
-// ============================================================
-// POST /api/revenue/process-booking-payment
-// 予約決済の手動処理（テスト・管理者用）
-// ============================================================
-app.post('/process-booking-payment', requireAdmin, async (c) => {
-  const { DB } = c.env
-  const { bookingId, amount, paymentIntentId = `manual_${Date.now()}` } = await c.req.json()
-
-  if (!bookingId || !amount) {
-    return c.json({ error: 'bookingId and amount are required' }, 400)
-  }
+// ============================================
+// 精算書ステータス更新（管理者用）
+// ============================================
+app.patch('/statements/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
 
   try {
-    const result = await processPaymentSplit(DB, bookingId, amount, paymentIntentId, null)
-    return c.json({ success: true, ...result })
-  } catch (e: any) {
-    return c.json({ error: e.message }, 500)
+    const { status, payment_method, payment_reference, notes } = await c.req.json() as {
+      status: string;
+      payment_method?: string;
+      payment_reference?: string;
+      notes?: string;
+    };
+
+    const validStatuses = ['DRAFT', 'CONFIRMED', 'PAID', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ error: '無効なステータスです' }, 400);
+    }
+
+    const paidAt = status === 'PAID' ? "datetime('now')" : 'NULL';
+
+    await c.env.DB.prepare(`
+      UPDATE payout_statements
+      SET status = ?,
+          payment_method = ?,
+          payment_reference = ?,
+          notes = ?,
+          paid_at = ${paidAt},
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+      status,
+      payment_method || null,
+      payment_reference || null,
+      notes || null,
+      id
+    ).run();
+
+    // PAIDになった場合、transaction_splitsのpayout_statusも更新
+    if (status === 'PAID') {
+      await c.env.DB.prepare(`
+        UPDATE transaction_splits
+        SET payout_status = 'PAID',
+            payout_statement_id = ?,
+            paid_at = datetime('now'),
+            updated_at = datetime('now')
+        WHERE user_id = (SELECT user_id FROM payout_statements WHERE id = ?)
+          AND payout_status = 'PENDING'
+      `).bind(id, id).run();
+    }
+
+    return c.json({ success: true });
+  } catch (e: unknown) {
+    console.error('[Revenue] statement update error:', e);
+    return c.json({ error: '精算書の更新に失敗しました' }, 500);
   }
-})
+});
 
-// ============================================================
-// GET /api/revenue/splits
-// 全分配明細一覧（管理者）
-// ============================================================
-app.get('/splits', requireAdmin, async (c) => {
-  const { DB } = c.env
-  const { page = '1', limit = '50', period, role, payout_status } = c.req.query()
-  const offset = (parseInt(page) - 1) * parseInt(limit)
-
-  const now = new Date()
-  let periodFilter = ''
-  if (period === 'this_month') {
-    const y = now.getFullYear()
-    const m = String(now.getMonth() + 1).padStart(2, '0')
-    periodFilter = `AND strftime('%Y-%m', ts.created_at) = '${y}-${m}'`
-  } else if (period === 'last_month') {
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    periodFilter = `AND strftime('%Y-%m', ts.created_at) = '${y}-${m}'`
-  } else if (period === 'this_year') {
-    periodFilter = `AND strftime('%Y', ts.created_at) = '${now.getFullYear()}'`
-  }
-
-  const roleFilter = role ? `AND ts.role = '${role}'` : ''
-  const statusFilter = payout_status ? `AND ts.payout_status = '${payout_status}'` : ''
-
-  const splits = await DB.prepare(`
-    SELECT
-      ts.*,
-      t.amount AS gross_amount,
-      t.created_at AS transaction_date,
-      b.service_name,
-      b.scheduled_at AS booking_date,
-      u.name AS recipient_name
-    FROM transaction_splits ts
-    JOIN transactions t ON ts.transaction_id = t.id
-    LEFT JOIN bookings b ON t.booking_id = b.id
-    LEFT JOIN users u ON ts.user_id = u.id
-    WHERE 1=1 ${periodFilter} ${roleFilter} ${statusFilter}
-    ORDER BY ts.created_at DESC
-    LIMIT ? OFFSET ?
-  `).bind(parseInt(limit), offset).all()
-
-  const summary = await DB.prepare(`
-    SELECT
-      SUM(t.amount) AS total_revenue,
-      SUM(CASE WHEN ts.role = 'PLATFORM' THEN ts.amount ELSE 0 END) AS platform_earnings,
-      SUM(CASE WHEN ts.role = 'THERAPIST' THEN ts.amount ELSE 0 END) AS therapist_payouts,
-      SUM(CASE WHEN ts.role = 'OFFICE' THEN ts.amount ELSE 0 END) AS office_payouts,
-      SUM(CASE WHEN ts.role = 'HOST' THEN ts.amount ELSE 0 END) AS host_payouts,
-      COUNT(CASE WHEN ts.payout_status = 'PENDING' THEN 1 END) AS pending_splits
-    FROM transaction_splits ts
-    JOIN transactions t ON ts.transaction_id = t.id
-    WHERE 1=1 ${periodFilter}
-  `).first<{
-    total_revenue: number
-    platform_earnings: number
-    therapist_payouts: number
-    office_payouts: number
-    host_payouts: number
-    pending_splits: number
-  }>()
-
-  return c.json({
-    splits: splits.results,
-    summary,
-    page: parseInt(page),
-  })
-})
-
-// ============================================================
-// GET /api/revenue/rules
-// 分配ルール一覧（管理者）- /revenue-share-rules のエイリアス
-// ============================================================
+// ============================================
+// 収益分配ルール一覧（管理者用）
+// ============================================
 app.get('/rules', requireAdmin, async (c) => {
-  const { DB } = c.env
-  const rules = await DB.prepare(`
-    SELECT rsr.*, o.name AS office_name
-    FROM revenue_share_rules rsr
-    LEFT JOIN offices o ON rsr.office_id = o.id
-    ORDER BY rsr.priority DESC, rsr.created_at DESC
-  `).all()
-  return c.json({ rules: rules.results })
-})
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM revenue_share_rules ORDER BY priority DESC, created_at DESC
+    `).all<Record<string, unknown>>();
 
-// ============================================================
-// POST /api/revenue/rules
-// 分配ルール新規作成（管理者）- /revenue-share-rules のエイリアス
-// ============================================================
+    return c.json({ rules: result.results || [] });
+  } catch (e: unknown) {
+    console.error('[Revenue] rules fetch error:', e);
+    return c.json({ error: '収益分配ルールの取得に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 収益分配ルール作成（管理者用）
+// ============================================
 app.post('/rules', requireAdmin, async (c) => {
-  const payload = c.get('jwtPayload') as { userId: string }
-  const { DB } = c.env
-  const body = await c.req.json()
-  const {
-    therapist_rate,
-    office_rate,
-    host_rate,
-    platform_rate,
-    promotion_rate,
-    notes = null,
-    priority = 0,
-  } = body
+  try {
+    const body = await c.req.json() as {
+      name: string;
+      description?: string;
+      therapist_rate: number;
+      host_rate: number;
+      office_rate: number;
+      platform_rate: number;
+      booking_type?: string;
+      office_id?: string;
+      priority?: number;
+    };
 
-  const total = (therapist_rate || 0) + (office_rate || 0) + (host_rate || 0) + (platform_rate || 0) + (promotion_rate || 0)
-  if (total !== 100) {
-    return c.json({ error: `分配率の合計が100になりません（現在: ${total}）` }, 400)
+    const total = body.therapist_rate + body.host_rate + body.office_rate + body.platform_rate;
+    if (Math.abs(total - 100) > 0.01) {
+      return c.json({ error: `分配率の合計は100%である必要があります（現在: ${total}%）` }, 400);
+    }
+
+    const id = `rule_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    await c.env.DB.prepare(`
+      INSERT INTO revenue_share_rules (
+        id, name, description,
+        therapist_rate, host_rate, office_rate, platform_rate,
+        booking_type, office_id, priority, is_active,
+        created_at, updated_at
+      ) VALUES (
+        ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, 1,
+        datetime('now'), datetime('now')
+      )
+    `).bind(
+      id,
+      body.name,
+      body.description || null,
+      body.therapist_rate,
+      body.host_rate,
+      body.office_rate,
+      body.platform_rate,
+      body.booking_type || null,
+      body.office_id || null,
+      body.priority || 0
+    ).run();
+
+    return c.json({ success: true, id }, 201);
+  } catch (e: unknown) {
+    console.error('[Revenue] rule create error:', e);
+    return c.json({ error: '収益分配ルールの作成に失敗しました' }, 500);
   }
+});
 
-  const ruleId = generateId('rsr')
-  const now = new Date().toISOString()
-  await DB.prepare(`
-    INSERT INTO revenue_share_rules (
-      id, office_id, booking_type,
-      therapist_rate, office_rate, host_rate, platform_rate, promotion_rate,
-      valid_from, valid_until, priority, is_active, created_by, notes,
-      created_at, updated_at
-    ) VALUES (?, NULL, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, 1, ?, ?, ?, ?)
-  `).bind(
-    ruleId,
-    therapist_rate, office_rate, host_rate, platform_rate, promotion_rate,
-    now, priority, payload.userId, notes,
-    now, now
-  ).run()
+// ============================================
+// 収益分配ルール更新（管理者用）
+// ============================================
+app.patch('/rules/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
 
-  return c.json({ ruleId, message: '分配ルールを作成しました' }, 201)
-})
+  try {
+    const body = await c.req.json() as {
+      name?: string;
+      description?: string;
+      therapist_rate?: number;
+      host_rate?: number;
+      office_rate?: number;
+      platform_rate?: number;
+      booking_type?: string;
+      office_id?: string;
+      priority?: number;
+      is_active?: number;
+    };
 
-// ============================================================
-// POST /api/revenue/settle
-// 未確定分配を一括確定（管理者）
-// ============================================================
-app.post('/settle', requireAdmin, async (c) => {
-  const { DB } = c.env
-  const { period } = await c.req.json()
+    // 分配率が変更される場合は合計を検証
+    if (
+      body.therapist_rate !== undefined ||
+      body.host_rate !== undefined ||
+      body.office_rate !== undefined ||
+      body.platform_rate !== undefined
+    ) {
+      const existing = await c.env.DB.prepare(`
+        SELECT therapist_rate, host_rate, office_rate, platform_rate
+        FROM revenue_share_rules WHERE id = ?
+      `).bind(id).first<{
+        therapist_rate: number;
+        host_rate: number;
+        office_rate: number;
+        platform_rate: number;
+      }>();
 
-  const now = new Date()
-  let periodFilter = ''
-  if (period === 'this_month') {
-    const y = now.getFullYear()
-    const m = String(now.getMonth() + 1).padStart(2, '0')
-    periodFilter = `AND strftime('%Y-%m', created_at) = '${y}-${m}'`
-  } else if (period === 'last_month') {
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    periodFilter = `AND strftime('%Y-%m', created_at) = '${y}-${m}'`
-  } else if (period === 'this_year') {
-    periodFilter = `AND strftime('%Y', created_at) = '${now.getFullYear()}'`
+      if (!existing) {
+        return c.json({ error: 'ルールが見つかりません' }, 404);
+      }
+
+      const newRates = {
+        therapist_rate: body.therapist_rate ?? existing.therapist_rate,
+        host_rate: body.host_rate ?? existing.host_rate,
+        office_rate: body.office_rate ?? existing.office_rate,
+        platform_rate: body.platform_rate ?? existing.platform_rate,
+      };
+
+      const total = newRates.therapist_rate + newRates.host_rate + newRates.office_rate + newRates.platform_rate;
+      if (Math.abs(total - 100) > 0.01) {
+        return c.json({ error: `分配率の合計は100%である必要があります（現在: ${total}%）` }, 400);
+      }
+    }
+
+    const updates: string[] = [];
+    const params: (string | number | null)[] = [];
+
+    if (body.name !== undefined) { updates.push('name = ?'); params.push(body.name); }
+    if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description); }
+    if (body.therapist_rate !== undefined) { updates.push('therapist_rate = ?'); params.push(body.therapist_rate); }
+    if (body.host_rate !== undefined) { updates.push('host_rate = ?'); params.push(body.host_rate); }
+    if (body.office_rate !== undefined) { updates.push('office_rate = ?'); params.push(body.office_rate); }
+    if (body.platform_rate !== undefined) { updates.push('platform_rate = ?'); params.push(body.platform_rate); }
+    if (body.booking_type !== undefined) { updates.push('booking_type = ?'); params.push(body.booking_type); }
+    if (body.office_id !== undefined) { updates.push('office_id = ?'); params.push(body.office_id); }
+    if (body.priority !== undefined) { updates.push('priority = ?'); params.push(body.priority); }
+    if (body.is_active !== undefined) { updates.push('is_active = ?'); params.push(body.is_active); }
+
+    if (updates.length === 0) {
+      return c.json({ error: '更新するフィールドがありません' }, 400);
+    }
+
+    updates.push("updated_at = datetime('now')");
+    params.push(id);
+
+    await c.env.DB.prepare(`
+      UPDATE revenue_share_rules SET ${updates.join(', ')} WHERE id = ?
+    `).bind(...params).run();
+
+    return c.json({ success: true });
+  } catch (e: unknown) {
+    console.error('[Revenue] rule update error:', e);
+    return c.json({ error: '収益分配ルールの更新に失敗しました' }, 500);
   }
+});
 
-  const result = await DB.prepare(`
-    UPDATE transaction_splits
-    SET payout_status = 'PROCESSING', updated_at = datetime('now')
-    WHERE payout_status = 'PENDING' ${periodFilter}
-  `).run()
+// ============================================
+// 収益サマリー取得（管理者用）
+// ============================================
+app.get('/summary', requireAdmin, async (c) => {
+  const { month } = c.req.query();
 
-  return c.json({
-    message: '精算処理が完了しました',
-    updated: result.meta?.changes ?? 0,
-  })
-})
+  try {
+    let dateFilter = '';
+    const params: string[] = [];
 
-export default app
+    if (month) {
+      dateFilter = `AND strftime('%Y-%m', t.paid_at) = ?`;
+      params.push(month);
+    }
+
+    const summary = await c.env.DB.prepare(`
+      SELECT
+        COUNT(DISTINCT t.id) as total_transactions,
+        SUM(t.gross_amount) as total_gross,
+        SUM(CASE WHEN ts.role = 'THERAPIST' THEN ts.amount ELSE 0 END) as therapist_total,
+        SUM(CASE WHEN ts.role = 'HOST' THEN ts.amount ELSE 0 END) as host_total,
+        SUM(CASE WHEN ts.role = 'OFFICE' THEN ts.amount ELSE 0 END) as office_total,
+        SUM(CASE WHEN ts.role = 'PLATFORM' THEN ts.amount ELSE 0 END) as platform_total
+      FROM transactions t
+      LEFT JOIN transaction_splits ts ON t.id = ts.transaction_id
+      WHERE t.status = 'SUCCEEDED' ${dateFilter}
+    `).bind(...params).first<{
+      total_transactions: number;
+      total_gross: number;
+      therapist_total: number;
+      host_total: number;
+      office_total: number;
+      platform_total: number;
+    }>();
+
+    return c.json({ summary: summary || {} });
+  } catch (e: unknown) {
+    console.error('[Revenue] summary fetch error:', e);
+    return c.json({ error: '収益サマリーの取得に失敗しました' }, 500);
+  }
+});
+
+export default app;

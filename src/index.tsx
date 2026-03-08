@@ -50,9 +50,7 @@ type Bindings = {
   LINE_CLIENT_SECRET: string
   APPLE_CLIENT_ID: string
   APPLE_CLIENT_SECRET: string
-  STRIPE_WEBHOOK_SECRET: string // Stripe Webhookの署名検証シークレット
   ALLOWED_ORIGINS: string // カンマ区切りの許可オリジンリスト（Cloudflare環境変数で上書き可能）
-  ASSETS: Fetcher // Cloudflare Pages 静的アセットバインディング
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -190,7 +188,7 @@ app.route('/api/receipts', paymentsApp)
 app.route('/api/user', paymentsApp)
 
 // ============================================
-// Revenue Engine Routes (報酬分配エンジン)
+// Revenue Engine Routes (収益分配エンジン)
 // ============================================
 app.route('/api/revenue', revenueEngineApp)
 
@@ -210,24 +208,5 @@ app.route('/api/storage', notifyApp)
 // SSR Public Pages（SEO対応のサーバーサイドHTML）
 // ============================================
 app.route('', publicPagesApp)
-
-// ============================================
-// SPA フォールバック
-// /api/* 以外のすべてのルートに対して index.html を返す
-// Cloudflare Pages の _worker.js が存在する場合、静的ファイルの
-// フォールバックより Worker が優先されるため、明示的に処理が必要
-// ============================================
-app.get('*', async (c) => {
-  // ASSETS バインディングが利用可能な場合（Cloudflare Pages環境）
-  const env = c.env as any
-  if (env && env.ASSETS) {
-    // index.html を取得して返す
-    const url = new URL(c.req.url)
-    url.pathname = '/'
-    return env.ASSETS.fetch(new Request(url.toString(), c.req.raw))
-  }
-  // フォールバック: 404を返す
-  return c.text('Not Found', 404)
-})
 
 export default app

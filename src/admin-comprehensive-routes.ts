@@ -661,30 +661,40 @@ app.post('/refunds', requireAdmin, async (c) => {
 })
 
 // ============================================
-// 振込・精算管理（financial_statements）
+// 振込・精算管理（payout_statements / financial_statements 両対応）
 // ============================================
 
-/** GET /api/admin/payouts - 精算一覧 */
+/** GET /api/admin/payouts - 精算一覧（新テーブル対応） */
 app.get('/payouts', requireAdmin, async (c) => {
   try {
     const { month, status } = c.req.query()
     let where = 'WHERE 1=1'
     const params: any[] = []
-    // period_startの年月でフィルタリング
-    if (month) { where += " AND strftime('%Y-%m', ps.period_start) = ?"; params.push(month) }
-    if (status) { where += ' AND status = ?'; params.push(status) }
-    // 新テーブル(payout_statements)から取得
+    if (month) { where += ` AND strftime('%Y-%m', ps.period_start) = ?`; params.push(month) }
+    if (status) { where += ' AND ps.status = ?'; params.push(status) }
     const result = await c.env.DB.prepare(`
-      SELECT ps.*,
-        u.name AS user_name,
-        u.email AS user_email
+      SELECT
+        ps.id,
+        ps.user_id,
+        ps.role as user_role,
+        u.name as user_name,
+        strftime('%Y-%m', ps.period_start) as target_month,
+        ps.gross_amount as total_sales,
+        ps.net_amount as payout_amount,
+        ps.status,
+        ps.created_at as generated_at,
+        ps.paid_at,
+        ps.period_start,
+        ps.period_end
       FROM payout_statements ps
       LEFT JOIN users u ON ps.user_id = u.id
       ${where}
-      ORDER BY ps.created_at DESC LIMIT 500
+      ORDER BY ps.period_start DESC
+      LIMIT 500
     `).bind(...params).all()
     return c.json({ statements: result.results || [] })
   } catch (e) {
+    console.error('payouts fetch error:', e)
     return c.json({ error: '精算一覧の取得に失敗しました' }, 500)
   }
 })
@@ -695,10 +705,9 @@ app.patch('/payouts/:id', requireAdmin, async (c) => {
     const { id } = c.req.param()
     const { status } = await c.req.json() as { status: string }
     const paidAt = status === 'PAID' ? `datetime('now')` : 'NULL'
-    // 新テーブル(payout_statements)を更新
     await c.env.DB.prepare(`
       UPDATE payout_statements
-      SET status = ?, paid_at = ${paidAt}, updated_at = CURRENT_TIMESTAMP
+      SET status = ?, paid_at = ${paidAt}, updated_at = datetime('now')
       WHERE id = ?
     `).bind(status, id).run()
     return c.json({ success: true })
@@ -712,105 +721,89 @@ app.post('/payouts/calculate', requireAdmin, async (c) => {
   try {
     const { target_month } = await c.req.json() as { target_month: string }
     if (!target_month) return c.json({ error: 'target_monthは必須です' }, 400)
-    // transaction_splitsから集計してpayout_statementsに挿入（新エンジン対応）
+    if (!/^\d{4}-\d{2}$/.test(target_month)) {
+      return c.json({ error: 'target_monthは YYYY-MM 形式で指定してください' }, 400)
+    }
+    const [year, month] = target_month.split('-')
+    const periodStart = `${year}-${month}-01`
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+    const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`
+    // transaction_splitsから集計（新テーブル）
     const splits = await c.env.DB.prepare(`
-      SELECT
-        ts.user_id AS user_id,
-        ts.role AS user_role,
-        SUM(ts.amount) AS total_gross,
-        SUM(ts.amount) AS total_net,
-        COUNT(*) AS split_count
+      SELECT ts.user_id, ts.role, SUM(ts.amount) as total
       FROM transaction_splits ts
       JOIN transactions t ON ts.transaction_id = t.id
-      WHERE strftime('%Y-%m', t.created_at) = ?
-        AND ts.payout_status IN ('PENDING', 'PROCESSING')
+      WHERE t.status = 'SUCCEEDED'
+        AND t.paid_at >= ?
+        AND t.paid_at <= ?
+        AND ts.payout_status = 'PENDING'
       GROUP BY ts.user_id, ts.role
-    `).bind(target_month).all()
-    // 対象期間の開始日・終了日を計算
-    const [year, month] = target_month.split('-').map(Number)
-    const periodStart = `${target_month}-01`
-    const lastDay = new Date(year, month, 0).getDate()
-    const periodEnd = `${target_month}-${String(lastDay).padStart(2, '0')}`
+    `).bind(`${periodStart} 00:00:00`, `${periodEnd} 23:59:59`).all()
     let inserted = 0
+    let updated = 0
     for (const row of (splits.results || []) as any[]) {
-      const statementId = 'pst_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20)
-      const statementNumber = `PS-${target_month.replace('-', '')}-${statementId.slice(-6).toUpperCase()}`
-      await c.env.DB.prepare(`
-        INSERT OR IGNORE INTO payout_statements
-          (id, user_id, role, period_start, period_end, statement_number,
-           gross_amount, deductions, net_amount, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'DRAFT', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `).bind(
-        statementId,
-        row.user_id,
-        row.user_role,
-        periodStart,
-        periodEnd,
-        statementNumber,
-        row.total_gross,
-        row.total_net
-      ).run()
-      // payout_statement_line_itemsに明細を挿入
-      const splitDetails = await c.env.DB.prepare(`
-        SELECT ts.id, ts.amount, ts.rate, t.booking_id, t.created_at,
-          b.scheduled_at AS booking_date
-        FROM transaction_splits ts
-        JOIN transactions t ON ts.transaction_id = t.id
-        LEFT JOIN bookings b ON t.booking_id = b.id
-        WHERE ts.user_id = ?
-          AND strftime('%Y-%m', t.created_at) = ?
-          AND ts.payout_status IN ('PENDING', 'PROCESSING')
-      `).bind(row.user_id, target_month).all()
-      for (const split of (splitDetails.results || []) as any[]) {
-        const lineId = 'pli_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20)
+      const existing = await c.env.DB.prepare(
+        'SELECT id FROM payout_statements WHERE user_id = ? AND period_start = ? AND period_end = ?'
+      ).bind(row.user_id, periodStart, periodEnd).first() as any
+      if (existing) {
         await c.env.DB.prepare(`
-          INSERT OR IGNORE INTO payout_statement_line_items
-            (id, payout_statement_id, transaction_split_id, booking_id,
-             booking_date, gross_amount, rate, net_amount, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(
-          lineId, statementId, split.id, split.booking_id,
-          split.booking_date, split.amount, split.rate || 0, split.amount
-        ).run()
+          UPDATE payout_statements
+          SET gross_amount = ?, net_amount = ?, updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(row.total, row.total, existing.id).run()
+        updated++
+      } else {
+        const id = crypto.randomUUID()
+        await c.env.DB.prepare(`
+          INSERT INTO payout_statements
+            (id, user_id, role, period_start, period_end, gross_amount, net_amount, fee_amount, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'DRAFT', datetime('now'), datetime('now'))
+        `).bind(id, row.user_id, row.role, periodStart, periodEnd, row.total, row.total).run()
+        inserted++
       }
-      // transaction_splitsのstatusをPROCESSINGに更新
-      await c.env.DB.prepare(`
-        UPDATE transaction_splits SET payout_status = 'PROCESSING', updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = ?
-          AND payout_status = 'PENDING'
-          AND transaction_id IN (
-            SELECT id FROM transactions WHERE strftime('%Y-%m', created_at) = ?
-          )
-      `).bind(row.user_id, target_month).run()
-      inserted++
     }
-    return c.json({ success: true, inserted, month: target_month })
-  } catch (e: any) {
+    // therapist_earningsからも集計（既存テーブルとの互換性）
+    const earningsSplits = await c.env.DB.prepare(`
+      SELECT tp.user_id, 'THERAPIST' as role, SUM(te.therapist_amount) as total
+      FROM therapist_earnings te
+      JOIN therapist_profiles tp ON te.therapist_profile_id = tp.id
+      WHERE strftime('%Y-%m', te.booking_date) = ?
+        AND te.status IN ('CONFIRMED', 'PAID')
+      GROUP BY tp.user_id
+    `).bind(target_month).all()
+    for (const row of (earningsSplits.results || []) as any[]) {
+      const existing = await c.env.DB.prepare(
+        'SELECT id FROM payout_statements WHERE user_id = ? AND period_start = ? AND period_end = ?'
+      ).bind(row.user_id, periodStart, periodEnd).first() as any
+      if (!existing) {
+        const id = crypto.randomUUID()
+        await c.env.DB.prepare(`
+          INSERT OR IGNORE INTO payout_statements
+            (id, user_id, role, period_start, period_end, gross_amount, net_amount, fee_amount, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'DRAFT', datetime('now'), datetime('now'))
+        `).bind(id, row.user_id, row.role, periodStart, periodEnd, row.total, row.total).run()
+        inserted++
+      }
+    }
+    return c.json({ success: true, inserted, updated, total: inserted + updated })
+  } catch (e) {
     console.error('payouts/calculate error:', e)
-    return c.json({ error: '精算バッチの実行に失敗しました: ' + e.message }, 500)
+    return c.json({ error: '精算バッチの実行に失敗しました' }, 500)
   }
 })
 
-/** GET /api/admin/financial-statements/:id - 帳票個別取得（新テーブル対応） */
+/** GET /api/admin/financial-statements/:id - 帳票個別取得 */
 app.get('/financial-statements/:id', requireAdmin, async (c) => {
   try {
     const { id } = c.req.param()
     const stmt = await c.env.DB.prepare(`
-      SELECT ps.*, u.name AS user_name, u.email AS user_email
+      SELECT ps.*, u.name as user_name, u.email as user_email
       FROM payout_statements ps
       LEFT JOIN users u ON ps.user_id = u.id
       WHERE ps.id = ?
     `).bind(id).first()
     if (!stmt) return c.json({ error: '帳票が見つかりません' }, 404)
-    // 明細も取得
-    const lines = await c.env.DB.prepare(`
-      SELECT pli.*, b.scheduled_at, b.total_price
-      FROM payout_statement_line_items pli
-      LEFT JOIN bookings b ON pli.booking_id = b.id
-      WHERE pli.payout_statement_id = ?
-      ORDER BY pli.created_at ASC
-    `).bind(id).all()
-    return c.json({ statement: stmt, line_items: lines.results || [] })
+    return c.json({ statement: stmt })
   } catch (e) {
     return c.json({ error: '帳票の取得に失敗しました' }, 500)
   }
