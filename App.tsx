@@ -59,6 +59,8 @@ import SupportCenter from './pages/shared/SupportCenter';
 import SimpleBookingWrapper from './components/booking/SimpleBookingWrapper';
 import SimpleBookingWrapperV2 from './components/booking/SimpleBookingWrapperV2';
 import BookingPaymentV2 from './components/booking/BookingPaymentV2';
+import BookingPayment from './pages/user/BookingPayment';
+import BookingNew from './pages/user/BookingNew';
 import BookingCompleteV2 from './components/booking/BookingCompleteV2';
 
 // --- Therapist ---
@@ -393,6 +395,7 @@ const App: React.FC = () => {
         {/* New Simple Booking Flow V2 (Guest-friendly) */}
         <Route path="/app/booking/v2/:therapistId" element={<SimpleBookingWrapperV2 />} />
         <Route path="/app/booking/payment/:bookingId" element={<BookingPaymentV2 />} />
+        <Route path="/app/booking/payment" element={<BookingPayment />} />
         <Route path="/app/booking/complete/:bookingId" element={<BookingCompleteV2 />} />
         
         {/* New Simple Booking Flow */}
@@ -423,6 +426,7 @@ const App: React.FC = () => {
         
         {/* Legacy Booking Routes (kept for compatibility) */}
         <Route path="/app/booking/new" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNewFlow /></RequireAuth>} />
+        <Route path="/app/booking/new-v2" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingNew onAutoLogin={() => {}} /></RequireAuth>} />
         <Route path="/app/booking/auto-assign" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><AutoAssignBooking /></RequireAuth>} />
         <Route path="/app/booking/success" element={<RequireAuth allowedRoles={[Role.USER]} currentUser={currentUser} onLogout={handleLogout}><BookingSuccess /></RequireAuth>} />
         <Route path="/app/booking/:bookingId" element={<RequireAuth allowedRoles={[Role.USER, Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><BookingDetail /></RequireAuth>} />

@@ -138,7 +138,7 @@ async function getBookingStakeholders(db: D1Database, bookingId: string): Promis
 // ============================================================
 // コア処理: 決済完了後の報酬分配を実行する
 // ============================================================
-async function processPaymentSplit(
+export async function processPaymentSplit(
   db: D1Database,
   bookingId: string,
   chargeAmount: number,

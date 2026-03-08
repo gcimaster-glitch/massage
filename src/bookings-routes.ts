@@ -218,7 +218,7 @@ app.post('/', requireAuth, async (c) => {
       INSERT INTO bookings (
         id, user_id, therapist_id, therapist_name, office_id, site_id,
         type, status, service_name, duration, price, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, datetime('now'))
     `;
     
     try {
@@ -234,7 +234,7 @@ app.post('/', requireAuth, async (c) => {
           INSERT INTO bookings (
             id, user_id, therapist_id, therapist_name, office_id, site_id,
             type, status, service_name, duration, price, scheduled_start, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, datetime('now'))
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, datetime('now'))
         `;
         
         try {

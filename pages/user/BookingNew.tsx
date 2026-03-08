@@ -9,7 +9,7 @@ import {
   Loader2, Sparkles, Calendar as CalendarIcon, Zap,
   CheckCircle, ShieldCheck, User, Mail, Phone, Lock, Info, Star, Timer, CreditCard, ArrowRight
 } from 'lucide-react';
-import { systemStore } from '../../services/systemState';
+// systemStore removed - using real API
 
 interface BookingNewProps {
   onAutoLogin: (role: Role, name: string) => void;
@@ -81,8 +81,16 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
   const targetTherapist = isAutoMatch ? null : therapists.find(t => t.id === therapistId);
   const selectedSite = sites.find(s => s.id === selectedSiteId);
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const selectedCourse = MASTER_COURSES.find(c => c.id === selectedCourseId);
+  const coursePrice = selectedCourse?.price || 7480;
+  const facilityFee = bookingType === BookingType.ONSITE ? 2000 : 1500;
+  const totalPrice = coursePrice + facilityFee;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     
     if (!selectedSiteId && bookingType === BookingType.ONSITE) {
       alert('施設を選択してください');
@@ -90,27 +98,66 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
     }
     
     setIsProcessing(true);
+    setProcessStep(1); // 予約作成
 
-    // プロセスシミュレーション
-    setProcessStep(1); // 決済処理
-    await new Promise(r => setTimeout(r, 1800));
-    setProcessStep(2); // 通知・台帳登録
-    await new Promise(r => setTimeout(r, 2200));
-    setProcessStep(3); // 完了
-    
-    const booking = systemStore.createBooking({
-      therapistId: selectedTherapistId,
-      type: bookingType,
-      scheduledStart: `${date}T${time}:00`,
-      serviceName: MASTER_COURSES.find(c => c.id === selectedCourseId)?.name || 'ボディケア',
-      location: bookingType === BookingType.ONSITE 
-        ? (selectedSite?.name || 'CARE CUBE 渋谷ANNEX')
-        : '東京都港区六本木 1-2-3'
-    });
+    try {
+      // 1. 予約作成（PENDING）
+      const token = localStorage.getItem('token');
+      const bookingRes = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          therapist_id: selectedTherapistId === 'auto' ? null : selectedTherapistId,
+          site_id: selectedSiteId || null,
+          type: bookingType,
+          service_name: selectedCourse?.name || 'ボディケア',
+          duration: selectedCourse?.duration || 60,
+          price: totalPrice,
+          scheduled_at: `${date}T${time}:00`,
+        }),
+      });
 
-    setTimeout(() => {
-       navigate(`/app/booking/success?id=${booking.id}`);
-    }, 800);
+      if (!bookingRes.ok) {
+        const err = await bookingRes.json();
+        throw new Error(err.error || '予約の作成に失敗しました');
+      }
+
+      const { bookingId } = await bookingRes.json();
+      setProcessStep(2); // PaymentIntent作成
+
+      // 2. PaymentIntent作成
+      const piRes = await fetch('/api/payment/create-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: totalPrice,
+          currency: 'jpy',
+          booking_id: bookingId,
+        }),
+      });
+
+      if (!piRes.ok) {
+        const err = await piRes.json();
+        throw new Error(err.error || '決済の準備に失敗しました');
+      }
+
+      const { clientSecret, paymentIntentId } = await piRes.json();
+      setProcessStep(3); // 決済ページへ遷移
+
+      // 3. 決済ページへ遷移（clientSecretとbookingIdを渡す）
+      navigate(`/app/booking/payment?bookingId=${bookingId}&clientSecret=${encodeURIComponent(clientSecret)}&paymentIntentId=${paymentIntentId}`);
+    } catch (err: any) {
+      console.error('❌ Booking submission failed:', err);
+      setErrorMsg(err.message || '予約処理中にエラーが発生しました');
+      setIsProcessing(false);
+      setProcessStep(0);
+    }
   };
 
   return (
