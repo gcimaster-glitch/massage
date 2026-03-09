@@ -97,6 +97,12 @@ app.get('/api/health', (c) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'HOGUSY API',
+    // デバッグ用: 環境変数の存在確認（実際の値は返さない）
+    env_check: {
+      GOOGLE_MAPS_API_KEY: !!c.env.GOOGLE_MAPS_API_KEY,
+      JWT_SECRET: !!c.env.JWT_SECRET,
+      STRIPE_SECRET: !!c.env.STRIPE_SECRET,
+    }
   })
 })
 
