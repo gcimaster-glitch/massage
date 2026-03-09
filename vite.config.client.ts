@@ -12,11 +12,10 @@ import react from '@vitejs/plugin-react'
  */
 export default defineConfig({
   plugins: [react()],
-  define: {
-    // ビルド時にCloudflare Pagesの環境変数を埋め込む
-    // import.meta.env.VITE_GOOGLE_MAPS_API_KEY → 実際のAPIキー文字列に置換
-    'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY || ''),
-  },
+  // VITE_GOOGLE_MAPS_API_KEY は不要。
+  // GoogleMap.tsx が /api/maps/config からランタイムにAPIキーを取得するため、
+  // ビルド時の環境変数埋め込みは不要になった。
+  // Cloudflare Pages の Secret（GOOGLE_MAPS_API_KEY）がそのまま利用される。
   build: {
     outDir: 'dist',
     emptyOutDir: false,  // _worker.js を消さない

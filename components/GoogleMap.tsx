@@ -17,37 +17,48 @@ declare global {
 }
 
 // Google Maps APIスクリプトを動的に読み込む関数
-// ビルド時にViteのdefineオプションがimport.meta.env.VITE_GOOGLE_MAPS_API_KEYを実際のキーに置換する
+// APIキーはビルド時埋め込みではなく、ランタイムに /api/maps/config から取得する。
+// これにより、Cloudflare PagesのSecret（GOOGLE_MAPS_API_KEY）をそのまま使用でき、
+// デプロイのたびにAPIキーを設定・確認する必要がなくなる。
 let loadPromise: Promise<void> | null = null;
 
 function loadGoogleMapsScript(): Promise<void> {
   if (loadPromise) return loadPromise;
 
-  loadPromise = new Promise((resolve, reject) => {
+  loadPromise = (async () => {
     // すでに読み込み済みの場合はすぐに解決
     if (window.google && window.google.maps) {
-      resolve();
       return;
     }
 
-    // APIキーをVite環境変数から取得（ビルド時にdefineで置換される）
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      reject(new Error('Google Maps APIキーが設定されていません'));
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
+    // バックエンドAPIからAPIキーをランタイムで取得
+    // GOOGLE_MAPS_API_KEY は Cloudflare Pages の Secret として設定済み
+    let apiKey: string;
+    try {
+      const res = await fetch('/api/maps/config');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as { apiKey?: string };
+      if (!data.apiKey) throw new Error('APIキーが返されませんでした');
+      apiKey = data.apiKey;
+    } catch (err) {
       loadPromise = null; // 失敗時はリセットして再試行可能にする
-      reject(new Error('Google Maps APIの読み込みに失敗しました'));
-    };
-    document.head.appendChild(script);
-  });
+      throw new Error('Google Maps APIキーの取得に失敗しました: ' + String(err));
+    }
+
+    // スクリプトを動的に読み込む
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        loadPromise = null; // 失敗時はリセットして再試行可能にする
+        reject(new Error('Google Maps APIの読み込みに失敗しました'));
+      };
+      document.head.appendChild(script);
+    });
+  })();
 
   return loadPromise;
 }
