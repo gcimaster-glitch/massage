@@ -23,6 +23,8 @@ import kycApp from './kyc-routes'
 import notifyApp from './notify-routes'
 import mockDataApp from './mock-data-routes'
 import paymentsApp from './payments-routes'
+import revenueEngineApp from './revenue-engine-routes'
+import publicPagesApp from './ssr/public-pages'
 
 // ============================================
 // Type Definitions
@@ -68,8 +70,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
 app.use('/api/*', cors({
   origin: (origin, c) => {
     // 環境変数で許可オリジンを上書き可能
-    const envOrigins = c.env?.ALLOWED_ORIGINS
-      ? c.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim())
+    const envOrigins = (c.env as Bindings)?.ALLOWED_ORIGINS
+      ? (c.env as Bindings).ALLOWED_ORIGINS.split(',').map((o: string) => o.trim())
       : DEFAULT_ALLOWED_ORIGINS
 
     if (!origin || envOrigins.includes(origin)) {
@@ -95,6 +97,12 @@ app.get('/api/health', (c) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'HOGUSY API',
+    // デバッグ用: 環境変数の存在確認（実際の値は返さない）
+    env_check: {
+      GOOGLE_MAPS_API_KEY: !!c.env.GOOGLE_MAPS_API_KEY,
+      JWT_SECRET: !!c.env.JWT_SECRET,
+      STRIPE_SECRET: !!c.env.STRIPE_SECRET,
+    }
   })
 })
 
@@ -186,6 +194,11 @@ app.route('/api/receipts', paymentsApp)
 app.route('/api/user', paymentsApp)
 
 // ============================================
+// Revenue Engine Routes (収益分配エンジン)
+// ============================================
+app.route('/api/revenue', revenueEngineApp)
+
+// ============================================
 // Email Routes
 // ============================================
 app.route('/api/email', emailApp)
@@ -198,9 +211,8 @@ app.route('/api/notify', notifyApp)
 app.route('/api/storage', notifyApp)
 
 // ============================================
-// Host & Affiliate Routes
+// SSR Public Pages（SEO対応のサーバーサイドHTML）
 // ============================================
-import hostAffiliateApp from './host-affiliate-routes'
-app.route('/api', hostAffiliateApp)
+app.route('', publicPagesApp)
 
 export default app
