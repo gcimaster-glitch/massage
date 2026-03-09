@@ -12,9 +12,7 @@ echo "🔄 src/ → functions/ を同期中..."
 # ルートレベルのTSファイルを同期
 for f in src/*.ts; do
   name=$(basename "$f")
-  if [ -f "functions/$name" ] || [ "$name" != "index.tsx" ]; then
-    cp "$f" "functions/$name" 2>/dev/null || true
-  fi
+  cp "$f" "functions/$name"
 done
 
 # src/index.tsx → functions/[[route]].ts に同期
@@ -34,10 +32,13 @@ for f in src/ssr/*.ts; do
   cp "$f" "functions/ssr/$name"
 done
 
-# services/ サブディレクトリを同期
-mkdir -p functions/services
-for f in src/services/*.ts 2>/dev/null; do
-  [ -f "$f" ] && cp "$f" "functions/services/$(basename "$f")"
-done
+# services/ サブディレクトリを同期（存在する場合のみ）
+if ls src/services/*.ts 1>/dev/null 2>&1; then
+  mkdir -p functions/services
+  for f in src/services/*.ts; do
+    name=$(basename "$f")
+    cp "$f" "functions/services/$name"
+  done
+fi
 
 echo "✅ 同期完了"
