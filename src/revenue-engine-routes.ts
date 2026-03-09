@@ -334,7 +334,7 @@ app.post('/webhook/stripe', async (c) => {
       return c.json({ error: 'Stripe configuration missing' }, 500);
     }
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: '2026-02-25.clover',
     });
     // Webhook署名の検証
     event = await stripe.webhooks.constructEventAsync(

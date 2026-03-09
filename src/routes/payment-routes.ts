@@ -29,7 +29,7 @@ payment.post('/create-intent', async (c) => {
     }
 
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: '2026-02-25.clover',
     });
 
     // PaymentIntentを作成
@@ -74,7 +74,7 @@ payment.post('/confirm', async (c) => {
     }
 
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: '2026-02-25.clover',
     });
 
     // PaymentIntentのステータスを確認
@@ -146,7 +146,7 @@ payment.get('/status/:paymentIntentId', async (c) => {
     }
 
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: '2026-02-25.clover',
     });
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
