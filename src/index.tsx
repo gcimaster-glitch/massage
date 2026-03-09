@@ -100,6 +100,7 @@ app.get('/api/health', (c) => {
     // デバッグ用: 環境変数の存在確認（実際の値は返さない）
     env_check: {
       GOOGLE_MAPS_API_KEY: !!c.env.GOOGLE_MAPS_API_KEY,
+      VITE_GOOGLE_MAPS_API_KEY: !!(c.env as any).VITE_GOOGLE_MAPS_API_KEY,
       JWT_SECRET: !!c.env.JWT_SECRET,
       STRIPE_SECRET: !!c.env.STRIPE_SECRET,
     },
