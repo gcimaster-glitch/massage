@@ -102,7 +102,8 @@ app.get('/api/health', (c) => {
       GOOGLE_MAPS_API_KEY: !!c.env.GOOGLE_MAPS_API_KEY,
       JWT_SECRET: !!c.env.JWT_SECRET,
       STRIPE_SECRET: !!c.env.STRIPE_SECRET,
-    }
+    },
+    env_keys: Object.keys(c.env || {})
   })
 })
 
