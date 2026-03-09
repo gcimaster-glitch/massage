@@ -7,12 +7,8 @@
 
 import { Hono } from 'hono';
 import Stripe from 'stripe';
-
-type Bindings = {
-  STRIPE_SECRET: string;
-  RESEND_API_KEY: string;
-  DB: D1Database;
-};
+import { processPaymentSplit } from '../revenue-engine-routes';
+import type { Bindings } from '../types';
 
 const payment = new Hono<{ Bindings: Bindings }>();
 
@@ -28,8 +24,12 @@ payment.post('/create-intent', async (c) => {
       return c.json({ error: 'Invalid amount' }, 400);
     }
 
+    if (!c.env.STRIPE_SECRET) {
+      return c.json({ error: 'Stripe configuration missing' }, 500);
+    }
+
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2026-02-25.clover',
     });
 
     // PaymentIntentを作成
@@ -51,15 +51,15 @@ payment.post('/create-intent', async (c) => {
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Payment Intent creation failed:', error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
 
 /**
  * POST /api/payment/confirm
- * 決済確認（予約レコードのステータス更新）
+ * 決済確認（予約レコードのステータス更新 + 報酬分配実行）
  */
 payment.post('/confirm', async (c) => {
   try {
@@ -69,8 +69,12 @@ payment.post('/confirm', async (c) => {
       return c.json({ error: 'Missing required fields' }, 400);
     }
 
+    if (!c.env.STRIPE_SECRET) {
+      return c.json({ error: 'Stripe configuration missing' }, 500);
+    }
+
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2026-02-25.clover',
     });
 
     // PaymentIntentのステータスを確認
@@ -80,10 +84,35 @@ payment.post('/confirm', async (c) => {
       return c.json({ error: 'Payment not completed', status: paymentIntent.status }, 400);
     }
 
-    // 予約レコードのステータスを更新
-    const updateResult = await c.env.DB.prepare(`
+    // 既に処理済みか確認（二重処理防止）
+    const existingTx = await c.env.DB.prepare(
+      'SELECT id FROM transactions WHERE stripe_payment_intent_id = ?'
+    ).bind(paymentIntentId).first();
+
+    let splitResult = null;
+    if (!existingTx) {
+      // 報酬分配を実行（processPaymentSplitのシグネチャ: db, bookingId, stripePaymentIntentId, grossAmount）
+      try {
+        splitResult = await processPaymentSplit(
+          c.env.DB,
+          bookingId,
+          paymentIntentId,
+          paymentIntent.amount
+        );
+        console.log(`✅ Payment split completed for booking ${bookingId}`);
+      } catch (splitError: unknown) {
+        // 分配エラーは警告に留め、決済確認自体は成功とする
+        console.error('⚠️ Payment split failed (non-fatal):', splitError instanceof Error ? splitError.message : splitError);
+      }
+    } else {
+      console.log(`[Confirm] Transaction already exists for PI ${paymentIntentId}, skipping split`);
+    }
+
+    // 予約レコードのステータスを更新（payment_status=PAID, status=CONFIRMED）
+    await c.env.DB.prepare(`
       UPDATE bookings 
-      SET payment_status = 'PAID', 
+      SET payment_status = 'PAID',
+          status = 'CONFIRMED',
           payment_intent_id = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
@@ -96,10 +125,11 @@ payment.post('/confirm', async (c) => {
       paymentIntentId,
       bookingId,
       status: paymentIntent.status,
+      splitResult,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Payment confirmation failed:', error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
 
@@ -111,8 +141,12 @@ payment.get('/status/:paymentIntentId', async (c) => {
   try {
     const paymentIntentId = c.req.param('paymentIntentId');
 
+    if (!c.env.STRIPE_SECRET) {
+      return c.json({ error: 'Stripe configuration missing' }, 500);
+    }
+
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2026-02-25.clover',
     });
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -123,9 +157,9 @@ payment.get('/status/:paymentIntentId', async (c) => {
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Payment status retrieval failed:', error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
 
