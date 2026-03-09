@@ -16,23 +16,14 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { verifyJWT } from './auth-middleware';
-
-type Bindings = {
-  DB: D1Database;
-  JWT_SECRET: string;
-  STRIPE_SECRET: string;
-  STRIPE_WEBHOOK_SECRET: string;
-};
+import type { Bindings } from './types';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 // ============================================
 // 認証ミドルウェア
 // ============================================
-const requireAuth = async (
-  c: Parameters<typeof app.get>[1],
-  next: () => Promise<void>
-) => {
+const requireAuth = async (c: Parameters<typeof app.get>[1], next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: '認証が必要です' }, 401);
@@ -47,10 +38,7 @@ const requireAuth = async (
   await next();
 };
 
-const requireAdmin = async (
-  c: Parameters<typeof app.get>[1],
-  next: () => Promise<void>
-) => {
+const requireAdmin = async (c: Parameters<typeof app.get>[1], next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: '認証が必要です' }, 401);
@@ -71,7 +59,7 @@ const requireAdmin = async (
 // ============================================
 // 収益分配処理コア関数
 // ============================================
-async function processPaymentSplit(
+export async function processPaymentSplit(
   db: D1Database,
   bookingId: string,
   stripePaymentIntentId: string,
@@ -342,10 +330,12 @@ app.post('/webhook/stripe', async (c) => {
   let event: Stripe.Event;
 
   try {
+    if (!c.env.STRIPE_SECRET || !c.env.STRIPE_WEBHOOK_SECRET) {
+      return c.json({ error: 'Stripe configuration missing' }, 500);
+    }
     const stripe = new Stripe(c.env.STRIPE_SECRET, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-12-15.clover',
     });
-
     // Webhook署名の検証
     event = await stripe.webhooks.constructEventAsync(
       body,
@@ -697,30 +687,28 @@ app.post('/statements/generate', requireAdmin, async (c) => {
       if (existing) {
         await c.env.DB.prepare(`
           UPDATE payout_statements
-          SET gross_amount = ?, net_amount = ?, updated_at = datetime('now')
+          SET total_amount = ?, updated_at = datetime('now')
           WHERE id = ?
-        `).bind(row.total_amount, row.total_amount, existing.id).run();
+        `).bind(row.total_amount, existing.id).run();
         updated++;
       } else {
         await c.env.DB.prepare(`
           INSERT INTO payout_statements (
-            id, user_id, role,
+            id, user_id,
             period_start, period_end,
-            gross_amount, net_amount, fee_amount,
+            total_amount,
             status, created_at, updated_at
           ) VALUES (
-            ?, ?, ?,
             ?, ?,
-            ?, ?, 0,
+            ?, ?,
+            ?,
             'DRAFT', datetime('now'), datetime('now')
           )
         `).bind(
           statementId,
           row.user_id,
-          row.role,
           periodStart,
           periodEnd,
-          row.total_amount,
           row.total_amount
         ).run();
         inserted++;
@@ -749,10 +737,8 @@ app.patch('/statements/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const { status, payment_method, payment_reference, notes } = await c.req.json() as {
+    const { status, notes } = await c.req.json() as {
       status: string;
-      payment_method?: string;
-      payment_reference?: string;
       notes?: string;
     };
 
@@ -766,16 +752,12 @@ app.patch('/statements/:id', requireAdmin, async (c) => {
     await c.env.DB.prepare(`
       UPDATE payout_statements
       SET status = ?,
-          payment_method = ?,
-          payment_reference = ?,
           notes = ?,
           paid_at = ${paidAt},
           updated_at = datetime('now')
       WHERE id = ?
     `).bind(
       status,
-      payment_method || null,
-      payment_reference || null,
       notes || null,
       id
     ).run();
@@ -822,18 +804,18 @@ app.get('/rules', requireAdmin, async (c) => {
 app.post('/rules', requireAdmin, async (c) => {
   try {
     const body = await c.req.json() as {
-      name: string;
-      description?: string;
       therapist_rate: number;
       host_rate: number;
       office_rate: number;
       platform_rate: number;
+      promotion_rate?: number;
       booking_type?: string;
       office_id?: string;
       priority?: number;
     };
 
-    const total = body.therapist_rate + body.host_rate + body.office_rate + body.platform_rate;
+    const promotion_rate = (body as { promotion_rate?: number }).promotion_rate || 0;
+    const total = body.therapist_rate + body.host_rate + body.office_rate + body.platform_rate + promotion_rate;
     if (Math.abs(total - 100) > 0.01) {
       return c.json({ error: `分配率の合計は100%である必要があります（現在: ${total}%）` }, 400);
     }
@@ -842,24 +824,23 @@ app.post('/rules', requireAdmin, async (c) => {
 
     await c.env.DB.prepare(`
       INSERT INTO revenue_share_rules (
-        id, name, description,
-        therapist_rate, host_rate, office_rate, platform_rate,
+        id,
+        therapist_rate, host_rate, office_rate, platform_rate, promotion_rate,
         booking_type, office_id, priority, is_active,
         created_at, updated_at
       ) VALUES (
-        ?, ?, ?,
-        ?, ?, ?, ?,
+        ?,
+        ?, ?, ?, ?, ?,
         ?, ?, ?, 1,
         datetime('now'), datetime('now')
       )
     `).bind(
       id,
-      body.name,
-      body.description || null,
       body.therapist_rate,
       body.host_rate,
       body.office_rate,
       body.platform_rate,
+      promotion_rate,
       body.booking_type || null,
       body.office_id || null,
       body.priority || 0
@@ -880,12 +861,11 @@ app.patch('/rules/:id', requireAdmin, async (c) => {
 
   try {
     const body = await c.req.json() as {
-      name?: string;
-      description?: string;
       therapist_rate?: number;
       host_rate?: number;
       office_rate?: number;
       platform_rate?: number;
+      promotion_rate?: number;
       booking_type?: string;
       office_id?: string;
       priority?: number;
@@ -897,16 +877,18 @@ app.patch('/rules/:id', requireAdmin, async (c) => {
       body.therapist_rate !== undefined ||
       body.host_rate !== undefined ||
       body.office_rate !== undefined ||
-      body.platform_rate !== undefined
+      body.platform_rate !== undefined ||
+      body.promotion_rate !== undefined
     ) {
       const existing = await c.env.DB.prepare(`
-        SELECT therapist_rate, host_rate, office_rate, platform_rate
+        SELECT therapist_rate, host_rate, office_rate, platform_rate, promotion_rate
         FROM revenue_share_rules WHERE id = ?
       `).bind(id).first<{
         therapist_rate: number;
         host_rate: number;
         office_rate: number;
         platform_rate: number;
+        promotion_rate: number;
       }>();
 
       if (!existing) {
@@ -918,9 +900,10 @@ app.patch('/rules/:id', requireAdmin, async (c) => {
         host_rate: body.host_rate ?? existing.host_rate,
         office_rate: body.office_rate ?? existing.office_rate,
         platform_rate: body.platform_rate ?? existing.platform_rate,
+        promotion_rate: body.promotion_rate ?? existing.promotion_rate,
       };
 
-      const total = newRates.therapist_rate + newRates.host_rate + newRates.office_rate + newRates.platform_rate;
+      const total = newRates.therapist_rate + newRates.host_rate + newRates.office_rate + newRates.platform_rate + newRates.promotion_rate;
       if (Math.abs(total - 100) > 0.01) {
         return c.json({ error: `分配率の合計は100%である必要があります（現在: ${total}%）` }, 400);
       }
@@ -929,12 +912,11 @@ app.patch('/rules/:id', requireAdmin, async (c) => {
     const updates: string[] = [];
     const params: (string | number | null)[] = [];
 
-    if (body.name !== undefined) { updates.push('name = ?'); params.push(body.name); }
-    if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description); }
     if (body.therapist_rate !== undefined) { updates.push('therapist_rate = ?'); params.push(body.therapist_rate); }
     if (body.host_rate !== undefined) { updates.push('host_rate = ?'); params.push(body.host_rate); }
     if (body.office_rate !== undefined) { updates.push('office_rate = ?'); params.push(body.office_rate); }
     if (body.platform_rate !== undefined) { updates.push('platform_rate = ?'); params.push(body.platform_rate); }
+    if (body.promotion_rate !== undefined) { updates.push('promotion_rate = ?'); params.push(body.promotion_rate); }
     if (body.booking_type !== undefined) { updates.push('booking_type = ?'); params.push(body.booking_type); }
     if (body.office_id !== undefined) { updates.push('office_id = ?'); params.push(body.office_id); }
     if (body.priority !== undefined) { updates.push('priority = ?'); params.push(body.priority); }

@@ -17,6 +17,8 @@ export type Bindings = {
   ALLOWED_ORIGINS?: string;
   R2_BUCKET?: R2Bucket;
   ENVIRONMENT?: string;
+  STRIPE_SECRET?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
 };
 
 // ============================================
