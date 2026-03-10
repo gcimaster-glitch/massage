@@ -48,8 +48,8 @@ const CommercialTransaction: React.FC = () => {
             title="販売事業者の名称"
             content={
               <div className="space-y-2">
-                <p className="text-base md:text-lg font-black text-gray-900">HOGUSY株式会社</p>
-                <p className="text-xs md:text-sm text-gray-500 font-medium">HOGUSY Inc.</p>
+                <p className="text-base md:text-lg font-black text-gray-900">株式会社国際資源</p>
+                <p className="text-xs md:text-sm text-gray-500 font-medium">International Natural Resources And Energy</p>
               </div>
             }
           />
@@ -58,7 +58,7 @@ const CommercialTransaction: React.FC = () => {
           <InfoSection 
             icon={<Building2 className="text-teal-600" />}
             title="運営統括責任者"
-            content={<p className="text-sm md:text-base font-bold text-gray-900">代表取締役 山田 太郎</p>}
+            content={<p className="text-sm md:text-base font-bold text-gray-900">代表取締役社長／CEO（最高経営責任者） 岩間 哲士</p>}
           />
 
           {/* 所在地 */}
@@ -67,8 +67,8 @@ const CommercialTransaction: React.FC = () => {
             title="所在地"
             content={
               <div className="space-y-2">
-                <p className="text-sm md:text-base font-bold text-gray-900">〒150-0001</p>
-                <p className="text-sm md:text-base font-bold text-gray-900">東京都渋谷区神宮前6丁目23-4 桑野ビル2階</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">〒105-0023</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">東京都港区芝浦1-13-10 第3東運ビル</p>
                 <p className="text-xs md:text-sm text-gray-500 font-medium mt-2">※お客様からのお問い合わせは、下記のメールアドレスまたはお問い合わせフォームにて承っております。</p>
               </div>
             }
@@ -80,7 +80,7 @@ const CommercialTransaction: React.FC = () => {
             title="電話番号"
             content={
               <div className="space-y-2">
-                <p className="text-sm md:text-base font-bold text-gray-900">03-XXXX-XXXX</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">03-4595-0191</p>
                 <p className="text-xs md:text-sm text-gray-500 font-medium">受付時間: 平日 10:00〜18:00（土日祝日を除く）</p>
               </div>
             }
@@ -92,7 +92,7 @@ const CommercialTransaction: React.FC = () => {
             title="メールアドレス"
             content={
               <div className="space-y-2">
-                <p className="text-sm md:text-base font-bold text-gray-900">support@hogusy.com</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">info@inre.co.jp</p>
                 <p className="text-xs md:text-sm text-gray-500 font-medium">※お問い合わせへの返信は、営業日2〜3日以内に行います。</p>
               </div>
             }
@@ -199,9 +199,9 @@ const CommercialTransaction: React.FC = () => {
 
         {/* Footer */}
         <div className="mt-12 md:mt-16 text-center">
-          <p className="text-xs md:text-sm text-gray-400 font-bold">最終更新日: 2025年1月14日</p>
+          <p className="text-xs md:text-sm text-gray-400 font-bold">最終更新日: 2026年3月10日</p>
           <p className="text-[10px] md:text-xs text-gray-300 font-black uppercase tracking-widest mt-2 md:mt-4">
-            © 2025 HOGUSY Inc. All Rights Reserved.
+            © 2026 HOGUSY / 株式会社国際資源. All Rights Reserved.
           </p>
         </div>
       </div>

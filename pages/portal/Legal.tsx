@@ -56,7 +56,7 @@ const LegalPage: React.FC = () => {
             <div className="space-y-8 text-gray-600 leading-relaxed">
               <Section title="第1条（適用範囲）">
                 <p className="font-bold">
-                  本規約は、HOGUSY（以下「当社」）が提供するウェルネスマッチングプラットフォーム（以下「本サービス」）の利用条件を定めるものです。
+                  本規約は、株式会社国際資源（以下「当社」）が運営するHOGUSYサービス（以下「本サービス」）の利用条件を定めるものです。
                   ユーザーは、本規約に同意の上、本サービスをご利用いただきます。
                 </p>
               </Section>
@@ -155,11 +155,12 @@ const LegalPage: React.FC = () => {
               特定商取引法に基づく表記
             </h2>
             <div className="space-y-6">
-              <InfoRow label="事業者名" value="株式会社HOGUSY（仮称）" />
-              <InfoRow label="代表者" value="代表取締役 山田太郎（仮）" />
-              <InfoRow label="所在地" value="〒100-0001 東京都千代田区千代田1-1-1" />
-              <InfoRow label="電話番号" value="03-1234-5678" />
-              <InfoRow label="メールアドレス" value="support@soothe-jp.com" />
+              <InfoRow label="事業者名" value="株式会社国際資源" />
+              <InfoRow label="英語名" value="International Natural Resources And Energy" />
+              <InfoRow label="代表者" value="代表取締役社長 岩間 哲士" />
+              <InfoRow label="所在地" value="〒105-0023 東京都港区芝浦1-13-10 第3東運ビル" />
+              <InfoRow label="電話番号" value="03-4595-0191" />
+              <InfoRow label="メールアドレス" value="info@inre.co.jp" />
               <InfoRow label="営業時間" value="平日 10:00 - 18:00（土日祝除く）" />
               <InfoRow label="料金" value="各サービスページに記載" />
               <InfoRow label="支払方法" value="クレジットカード（Stripe経由）" />
@@ -205,8 +206,8 @@ const LegalPage: React.FC = () => {
         </section>
 
         <div className="mt-16 text-center text-sm text-gray-400 font-bold">
-          <p>最終更新日: 2025年1月12日</p>
-          <p className="mt-2">ご不明な点がございましたら、<a href="mailto:legal@soothe-jp.com" className="text-teal-600 hover:underline">legal@soothe-jp.com</a> までお問い合わせください。</p>
+          <p>最終更新日: 2026年3月10日</p>
+          <p className="mt-2">ご不明な点がございましたら、<a href="mailto:info@inre.co.jp" className="text-teal-600 hover:underline">info@inre.co.jp</a> までお問い合わせください。</p>
         </div>
       </div>
     </PortalLayout>
