@@ -137,13 +137,63 @@ app.get('/legal', (c) => {
     body: `
     <div class="pt-24 pb-16 max-w-4xl mx-auto px-4">
       <h1 class="text-4xl font-black text-slate-900 tracking-tighter mb-8">利用規約・プライバシーポリシー</h1>
-      <div class="prose prose-lg max-w-none text-gray-600">
-        <p class="font-bold">このページはサーバーサイドでレンダリングされています。</p>
-        <p>詳細な利用規約・プライバシーポリシーの内容は、正式リリース時に掲載予定です。</p>
-        <h2 class="text-2xl font-black text-slate-900 mt-12">利用規約</h2>
-        <p>HOGUSY（以下「本サービス」）をご利用いただく際の条件を定めます。</p>
-        <h2 class="text-2xl font-black text-slate-900 mt-12">プライバシーポリシー</h2>
-        <p>お客様の個人情報の取り扱いについて定めます。</p>
+      <div class="space-y-16">
+
+        <!-- 利用規約 -->
+        <section>
+          <h2 class="text-3xl font-black text-slate-900 mb-8 pb-4 border-b-2 border-teal-500">利用規約</h2>
+          <div class="prose prose-lg max-w-none text-gray-600 space-y-6">
+            <p>この利用規約（以下、「本規約」といいます。）は、株式会社国際資源（以下、「当社」といいます。）が運営するHOGUSYサービス（以下、「本サービス」といいます。）の利用条件を定めるものです。</p>
+            <h3 class="text-xl font-black text-slate-900">第1条（適用）</h3>
+            <p>本規約は、ユーザーと当社との間の本サービスの利用に関わる一切の関係に適用されるものとします。</p>
+            <h3 class="text-xl font-black text-slate-900">第2条（利用登録）</h3>
+            <p>本サービスにおいては、登録希望者が本規約に同意の上、当社の定める方法によって利用登録を申請し、当社がこれを承認することによって、利用登録が完了するものとします。</p>
+            <h3 class="text-xl font-black text-slate-900">第3条（禁止事項）</h3>
+            <ul class="list-disc pl-6 space-y-2">
+              <li>法令または公序良俗に違反する行為</li>
+              <li>犯罪行為に関連する行為</li>
+              <li>本サービスの運営を妨害する行為</li>
+              <li>他のユーザーまたは第三者の権利を侵害する行為</li>
+              <li>プラットフォーム外での直接取引を促す行為</li>
+            </ul>
+            <h3 class="text-xl font-black text-slate-900">第4条（料金と支払い）</h3>
+            <p>本サービスの利用料金は、各コース・メニューページに明示されています。お支払いは事前決済となり、キャンセルポリシーに従った返金対応を行います。</p>
+            <h3 class="text-xl font-black text-slate-900">第5条（免責事項）</h3>
+            <p>当社は、本サービスの提供にあたり、安全性の確保に最大限努めますが、セラピストと利用者間で発生したトラブルについては、当事者間での解決を原則とします。</p>
+            <h3 class="text-xl font-black text-slate-900">第6条（準拠法・裁判管轄）</h3>
+            <p>本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、当社の本店所在地を管轄する裁判所を専属的合意管轄とします。</p>
+          </div>
+        </section>
+
+        <!-- プライバシーポリシー -->
+        <section>
+          <h2 class="text-3xl font-black text-slate-900 mb-8 pb-4 border-b-2 border-indigo-500">プライバシーポリシー</h2>
+          <div class="prose prose-lg max-w-none text-gray-600 space-y-6">
+            <p>株式会社国際資源（以下「当社」）は、本サービスの利用によって取得する個人情報の取り扱いについて、以下のとおり定めます。</p>
+            <h3 class="text-xl font-black text-slate-900">1. 収集する情報</h3>
+            <ul class="list-disc pl-6 space-y-2">
+              <li>氏名、メールアドレス、電話番号などの個人情報</li>
+              <li>決済情報（クレジットカード情報は決済代行会社が管理）</li>
+              <li>位置情報（サービス提供のために必要な範囲）</li>
+              <li>施術中の音声データ（安全監視目的、暗号化して保存）</li>
+            </ul>
+            <h3 class="text-xl font-black text-slate-900">2. 情報の利用目的</h3>
+            <ul class="list-disc pl-6 space-y-2">
+              <li>本サービスの提供・運営・改善</li>
+              <li>ユーザーサポート対応</li>
+              <li>安全監視システムの運用</li>
+              <li>マーケティング・キャンペーン情報の配信（同意を得た場合のみ）</li>
+            </ul>
+            <h3 class="text-xl font-black text-slate-900">3. 第三者提供</h3>
+            <p>当社は、法令に基づく場合を除き、ユーザーの同意なく個人情報を第三者に提供することはありません。投務先（Stripe、Resend、Google Cloud、Cloudflare）には必要最小限の情報を提供します。</p>
+            <h3 class="text-xl font-black text-slate-900">4. データ保持期間</h3>
+            <p>音声データは30日間保存し、その後自動削除されます。その他の個人情報は、アカウント削除後90日以内に完全に削除します。</p>
+            <h3 class="text-xl font-black text-slate-900">5. お問い合わせ</h3>
+            <p>プライバシーポリシーに関するお問い合わせは、<a href="mailto:info@inre.co.jp" class="text-teal-600 hover:underline">info@inre.co.jp</a> までご連絡ください。</p>
+          </div>
+        </section>
+
+        <p class="text-sm text-gray-400 text-center">最終更新日: 2026年3月10日 ｜ 株式会社国際資源</p>
       </div>
     </div>
     `,
@@ -162,10 +212,83 @@ app.get('/commercial-transaction', (c) => {
     url: 'https://hogusy.com/commercial-transaction',
     body: `
     <div class="pt-24 pb-16 max-w-4xl mx-auto px-4">
-      <h1 class="text-4xl font-black text-slate-900 tracking-tighter mb-8">特定商取引法に基づく表示</h1>
-      <div class="prose prose-lg max-w-none text-gray-600">
-        <p class="font-bold">このページはサーバーサイドでレンダリングされています。</p>
-        <p>詳細な情報は正式リリース時に掲載予定です。</p>
+      <h1 class="text-4xl font-black text-slate-900 tracking-tighter mb-2">特定商取引法に基づく表示</h1>
+      <p class="text-sm text-gray-400 mb-12">最終更新日: 2026年3月10日</p>
+      <div class="overflow-hidden rounded-2xl border border-gray-200 shadow-sm">
+        <table class="w-full text-sm">
+          <tbody>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900 w-1/3">販売事業者の名称</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">株式会社国際資源<br><span class="text-gray-400 font-normal text-xs">International Natural Resources And Energy</span></td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">運営統括責任者</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">代表取締役社長／CEO（最高経営責任者） 岩間 哲士</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">所在地</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">〒105-0023<br>東京都港区芝浦1-13-10 第3東運ビル<br><span class="text-gray-400 font-normal text-xs">※お客様からのお問い合わせは、下記のメールアドレスまたはお問い合わせフォームにて承ります。</span></td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">電話番号</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">03-4595-0191<br><span class="text-gray-400 font-normal text-xs">受付時間: 平日 10:00～18:00（土日祠日を除く）</span></td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">メールアドレス</th>
+              <td class="px-6 py-4 text-gray-700 font-bold"><a href="mailto:info@inre.co.jp" class="text-teal-600 hover:underline">info@inre.co.jp</a><br><span class="text-gray-400 font-normal text-xs">※お問い合わせへの返信は、営業日2～3日以内に行います。</span></td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">サービス内容</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">マッサージ・リラクゼーション施術サービス（セラピストと利用者のマッチングプラットフォーム）</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">販売価格</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">各コース・メニューページに記載（税込表示）</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">支払方法</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">クレジットカード（VISA、Mastercard、JCB、American Express、Diners Club）、Apple Pay、Google Pay</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">支払時期</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">予約確定時に決済処理が行われます。実際の請求は施術完了後に確定します。</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">サービス提供時期</th>
+              <td class="px-6 py-4 text-gray-700 font-bold">予約確定後、指定日時</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">返品・キャンセル</th>
+              <td class="px-6 py-4 text-gray-700">
+                <div class="space-y-2">
+                  <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                    <span class="font-bold text-gray-700">24時間前まで</span>
+                    <span class="font-black text-teal-600">無料キャンセル</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                    <span class="font-bold text-gray-700">12～24時間前</span>
+                    <span class="font-black text-orange-600">50%キャンセル料</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1">
+                    <span class="font-bold text-gray-700">12時間以内・無断キャンセル</span>
+                    <span class="font-black text-red-600">100%キャンセル料</span>
+                  </div>
+                  <p class="text-xs text-gray-400 mt-2">天災やセラピストの都合により施術が提供できない場合は、全額返金いたします。</p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th class="bg-gray-50 px-6 py-4 text-left font-black text-gray-900">その他の重要事項</th>
+              <td class="px-6 py-4 text-gray-700">
+                <ul class="list-disc pl-4 space-y-1 text-sm">
+                  <li>本サービスは、セラピストとお客様をマッチングするプラットフォームサービスです。</li>
+                  <li>医療行為・治療を目的とした施術は行っておりません。</li>
+                  <li>妊娠中の方、持病をお持ちの方は事前にセラピストへご相談ください。</li>
+                </ul>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
     `,
