@@ -94,6 +94,8 @@ const PortalHome: React.FC = () => {
 
   // ============================================
   // Google Maps APIを動的に読み込む
+  // APIキーは /api/maps/config からランタイムで取得する。
+  // ビルド時の VITE_GOOGLE_MAPS_API_KEY 埋め込みは不要。
   // ============================================
   useEffect(() => {
     if (window.google && window.google.maps) {
@@ -101,30 +103,44 @@ const PortalHome: React.FC = () => {
       setTimeout(initMap, 50);
       return;
     }
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      console.error('Google Maps APIキーが設定されていません（VITE_GOOGLE_MAPS_API_KEY未設定）');
-      return;
-    }
-    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
-      script.async = true;
-      script.defer = true;
-      // ロード完了時にマップ初期化
-      script.onload = () => {
-        setTimeout(initMap, 100);
-      };
-      document.head.appendChild(script);
-    } else {
-      // スクリプトタグは存在するがまだロード中の場合はポーリング
-      const checkInterval = setInterval(() => {
-        if (window.google?.maps) {
-          clearInterval(checkInterval);
-          setTimeout(initMap, 100);
+
+    // バックエンドAPIからAPIキーをランタイムで取得
+    const loadMaps = async () => {
+      try {
+        const res = await fetch('/api/maps/config');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json() as { apiKey?: string };
+        if (!data.apiKey) throw new Error('APIキーが返されませんでした');
+        const apiKey = data.apiKey;
+
+        if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+          // スクリプトタグは存在するがまだロード中の場合はポーリング
+          const checkInterval = setInterval(() => {
+            if (window.google?.maps) {
+              clearInterval(checkInterval);
+              setTimeout(initMap, 100);
+            }
+          }, 200);
+          return;
         }
-      }, 200);
-    }
+
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          setTimeout(initMap, 100);
+        };
+        script.onerror = () => {
+          console.error('Google Maps APIスクリプトの読み込みに失敗しました');
+        };
+        document.head.appendChild(script);
+      } catch (err) {
+        console.error('Google Maps APIキーの取得に失敗しました:', err);
+      }
+    };
+
+    loadMaps();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);  // initMapはマウント後に定義されるためdepsから除外
 

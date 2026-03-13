@@ -96,38 +96,49 @@ const SiteMapSearch: React.FC = () => {
   };
 
   // Google Maps APIを動的に読み込む
+  // APIキーは /api/maps/config からランタイムで取得する。
   useEffect(() => {
     // すでに読み込み済みの場合はすぐに完了
     if (window.google && window.google.maps) {
       setMapLoaded(true);
       return;
     }
-    // APIキーをVite環境変数から取得（ビルド時にdefineで置換される）
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      console.error('Google Maps APIキーが設定されていません（VITE_GOOGLE_MAPS_API_KEY未設定）');
-      return;
-    }
-    // スクリプトがまだ追加されていない場合のみ追加
-    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => setMapLoaded(true);
-      script.onerror = () => console.error('Google Maps APIの読み込みに失敗しました');
-      document.head.appendChild(script);
-    } else {
-      // スクリプトは追加済みだがまだ読み込み中の場合は待機
-      const checkGoogleMaps = () => {
-        if (window.google && window.google.maps) {
-          setMapLoaded(true);
-        } else {
-          setTimeout(checkGoogleMaps, 100);
+
+    const loadMaps = async () => {
+      try {
+        const res = await fetch('/api/maps/config');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json() as { apiKey?: string };
+        if (!data.apiKey) throw new Error('APIキーが返されませんでした');
+        const apiKey = data.apiKey;
+
+        // スクリプトがまだ追加されていない場合のみ追加
+        if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+          // スクリプトは追加済みだがまだ読み込み中の場合は待機
+          const checkGoogleMaps = () => {
+            if (window.google && window.google.maps) {
+              setMapLoaded(true);
+            } else {
+              setTimeout(checkGoogleMaps, 100);
+            }
+          };
+          checkGoogleMaps();
+          return;
         }
-      };
-      checkGoogleMaps();
-    }
+
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=ja&region=JP`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => setMapLoaded(true);
+        script.onerror = () => console.error('Google Maps APIの読み込みに失敗しました');
+        document.head.appendChild(script);
+      } catch (err) {
+        console.error('Google Maps APIキーの取得に失敗しました:', err);
+      }
+    };
+
+    loadMaps();
   }, []);
 
   // Fetch sites from API

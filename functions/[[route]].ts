@@ -51,6 +51,7 @@ type Bindings = {
   APPLE_CLIENT_ID: string
   APPLE_CLIENT_SECRET: string
   ALLOWED_ORIGINS: string // カンマ区切りの許可オリジンリスト（Cloudflare環境変数で上書き可能）
+  ASSETS: Fetcher // Cloudflare Pages 静的アセットフェッチャー
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -216,5 +217,25 @@ app.route('/api/storage', notifyApp)
 // SSR Public Pages（SEO対応のサーバーサイドHTML）
 // ============================================
 app.route('', publicPagesApp)
+
+// ============================================
+// SPA フォールバック
+// /app/*, /t/*, /o/*, /h/*, /affiliate/*, /admin/*, /login, /signup, /logout, /auth/*
+// などのSPAルートはindex.htmlを返してReactのクライアントサイドルーティングに委譲
+// ============================================
+app.all('*', async (c) => {
+  // Cloudflare Pages の ASSETS バインディングから index.html を取得
+  const url = new URL(c.req.url)
+  url.pathname = '/'
+  const response = await c.env.ASSETS.fetch(new Request(url.toString(), {
+    headers: c.req.raw.headers,
+  }))
+  return new Response(response.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+    },
+  })
+})
 
 export default app
