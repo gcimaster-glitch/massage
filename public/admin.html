@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔧 HOGUSY 開発用ログイン</title>
+  <style>
+    /* ============================================================
+       HOGUSY 開発用ログインページ
+       ⚠️ 本番公開前に必ずこのファイルを削除してください
+       対象ファイル: public/admin.html
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:    #0d9488;
+      --blue:    #2563eb;
+      --purple:  #7c3aed;
+      --orange:  #ea580c;
+      --red:     #dc2626;
+      --green:   #16a34a;
+      --gray-50: #f9fafb;
+      --gray-100:#f3f4f6;
+      --gray-200:#e5e7eb;
+      --gray-400:#9ca3af;
+      --gray-500:#6b7280;
+      --gray-700:#374151;
+      --gray-900:#111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+      background: linear-gradient(135deg, #f0fdf4 0%, #f9fafb 50%, #eff6ff 100%);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      color: var(--gray-900);
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* ---- ヘッダー ---- */
+    .header { text-align: center; margin-bottom: 2.5rem; }
+    .header-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 64px; height: 64px; background: var(--teal);
+      border-radius: 50%; margin-bottom: 1rem; font-size: 2rem;
+    }
+    .header h1 { font-size: 2rem; font-weight: 900; color: var(--gray-900); margin-bottom: 0.5rem; }
+    .header p  { font-size: 1rem; color: var(--gray-500); }
+    .warning-badge {
+      display: inline-block; margin-top: 1rem;
+      background: #fefce8; border: 1px solid #fde047;
+      border-radius: 8px; padding: 0.5rem 1rem;
+      font-size: 0.85rem; color: #854d0e; font-weight: 600;
+    }
+
+    /* ---- アカウントグリッド ---- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      border: 2px solid;
+      border-radius: 16px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      background: #fff;
+      text-align: left;
+      width: 100%;
+      font-family: inherit;
+    }
+    .card:hover  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
+    .card:active { transform: scale(0.97); }
+
+    .card-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px; border-radius: 50%; border: 2px solid;
+      font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .card h3   { font-size: 1.05rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.25rem; }
+    .card .email { font-size: 0.8rem; color: var(--gray-500); margin-bottom: 0.5rem; font-family: monospace; }
+    .card .desc  { font-size: 0.78rem; color: var(--gray-400); margin-bottom: 1rem; line-height: 1.5; }
+    .card .cta   { font-size: 0.85rem; font-weight: 600; }
+
+    /* 色テーマ */
+    .teal   { border-color:#99f6e4; background:#f0fdfa; }
+    .teal   .card-icon { border-color:#99f6e4; background:#f0fdfa; color:var(--teal); }
+    .teal   .cta { color:var(--teal); }
+    .teal:hover { background:#ccfbf1; }
+
+    .blue   { border-color:#bfdbfe; background:#eff6ff; }
+    .blue   .card-icon { border-color:#bfdbfe; background:#eff6ff; color:var(--blue); }
+    .blue   .cta { color:var(--blue); }
+    .blue:hover { background:#dbeafe; }
+
+    .purple { border-color:#ddd6fe; background:#f5f3ff; }
+    .purple .card-icon { border-color:#ddd6fe; background:#f5f3ff; color:var(--purple); }
+    .purple .cta { color:var(--purple); }
+    .purple:hover { background:#ede9fe; }
+
+    .orange { border-color:#fed7aa; background:#fff7ed; }
+    .orange .card-icon { border-color:#fed7aa; background:#fff7ed; color:var(--orange); }
+    .orange .cta { color:var(--orange); }
+    .orange:hover { background:#ffedd5; }
+
+    .red    { border-color:#fecaca; background:#fef2f2; }
+    .red    .card-icon { border-color:#fecaca; background:#fef2f2; color:var(--red); }
+    .red    .cta { color:var(--red); }
+    .red:hover { background:#fee2e2; }
+
+    .green  { border-color:#bbf7d0; background:#f0fdf4; }
+    .green  .card-icon { border-color:#bbf7d0; background:#f0fdf4; color:var(--green); }
+    .green  .cta { color:var(--green); }
+    .green:hover { background:#dcfce7; }
+
+    /* ---- クイックリンク ---- */
+    .links-box {
+      background: #fff; border: 2px solid var(--gray-200);
+      border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;
+    }
+    .links-box h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .links-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+    .link-item {
+      display: block; padding: 0.75rem 1rem;
+      background: var(--gray-50); border-radius: 10px;
+      text-decoration: none; transition: background 0.15s;
+      border: 1px solid var(--gray-200);
+    }
+    .link-item:hover { background: var(--gray-100); }
+    .link-item .link-title { font-size: 0.85rem; font-weight: 600; color: var(--gray-900); margin-bottom: 0.2rem; }
+    .link-item .link-sub   { font-size: 0.75rem; color: var(--gray-400); }
+
+    /* ---- ログイン情報ボックス ---- */
+    .creds-box {
+      background: #fff; border: 2px solid #fde047;
+      border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;
+    }
+    .creds-box h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: #854d0e; }
+    .creds-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .creds-table th {
+      text-align: left; padding: 0.5rem 0.75rem;
+      background: #fefce8; color: #854d0e; font-weight: 600;
+      border-bottom: 1px solid #fde047;
+    }
+    .creds-table td {
+      padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-700);
+    }
+    .creds-table td code {
+      background: var(--gray-100); padding: 0.1rem 0.4rem;
+      border-radius: 4px; font-family: monospace; font-size: 0.82rem;
+    }
+    .creds-table tr:last-child td { border-bottom: none; }
+
+    /* ---- トースト通知 ---- */
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: var(--gray-900); color: #fff;
+      padding: 0.75rem 1.5rem; border-radius: 999px;
+      font-size: 0.9rem; font-weight: 600;
+      transition: transform 0.3s ease;
+      pointer-events: none; z-index: 9999;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ---- フッター ---- */
+    footer { text-align: center; color: var(--gray-400); font-size: 0.8rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ヘッダー -->
+    <div class="header">
+      <div class="header-icon">🔧</div>
+      <h1>HOGUSY 開発用ログイン</h1>
+      <p>ワンクリックで各ロールのデモアカウントにログインできます</p>
+      <div class="warning-badge">
+        ⚠️ このページは開発専用です。本番公開前に public/admin.html を削除してください。
+      </div>
+    </div>
+
+    <!-- アカウントカード -->
+    <div class="grid" id="accountGrid"></div>
+
+    <!-- 本番ログイン情報 -->
+    <div class="creds-box">
+      <h2>🔑 本番アカウント情報（実際のDB認証）</h2>
+      <table class="creds-table">
+        <thead>
+          <tr>
+            <th>ロール</th>
+            <th>メールアドレス</th>
+            <th>パスワード</th>
+            <th>ログインURL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>総管理者 (ADMIN)</td>
+            <td><code>admin@hogusy.com</code></td>
+            <td><code>HogusyAdmin2026!</code></td>
+            <td><a href="/admin/login">/admin/login</a></td>
+          </tr>
+          <tr>
+            <td>一般ユーザー (USER)</td>
+            <td><code>user@demo.com</code></td>
+            <td>デモ（モック）</td>
+            <td><a href="/login">/login</a></td>
+          </tr>
+          <tr>
+            <td>セラピスト (THERAPIST)</td>
+            <td><code>therapist@demo.com</code></td>
+            <td>デモ（モック）</td>
+            <td><a href="/therapist/login">/therapist/login</a></td>
+          </tr>
+          <tr>
+            <td>施設ホスト (HOST)</td>
+            <td><code>host@demo.com</code></td>
+            <td>デモ（モック）</td>
+            <td><a href="/host/login">/host/login</a></td>
+          </tr>
+          <tr>
+            <td>事務所 (OFFICE)</td>
+            <td><code>office@demo.com</code></td>
+            <td>デモ（モック）</td>
+            <td><a href="/office/login">/office/login</a></td>
+          </tr>
+          <tr>
+            <td>アフィリエイター (AFFILIATE)</td>
+            <td><code>affiliate@demo.com</code></td>
+            <td>デモ（モック）</td>
+            <td><a href="/affiliate/login">/affiliate/login</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- クイックリンク -->
+    <div class="links-box">
+      <h2>📚 開発リソース</h2>
+      <div class="links-grid">
+        <a href="/" class="link-item">
+          <div class="link-title">TOPページ</div>
+          <div class="link-sub">一般ユーザー向けランディング</div>
+        </a>
+        <a href="/indexlist" class="link-item">
+          <div class="link-title">全ページ一覧</div>
+          <div class="link-sub">開発用ページインデックス</div>
+        </a>
+        <a href="/dev/login" class="link-item">
+          <div class="link-title">DevLogin（React版）</div>
+          <div class="link-sub">SPA内の開発用ログイン</div>
+        </a>
+        <a href="/api/health" target="_blank" class="link-item">
+          <div class="link-title">APIヘルスチェック</div>
+          <div class="link-sub">バックエンドAPI稼働状況</div>
+        </a>
+        <a href="/admin" class="link-item">
+          <div class="link-title">管理者ダッシュボード</div>
+          <div class="link-sub">ADMIN専用管理画面</div>
+        </a>
+        <a href="/app" class="link-item">
+          <div class="link-title">ユーザーダッシュボード</div>
+          <div class="link-sub">一般ユーザーのマイページ</div>
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+
+  <!-- トースト -->
+  <div id="toast"></div>
+
+  <!-- フッター -->
+  <footer>
+    <p>HOGUSY Development Environment &mdash; 開発専用ページ（本番公開前に削除）</p>
+  </footer>
+
+  <script>
+    // ============================================================
+    // デモアカウント定義
+    // ============================================================
+    const demoAccounts = [
+      {
+        role: 'USER',
+        name: '山田 太郎（一般ユーザー）',
+        email: 'user@demo.com',
+        icon: '👤',
+        color: 'teal',
+        redirect: '/app',
+        description: '予約・マップ検索・マイページ',
+      },
+      {
+        role: 'THERAPIST',
+        name: '鈴木 花子（セラピスト）',
+        email: 'therapist@demo.com',
+        icon: '💆',
+        color: 'blue',
+        redirect: '/t',
+        description: 'スケジュール管理・予約管理・収益確認',
+      },
+      {
+        role: 'HOST',
+        name: '佐藤 健（施設ホスト）',
+        email: 'host@demo.com',
+        icon: '🏢',
+        color: 'purple',
+        redirect: '/h',
+        description: '施設管理・予約管理・稼働率分析',
+      },
+      {
+        role: 'THERAPIST_OFFICE',
+        name: '田中 一郎（セラピスト事務所）',
+        email: 'office@demo.com',
+        icon: '🏬',
+        color: 'orange',
+        redirect: '/o',
+        description: 'セラピスト管理・収益管理・契約管理',
+      },
+      {
+        role: 'ADMIN',
+        name: '管理者（総管理者）',
+        email: 'admin@hogusy.com',
+        icon: '🛡️',
+        color: 'red',
+        redirect: '/admin',
+        description: '全機能アクセス・システム設定・監査',
+      },
+      {
+        role: 'AFFILIATE',
+        name: '吉田 美咲（アフィリエイター）',
+        email: 'affiliate@demo.com',
+        icon: '📈',
+        color: 'green',
+        redirect: '/affiliate',
+        description: '紹介管理・報酬確認・マーケティング',
+      },
+    ];
+
+    // ============================================================
+    // カード生成
+    // ============================================================
+    const grid = document.getElementById('accountGrid');
+
+    demoAccounts.forEach(account => {
+      const btn = document.createElement('button');
+      btn.className = `card ${account.color}`;
+      btn.innerHTML = `
+        <div class="card-icon">${account.icon}</div>
+        <h3>${account.name}</h3>
+        <p class="email">${account.email}</p>
+        <p class="desc">${account.description}</p>
+        <span class="cta">ワンクリックログイン →</span>
+      `;
+      btn.addEventListener('click', () => handleDemoLogin(account));
+      grid.appendChild(btn);
+    });
+
+    // ============================================================
+    // ワンクリックログイン処理
+    // ============================================================
+    function handleDemoLogin(account) {
+      // DevLogin.tsx と同じモックトークン生成ロジック
+      const payload = {
+        userId: `${account.role}_demo_001`,
+        role: account.role,
+        exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7日間
+      };
+
+      // UTF-8対応 Base64エンコード
+      const mockToken = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+
+      localStorage.setItem('auth_token', mockToken);
+      localStorage.setItem('currentUser', JSON.stringify({
+        role: account.role,
+        displayName: account.name,
+        email: account.email,
+      }));
+
+      showToast(`✅ ${account.name} でログインしました`);
+
+      setTimeout(() => {
+        window.location.href = account.redirect;
+      }, 800);
+    }
+
+    // ============================================================
+    // トースト表示
+    // ============================================================
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ============================================================
+    // 現在のログイン状態を表示
+    // ============================================================
+    const current = localStorage.getItem('currentUser');
+    if (current) {
+      try {
+        const u = JSON.parse(current);
+        const notice = document.createElement('div');
+        notice.style.cssText = `
+          background:#f0fdf4; border:1px solid #86efac; border-radius:10px;
+          padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:0.85rem; color:#166534;
+          display:flex; align-items:center; gap:0.5rem;
+        `;
+        notice.innerHTML = `
+          <span>✅</span>
+          <span>現在 <strong>${u.displayName}</strong>（${u.role}）としてログイン中</span>
+          <button onclick="logout()" style="margin-left:auto; background:#dc2626; color:#fff; border:none; border-radius:6px; padding:0.25rem 0.75rem; cursor:pointer; font-size:0.8rem;">ログアウト</button>
+        `;
+        document.querySelector('.container').insertBefore(notice, document.getElementById('accountGrid'));
+      } catch(e) {}
+    }
+
+    function logout() {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('currentUser');
+      location.reload();
+    }
+  </script>
+</body>
+</html>

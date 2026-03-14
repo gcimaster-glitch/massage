@@ -21,6 +21,7 @@
     "/assets/*",
     "/static/*",
     "/_worker.js",
+    "/admin.html",
     "/*.jpg",
     "/*.png",
     "/*.svg",
