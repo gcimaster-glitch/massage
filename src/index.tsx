@@ -224,8 +224,21 @@ app.route('', publicPagesApp)
 // などのSPAルートはindex.htmlを返してReactのクライアントサイドルーティングに委譲
 // ============================================
 app.all('*', async (c) => {
-  // Cloudflare Pages の ASSETS バインディングから index.html を取得
   const url = new URL(c.req.url)
+
+  // 開発用静的HTMLファイルは直接ASSETSから配信（SPAにフォールバックしない）
+  // 本番公開前に public/dev-login.html を削除すること
+  const STATIC_HTML_FILES = ['/dev-login.html']
+  if (STATIC_HTML_FILES.includes(url.pathname)) {
+    const staticResponse = await c.env.ASSETS.fetch(new Request(c.req.url, {
+      headers: c.req.raw.headers,
+    }))
+    if (staticResponse.status === 200) {
+      return staticResponse
+    }
+  }
+
+  // Cloudflare Pages の ASSETS バインディングから index.html を取得
   url.pathname = '/'
   const response = await c.env.ASSETS.fetch(new Request(url.toString(), {
     headers: c.req.raw.headers,
