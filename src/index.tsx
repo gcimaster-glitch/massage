@@ -25,6 +25,7 @@ import mockDataApp from './mock-data-routes'
 import paymentsApp from './payments-routes'
 import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
+import hostApp from './host-routes'
 
 // ============================================
 // Type Definitions
@@ -200,6 +201,11 @@ app.route('/api/user', paymentsApp)
 // Revenue Engine Routes (収益分配エンジン)
 // ============================================
 app.route('/api/revenue', revenueEngineApp)
+
+// ============================================
+// Host Routes (施設ホスト向けAPI)
+// ============================================
+app.route('/api/host', hostApp)
 
 // ============================================
 // Email Routes
