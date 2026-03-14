@@ -17,7 +17,11 @@ import {
 import { ShieldCheck, Lock, ArrowLeft, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 // Stripe公開鍵（環境変数から取得）
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+// VITE_STRIPE_PUBLISHABLE_KEY が未設定の場合は null を返し、Stripeを初期化しない
+// Cloudflare Pages の Environment Variables に設定が必要
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
+  'pk_live_51T5n68AnaQJfi3mdorYm7OYMQu7iRuReAJrLQzZMlj0puHytyVHfKTS2hpE1jO7lgwWCdywuqDbQtdoSs0i6tYkt00QUHFS3jL';
+const stripePromise = STRIPE_KEY ? loadStripe(STRIPE_KEY) : null;
 
 // ============================================
 // 決済フォームコンポーネント

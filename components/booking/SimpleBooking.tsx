@@ -9,8 +9,11 @@ import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-// Stripe公開可能キー（環境変数から取得）
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_dummy');
+// Stripe公開可能キー（環境変数から取得、未設定の場合は本番公開キーにフォールバック）
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
+  'pk_live_51T5n68AnaQJfi3mdorYm7OYMQu7iRuReAJrLQzZMlj0puHytyVHfKTS2hpE1jO7lgwWCdywuqDbQtdoSs0i6tYkt00QUHFS3jL'
+);
 
 interface Therapist {
   id: string;
