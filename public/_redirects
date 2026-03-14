@@ -1,4 +1,2 @@
-# 開発用ページは静的ファイルとして直接配信（SPAにリダイレクトしない）
-/admin.html /admin.html 200
-# SPA フォールバック（すべてのルートをindex.htmlへ）
+/dev-login.html /dev-login.html 200
 /* /index.html 200
