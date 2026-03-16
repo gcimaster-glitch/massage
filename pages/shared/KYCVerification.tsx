@@ -1,147 +1,340 @@
-
 import React, { useState, useRef } from 'react';
-import { Camera, CheckCircle, AlertCircle, Loader2, ArrowLeft, ShieldCheck, FileText, Upload } from 'lucide-react';
+import { Camera, CheckCircle, AlertCircle, Loader2, ArrowLeft, ShieldCheck, FileText, Upload, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { analyzeIDCard } from '../../services/aiService';
+
+// ============================================
+// KYC本人確認ページ（本番対応版）
+// AI Studio専用APIを排除し、バックエンドAPI経由で本人確認申請を行う
+// ============================================
+
+type IdType = 'DRIVERS_LICENSE' | 'MY_NUMBER_CARD' | 'PASSPORT' | 'RESIDENCE_CARD';
+
+const ID_TYPE_LABELS: Record<IdType, string> = {
+  DRIVERS_LICENSE: '運転免許証',
+  MY_NUMBER_CARD: 'マイナンバーカード',
+  PASSPORT: 'パスポート',
+  RESIDENCE_CARD: '在留カード',
+};
 
 const KYCVerification: React.FC = () => {
   const navigate = useNavigate();
+  const [step, setStep] = useState<'select' | 'upload' | 'confirm' | 'submitted'>('select');
+  const [idType, setIdType] = useState<IdType>('DRIVERS_LICENSE');
   const [image, setImage] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Fix: Mandatory API key selection for gemini-3-pro-image-preview
-    const hasKey = await window.aistudio.hasSelectedApiKey();
-    if (!hasKey) {
-      alert("本人確認AIを使用するには、有効なAPIキーの選択が必要です（支払い設定済みのGCPプロジェクトが必要です）。");
-      await window.aistudio.openSelectKey();
-      // Proceed assuming success as per race condition instructions
+    // ファイルサイズ制限（10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      setError('ファイルサイズは10MB以下にしてください');
+      return;
     }
 
+    // 対応形式チェック
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic'].includes(file.type)) {
+      setError('JPEG・PNG・WebP・HEIC形式の画像をアップロードしてください');
+      return;
+    }
+
+    setError(null);
+    setImageFile(file);
+
     const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = (reader.result as string).split(',')[1];
+    reader.onloadend = () => {
       setImage(reader.result as string);
-      
-      setIsAnalyzing(true);
-      try {
-        const aiResult = await analyzeIDCard(base64, file.type);
-        setResult(aiResult);
-      } catch (err: any) {
-        // Fix: Reset key selection if entity not found error occurs
-        if (err.message?.includes("Requested entity was not found.")) {
-           alert("APIキーの取得に失敗しました。再度選択してください。");
-           await window.aistudio.openSelectKey();
-        } else {
-           alert("AI解析に失敗しました。画像を明るい場所で撮り直してください。");
-        }
-      } finally {
-        setIsAnalyzing(false);
-      }
+      setStep('confirm');
     };
     reader.readAsDataURL(file);
   };
 
-  const handleComplete = () => {
-    alert("本人確認申請を受け付けました。運営の最終確認をお待ちください。");
-    navigate('/app/account');
+  const handleSubmit = async () => {
+    if (!imageFile || !image) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      // Base64データのみ抽出（data:image/...;base64, の部分を除く）
+      const base64Data = image.split(',')[1];
+
+      const res = await fetch('/api/kyc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id_type: idType,
+          file_name: imageFile.name,
+          file_size: imageFile.size,
+          mime_type: imageFile.type,
+          document_data: base64Data,
+        }),
+      });
+
+      const data = await res.json() as { error?: string; kyc_status?: string };
+
+      if (!res.ok) {
+        throw new Error(data.error || '申請に失敗しました');
+      }
+
+      setStep('submitted');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '申請に失敗しました。もう一度お試しください。';
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto space-y-10 pb-20">
-      <div className="flex items-center gap-4">
-        <button onClick={() => navigate(-1)} className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100"><ArrowLeft /></button>
-        <div>
-           <h1 className="text-3xl font-black text-gray-900 tracking-tighter">AI本人確認 (KYC)</h1>
-           <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Identity & Trust Verification</p>
-        </div>
-      </div>
+  const handleRetake = () => {
+    setImage(null);
+    setImageFile(null);
+    setError(null);
+    setStep('upload');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
-      <div className="bg-white p-10 rounded-[48px] shadow-sm border border-gray-100 space-y-10">
-        {!image ? (
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className="aspect-[1.6/1] bg-gray-50 border-4 border-dashed border-gray-200 rounded-[40px] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-teal-50 hover:border-teal-200 transition-all group"
-          >
-             <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-gray-400 group-hover:scale-110 transition-transform">
-                <Camera size={40} />
-             </div>
-             <div className="text-center">
-                <p className="font-black text-gray-900">身分証（表面）を撮影または選択</p>
-                <p className="text-xs text-gray-400 font-bold mt-2">運転免許証, マイナンバーカード, パスポート等</p>
-             </div>
-             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+  // ============================================
+  // Step 1: 証明書種類の選択
+  // ============================================
+  if (step === 'select') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-8 pb-20 px-4">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tighter">本人確認（KYC）</h1>
+            <p className="text-sm text-gray-500">身分証明書をアップロードしてください</p>
           </div>
-        ) : (
-          <div className="space-y-8 animate-fade-in">
-             <div className="relative aspect-[1.6/1] rounded-[40px] overflow-hidden shadow-2xl border-8 border-white">
-                <img src={image} className="w-full h-full object-cover" alt="Captured ID" />
-                {isAnalyzing && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-white gap-4">
-                     <Loader2 className="animate-spin text-teal-400" size={40} />
-                     <p className="font-black text-sm uppercase tracking-widest">AI Analyzing Identity...</p>
-                  </div>
-                )}
-             </div>
+        </div>
 
-             {result && (
-               <div className="bg-gray-50 p-8 rounded-[36px] border border-gray-100 space-y-6">
-                  <div className="flex items-center gap-3 text-teal-600 mb-4">
-                     <ShieldCheck size={24} />
-                     <h3 className="font-black">AI解析結果</h3>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-8">
-                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Full Name</p>
-                        <p className="text-lg font-black text-gray-900">{result.name || '---'}</p>
-                     </div>
-                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Birthdate</p>
-                        <p className="text-lg font-black text-gray-900">{result.birthdate || '---'}</p>
-                     </div>
-                     <div className="col-span-2 space-y-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Verification Status</p>
-                        <div className={`flex items-center gap-2 p-3 rounded-2xl border font-bold text-xs ${result.is_valid ? 'bg-green-100 border-green-200 text-green-700' : 'bg-red-100 border-red-200 text-red-700'}`}>
-                           {result.is_valid ? <CheckCircle size={14}/> : <AlertCircle size={14}/>}
-                           {result.is_valid ? 'すべての要件を満たしています' : result.reason || '情報を読み取れません'}
-                        </div>
-                     </div>
-                  </div>
+        <div className="bg-teal-50 border border-teal-200 rounded-2xl p-5">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-teal-800">なぜ本人確認が必要ですか？</p>
+              <p className="text-sm text-teal-700 mt-1">
+                HOGUSYでは、安全なサービス提供のため、セラピスト・オフィス・拠点ホストの方に本人確認をお願いしています。
+                提出された書類は暗号化して安全に保管され、審査目的以外には使用しません。
+              </p>
+            </div>
+          </div>
+        </div>
 
-                  {result.is_valid && (
-                    <button 
-                      onClick={handleComplete}
-                      className="w-full mt-6 bg-gray-900 text-white py-5 rounded-[24px] font-black text-sm hover:bg-teal-600 transition-all shadow-xl"
-                    >
-                       この内容で申請を確定する
-                    </button>
-                  )}
-               </div>
-             )}
+        <div>
+          <p className="text-sm font-semibold text-gray-700 mb-3">提出する証明書の種類を選択してください</p>
+          <div className="grid grid-cols-2 gap-3">
+            {(Object.entries(ID_TYPE_LABELS) as [IdType, string][]).map(([type, label]) => (
+              <button
+                key={type}
+                onClick={() => setIdType(type)}
+                className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  idType === type
+                    ? 'border-teal-500 bg-teal-50 text-teal-800'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <FileText className={`w-5 h-5 mb-2 ${idType === type ? 'text-teal-600' : 'text-gray-400'}`} />
+                <p className="text-sm font-semibold">{label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
-             <button onClick={() => { setImage(null); setResult(null); }} className="w-full text-gray-400 font-black text-xs hover:underline">
-                画像を撮り直す
-             </button>
+        <button
+          onClick={() => setStep('upload')}
+          className="w-full py-4 bg-teal-600 text-white rounded-2xl font-bold text-lg hover:bg-teal-700 transition-colors"
+        >
+          次へ：書類をアップロード
+        </button>
+      </div>
+    );
+  }
+
+  // ============================================
+  // Step 2: 画像アップロード
+  // ============================================
+  if (step === 'upload') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-8 pb-20 px-4">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setStep('select')} className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tighter">書類のアップロード</h1>
+            <p className="text-sm text-gray-500">{ID_TYPE_LABELS[idType]}を撮影またはアップロード</p>
+          </div>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+          <p className="text-sm font-semibold text-amber-800 mb-2">📸 撮影のポイント</p>
+          <ul className="text-sm text-amber-700 space-y-1">
+            <li>• 明るい場所で撮影してください</li>
+            <li>• 書類全体が写るようにしてください</li>
+            <li>• 文字がはっきり読めることを確認してください</li>
+            <li>• 光の反射・影がないようにしてください</li>
+          </ul>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
-      </div>
 
-      <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-[40px] flex items-start gap-6">
-         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm"><FileText /></div>
-         <div className="space-y-2">
-            <h4 className="font-black text-indigo-900">情報の保護について</h4>
-            <p className="text-xs text-indigo-700 leading-relaxed font-bold opacity-80">
-               提出された画像データは本人確認の目的以外には使用されず、暗号化された状態で運営本部が厳重に管理します。
-               AI解析は安全な専用プロトコルを通じて実行されます。
-            </p>
-         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-col items-center justify-center gap-3 p-8 bg-white border-2 border-dashed border-gray-300 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all"
+          >
+            <Camera className="w-8 h-8 text-gray-400" />
+            <span className="text-sm font-semibold text-gray-600">カメラで撮影</span>
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-col items-center justify-center gap-3 p-8 bg-white border-2 border-dashed border-gray-300 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all"
+          >
+            <Upload className="w-8 h-8 text-gray-400" />
+            <span className="text-sm font-semibold text-gray-600">ファイルを選択</span>
+          </button>
+        </div>
       </div>
+    );
+  }
+
+  // ============================================
+  // Step 3: 確認・送信
+  // ============================================
+  if (step === 'confirm') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-8 pb-20 px-4">
+        <div className="flex items-center gap-4">
+          <button onClick={handleRetake} className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tighter">内容の確認</h1>
+            <p className="text-sm text-gray-500">書類の内容を確認して申請してください</p>
+          </div>
+        </div>
+
+        {image && (
+          <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+            <img src={image} alt="アップロードした書類" className="w-full object-contain max-h-64" />
+          </div>
+        )}
+
+        <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">書類の種類</span>
+            <span className="text-sm font-semibold text-gray-900">{ID_TYPE_LABELS[idType]}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">ファイル名</span>
+            <span className="text-sm font-semibold text-gray-900 truncate max-w-[200px]">{imageFile?.name}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">ファイルサイズ</span>
+            <span className="text-sm font-semibold text-gray-900">
+              {imageFile ? `${(imageFile.size / 1024).toFixed(0)} KB` : '-'}
+            </span>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={handleRetake}
+            className="flex items-center justify-center gap-2 py-4 bg-gray-100 text-gray-700 rounded-2xl font-semibold hover:bg-gray-200 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            撮り直す
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex items-center justify-center gap-2 py-4 bg-teal-600 text-white rounded-2xl font-bold hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                申請中...
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-4 h-4" />
+                申請する
+              </>
+            )}
+          </button>
+        </div>
+
+        <p className="text-xs text-gray-400 text-center">
+          申請後、通常1〜3営業日以内に審査結果をメールでお知らせします。
+        </p>
+      </div>
+    );
+  }
+
+  // ============================================
+  // Step 4: 申請完了
+  // ============================================
+  return (
+    <div className="max-w-2xl mx-auto space-y-8 pb-20 px-4 flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center">
+        <CheckCircle className="w-10 h-10 text-teal-600" />
+      </div>
+      <div className="text-center">
+        <h1 className="text-2xl font-black text-gray-900 mb-2">申請が完了しました</h1>
+        <p className="text-gray-500">
+          本人確認書類を受け付けました。<br />
+          審査結果は登録メールアドレスにお送りします。<br />
+          通常1〜3営業日以内にご連絡します。
+        </p>
+      </div>
+      <div className="bg-teal-50 border border-teal-200 rounded-2xl p-5 w-full">
+        <p className="text-sm text-teal-700 text-center">
+          審査中もHOGUSYの閲覧は引き続きご利用いただけます。<br />
+          審査が完了次第、すべての機能が利用可能になります。
+        </p>
+      </div>
+      <button
+        onClick={() => navigate('/app/account')}
+        className="w-full py-4 bg-teal-600 text-white rounded-2xl font-bold text-lg hover:bg-teal-700 transition-colors"
+      >
+        マイページに戻る
+      </button>
     </div>
   );
 };

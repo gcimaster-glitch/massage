@@ -25,6 +25,8 @@ import mockDataApp from './mock-data-routes'
 import paymentsApp from './payments-routes'
 import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
+import hostApp from './host-routes'
+import stripeWebhookApp from './stripe-webhook-routes'
 
 // ============================================
 // Type Definitions
@@ -55,6 +57,41 @@ type Bindings = {
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
+
+// ============================================
+// Middleware - セキュリティヘッダー（本番稼働準備）
+// ============================================
+app.use('*', async (c, next) => {
+  await next()
+  // クリックジャッキング防止
+  c.res.headers.set('X-Frame-Options', 'DENY')
+  // MIMEタイプスニッフィング防止
+  c.res.headers.set('X-Content-Type-Options', 'nosniff')
+  // XSS保護（レガシーブラウザ向け）
+  c.res.headers.set('X-XSS-Protection', '1; mode=block')
+  // HTTPS強制（1年間）
+  c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
+  // リファラーポリシー
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  // パーミッションポリシー
+  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=(self)')
+  // コンテンツセキュリティポリシー
+  c.res.headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob: https: http:",
+      "connect-src 'self' https://api.stripe.com https://maps.googleapis.com wss:",
+      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ')
+  )
+})
 
 // ============================================
 // Middleware - CORS設定（セキュリティ強化）
@@ -202,6 +239,16 @@ app.route('/api/user', paymentsApp)
 app.route('/api/revenue', revenueEngineApp)
 
 // ============================================
+// Host Routes (拠点ホスト向けAPI)
+// ============================================
+app.route('/api/host', hostApp)
+
+// ============================================
+// Stripe Webhook Routes
+// ============================================
+app.route('/api/webhook', stripeWebhookApp)
+
+// ============================================
 // Email Routes
 // ============================================
 app.route('/api/email', emailApp)
@@ -224,8 +271,21 @@ app.route('', publicPagesApp)
 // などのSPAルートはindex.htmlを返してReactのクライアントサイドルーティングに委譲
 // ============================================
 app.all('*', async (c) => {
-  // Cloudflare Pages の ASSETS バインディングから index.html を取得
   const url = new URL(c.req.url)
+
+  // 開発用静的HTMLファイルは直接ASSETSから配信（SPAにフォールバックしない）
+  // 本番公開前に public/dev-login.html を削除すること
+  const STATIC_HTML_FILES = ['/dev-login.html']
+  if (STATIC_HTML_FILES.includes(url.pathname)) {
+    const staticResponse = await c.env.ASSETS.fetch(new Request(c.req.url, {
+      headers: c.req.raw.headers,
+    }))
+    if (staticResponse.status === 200) {
+      return staticResponse
+    }
+  }
+
+  // Cloudflare Pages の ASSETS バインディングから index.html を取得
   url.pathname = '/'
   const response = await c.env.ASSETS.fetch(new Request(url.toString(), {
     headers: c.req.raw.headers,

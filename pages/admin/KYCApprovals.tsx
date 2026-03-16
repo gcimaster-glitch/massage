@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Clock, User, Mail, Phone, Calendar, FileText, Loader2 } from 'lucide-react';
 
 interface KYCApplication {
-  id: string;
+  doc_id: string;      // kyc_documents.id
+  user_id: string;     // users.id（PATCH時に使用）
+  id: string;          // 互換性のため（doc_idのエイリアス）
   email: string;
   name: string;
   phone: string | null;
-  kyc_status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  id_type: string;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  user_kyc_status: 'PENDING' | 'VERIFIED' | 'REJECTED';
   created_at: string;
 }
 
@@ -28,10 +32,12 @@ const KYCApprovals: React.FC = () => {
   const fetchApplications = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/kyc-applications');
+      const res = await fetch('/api/kyc/admin');
       if (res.ok) {
-        const data = await res.json();
-        setApplications(data.applications || []);
+        const data = await res.json() as { applications?: KYCApplication[] };
+        // バックエンドはdoc_idを返すため、idフィールドに統一
+        const apps = (data.applications || []).map((a) => ({ ...a, id: a.doc_id }));
+        setApplications(apps);
       }
     } catch (error) {
       console.error('Failed to fetch KYC applications:', error);
@@ -50,12 +56,14 @@ const KYCApprovals: React.FC = () => {
 
     try {
       setProcessing(true);
-      const res = await fetch(`/api/admin/kyc/${selectedApplication.id}`, {
+      // バックエンドはuser_idでPATCHを受け付ける
+      const res = await fetch(`/api/kyc/admin/${selectedApplication.user_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: actionType === 'approve' ? 'VERIFIED' : 'REJECTED',
           reason: reason || undefined,
+          doc_id: selectedApplication.doc_id,
         }),
       });
 

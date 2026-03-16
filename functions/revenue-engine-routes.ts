@@ -133,20 +133,24 @@ export async function processPaymentSplit(
       }>();
     }
 
-    // フォールバック: ハードコードされたデフォルト
+    // フォールバック: 事業資料定義の正式分配率
+    // セラピスト40% / セラピストオフィス25% / 拠点ホスト20% / HOGUSY本部10% / 販促5%
     const rates = rule || {
       id: 'fallback',
-      therapist_rate: 70.0,
-      host_rate: 0.0,
-      office_rate: 0.0,
-      platform_rate: 30.0,
+      therapist_rate: 40.0,
+      host_rate: 20.0,
+      office_rate: 25.0,
+      platform_rate: 10.0,
+      marketing_rate: 5.0,
     };
 
     // 金額計算（端数は platform に加算）
     const therapistAmount = Math.floor(grossAmount * rates.therapist_rate / 100);
     const hostAmount = Math.floor(grossAmount * rates.host_rate / 100);
     const officeAmount = Math.floor(grossAmount * rates.office_rate / 100);
-    const platformAmount = grossAmount - therapistAmount - hostAmount - officeAmount;
+    const marketingRate = (rates as { marketing_rate?: number }).marketing_rate || 5.0;
+    const marketingAmount = Math.floor(grossAmount * marketingRate / 100);
+    const platformAmount = grossAmount - therapistAmount - hostAmount - officeAmount - marketingAmount;
 
     // トランザクションIDを生成
     const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

@@ -12,7 +12,7 @@ const officesApp = new Hono<{ Bindings: Bindings }>()
 
 /**
  * GET /api/offices
- * セラピストオフィス一覧を取得
+ * セラピスト事務所一覧を取得
  */
 officesApp.get('/', async (c) => {
   try {

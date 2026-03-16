@@ -198,17 +198,24 @@ const GoogleMap: React.FC<GoogleMapProps> = ({
           map.panTo(pos);
           map.setZoom(15);
 
+          // 現在地マーカー（人型アイコン - SVGデータウリ使用）
+          const svgPerson = [
+            '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">',
+            '<ellipse cx="18" cy="42" rx="8" ry="2.5" fill="rgba(0,0,0,0.2)"/>',
+            '<path d="M18 2 C10 2 4 8 4 16 C4 26 18 40 18 40 C18 40 32 26 32 16 C32 8 26 2 18 2Z" fill="#1565C0" stroke="white" stroke-width="2"/>',
+            '<circle cx="18" cy="13" r="5" fill="white"/>',
+            '<path d="M11 22 Q11 18 18 18 Q25 18 25 22 L24 27 L18 25 L12 27 Z" fill="white"/>',
+            '</svg>',
+          ].join('');
+          const svgUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgPerson);
           new window.google.maps.Marker({
             map,
             position: pos,
             title: '現在地',
             icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 10,
-              fillColor: '#14b8a6',
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2,
+              url: svgUrl,
+              scaledSize: new window.google.maps.Size(36, 44),
+              anchor: new window.google.maps.Point(18, 40),
             },
           });
 

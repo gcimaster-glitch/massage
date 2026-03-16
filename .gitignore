@@ -44,3 +44,11 @@ logs/
 .DS_Store
 Thumbs.db
 core
+
+# E2E test artifacts
+test-results/
+tests/e2e-report/
+
+# E2E test artifacts
+test-results/
+tests/e2e-report/
