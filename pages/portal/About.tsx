@@ -87,7 +87,7 @@ const AboutPage: React.FC = () => {
             <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
               <Building2 size={40} />
             </div>
-            <h3 className="text-3xl font-black text-gray-900">3. 施設ホスト</h3>
+            <h3 className="text-3xl font-black text-gray-900">3. 拠点ホスト</h3>
             <p className="text-gray-600 text-base leading-relaxed font-medium">
               遊休スペースに、高単価な収益源を即座に構築。<br />
               「家具」扱いのブース設置により、<br />

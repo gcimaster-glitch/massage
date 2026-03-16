@@ -8,7 +8,7 @@ interface TransactionSplit {
   id: string
   booking_id: string | null
   recipient_user_id: string
-  recipient_role: 'THERAPIST' | 'OFFICE' | 'HOST' | 'PLATFORM' | 'PROMOTION'
+  recipient_role: 'THERAPIST' | 'THERAPIST_OFFICE' | 'HOST' | 'PLATFORM' | 'PROMOTION'
   gross_amount: number
   rate: number
   net_amount: number

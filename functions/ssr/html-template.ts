@@ -124,7 +124,7 @@ export function footer() {
         <ul class="space-y-3 text-sm font-bold text-gray-300">
           <li><a href="/recruit" class="hover:text-teal-400 transition-colors">パートナー募集</a></li>
           <li><a href="/recruit#office" class="hover:text-teal-400 transition-colors">セラピストオフィス</a></li>
-          <li><a href="/recruit#host" class="hover:text-teal-400 transition-colors">施設ホスト</a></li>
+          <li><a href="/recruit#host" class="hover:text-teal-400 transition-colors">拠点ホスト</a></li>
         </ul>
       </div>
       <div>

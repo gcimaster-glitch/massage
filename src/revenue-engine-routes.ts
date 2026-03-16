@@ -133,20 +133,24 @@ export async function processPaymentSplit(
       }>();
     }
 
-    // フォールバック: ハードコードされたデフォルト
+    // フォールバック: 事業資料定義の正式分配率
+    // セラピスト40% / セラピストオフィス25% / 拠点ホスト20% / HOGUSY本部10% / 販促5%
     const rates = rule || {
       id: 'fallback',
-      therapist_rate: 70.0,
-      host_rate: 0.0,
-      office_rate: 0.0,
-      platform_rate: 30.0,
+      therapist_rate: 40.0,
+      host_rate: 20.0,
+      office_rate: 25.0,
+      platform_rate: 10.0,
+      marketing_rate: 5.0,
     };
 
     // 金額計算（端数は platform に加算）
     const therapistAmount = Math.floor(grossAmount * rates.therapist_rate / 100);
     const hostAmount = Math.floor(grossAmount * rates.host_rate / 100);
     const officeAmount = Math.floor(grossAmount * rates.office_rate / 100);
-    const platformAmount = grossAmount - therapistAmount - hostAmount - officeAmount;
+    const marketingRate = (rates as { marketing_rate?: number }).marketing_rate || 5.0;
+    const marketingAmount = Math.floor(grossAmount * marketingRate / 100);
+    const platformAmount = grossAmount - therapistAmount - hostAmount - officeAmount - marketingAmount;
 
     // トランザクションIDを生成
     const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -207,7 +211,7 @@ export async function processPaymentSplit(
       if (office?.user_id) {
         splits.push({
           userId: office.user_id,
-          role: 'OFFICE',
+          role: 'THERAPIST_OFFICE',
           amount: officeAmount,
           rate: rates.office_rate,
         });
@@ -961,7 +965,7 @@ app.get('/summary', requireAdmin, async (c) => {
         SUM(t.gross_amount) as total_gross,
         SUM(CASE WHEN ts.role = 'THERAPIST' THEN ts.amount ELSE 0 END) as therapist_total,
         SUM(CASE WHEN ts.role = 'HOST' THEN ts.amount ELSE 0 END) as host_total,
-        SUM(CASE WHEN ts.role = 'OFFICE' THEN ts.amount ELSE 0 END) as office_total,
+        SUM(CASE WHEN ts.role = 'THERAPIST_OFFICE' THEN ts.amount ELSE 0 END) as office_total,
         SUM(CASE WHEN ts.role = 'PLATFORM' THEN ts.amount ELSE 0 END) as platform_total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON t.id = ts.transaction_id

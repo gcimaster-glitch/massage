@@ -37,7 +37,7 @@ const DevLogin: React.FC<DevLoginProps> = ({ onLogin }) => {
     },
     {
       role: Role.HOST,
-      name: '佐藤 健（施設ホスト）',
+      name: '佐藤 健（拠点ホスト）',
       email: 'host@demo.com',
       icon: <Building size={32} />,
       color: 'purple',

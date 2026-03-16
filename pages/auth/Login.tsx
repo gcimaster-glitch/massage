@@ -188,7 +188,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
               <LoginButton role={Role.USER} icon={<User size={20}/>} label="一般ユーザー" onClick={handleQuickLogin} color="border-gray-100 hover:border-teal-500" />
               <LoginButton role={Role.THERAPIST} icon={<Award size={20}/>} label="セラピスト" onClick={handleQuickLogin} color="border-gray-100 hover:border-indigo-500" />
-              <LoginButton role={Role.HOST} icon={<Building2 size={20}/>} label="施設ホスト" onClick={handleQuickLogin} color="border-gray-100 hover:border-orange-500" />
+              <LoginButton role={Role.HOST} icon={<Building2 size={20}/>} label="拠点ホスト" onClick={handleQuickLogin} color="border-gray-100 hover:border-orange-500" />
               <LoginButton role={Role.THERAPIST_OFFICE} icon={<Briefcase size={20}/>} label="提携事務所" onClick={handleQuickLogin} color="border-gray-100 hover:border-blue-600" />
               <LoginButton role={Role.AFFILIATE} icon={<Heart size={20}/>} label="アフィリエイト" onClick={handleQuickLogin} color="border-gray-100 hover:border-purple-600" />
             </div>

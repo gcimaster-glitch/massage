@@ -207,7 +207,7 @@ export async function processPaymentSplit(
       if (office?.user_id) {
         splits.push({
           userId: office.user_id,
-          role: 'OFFICE',
+          role: 'THERAPIST_OFFICE',
           amount: officeAmount,
           rate: rates.office_rate,
         });
@@ -961,7 +961,7 @@ app.get('/summary', requireAdmin, async (c) => {
         SUM(t.gross_amount) as total_gross,
         SUM(CASE WHEN ts.role = 'THERAPIST' THEN ts.amount ELSE 0 END) as therapist_total,
         SUM(CASE WHEN ts.role = 'HOST' THEN ts.amount ELSE 0 END) as host_total,
-        SUM(CASE WHEN ts.role = 'OFFICE' THEN ts.amount ELSE 0 END) as office_total,
+        SUM(CASE WHEN ts.role = 'THERAPIST_OFFICE' THEN ts.amount ELSE 0 END) as office_total,
         SUM(CASE WHEN ts.role = 'PLATFORM' THEN ts.amount ELSE 0 END) as platform_total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON t.id = ts.transaction_id

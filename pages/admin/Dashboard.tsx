@@ -190,7 +190,7 @@ const AdminDashboard: React.FC = () => {
     },
     {
       title: '拠点ホスト管理',
-      description: '施設ホストの管理',
+      description: '拠点ホストの管理',
       icon: <MapPin size={24} />,
       path: '/admin/hosts',
       color: 'from-orange-500 to-orange-600'

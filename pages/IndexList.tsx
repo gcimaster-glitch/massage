@@ -84,7 +84,7 @@ const IndexList: React.FC = () => {
     },
     {
       id: 'host',
-      name: '施設ホストポータル',
+      name: '拠点ホストポータル',
       path: '/h',
       loginPath: '/auth/login/host',
       icon: <Home size={32} />,

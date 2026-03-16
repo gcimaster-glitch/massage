@@ -24,7 +24,7 @@ const SignupHost: React.FC = () => {
           <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
              <Building2 size={32} />
           </div>
-          <h1 className="text-4xl font-black text-gray-900 mb-3 tracking-tighter">施設ホスト・パートナー登録</h1>
+          <h1 className="text-4xl font-black text-gray-900 mb-3 tracking-tighter">拠点ホスト・パートナー登録</h1>
           <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.3em]">Facility Owner Onboarding</p>
         </div>
 

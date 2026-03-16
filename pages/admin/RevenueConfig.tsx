@@ -134,7 +134,7 @@ const AdminRevenueConfig: React.FC = () => {
             </div>
             <RateInput label="セラピスト標準配分" value={config.therapist_percentage}
               onChange={v => setConfig(c => ({ ...c, therapist_percentage: v }))} />
-            <RateInput label="施設ホスト" value={config.host_percentage}
+            <RateInput label="拠点ホスト" value={config.host_percentage}
               onChange={v => setConfig(c => ({ ...c, host_percentage: v }))} />
             <RateInput label="アフィリエイター" value={config.affiliate_percentage}
               onChange={v => setConfig(c => ({ ...c, affiliate_percentage: v }))} />
@@ -209,7 +209,7 @@ const AdminRevenueConfig: React.FC = () => {
           </div>
           <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
             <SimCard label="セラピスト" val={`¥${(10000 * config.therapist_percentage/100).toLocaleString()}`} />
-            <SimCard label="施設ホスト" val={`¥${(10000 * config.host_percentage/100).toLocaleString()}`} />
+            <SimCard label="拠点ホスト" val={`¥${(10000 * config.host_percentage/100).toLocaleString()}`} />
             <SimCard label="アフィリエイト" val={`¥${(10000 * config.affiliate_percentage/100).toLocaleString()}`} />
             <SimCard label="本部収益" val={`¥${(10000 * computedPlatform/100).toLocaleString()}`} color="text-teal-400" />
           </div>

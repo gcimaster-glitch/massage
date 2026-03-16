@@ -25,12 +25,55 @@ export type Bindings = {
 // ユーザーロール
 // ============================================
 export type UserRole =
-  | 'USER'
-  | 'THERAPIST'
-  | 'OFFICE'
-  | 'HOST'
-  | 'ADMIN'
-  | 'AFFILIATE';
+  | 'USER'             // 一般顧客
+  | 'THERAPIST'        // セラピスト（個人）
+  | 'THERAPIST_OFFICE' // セラピストオフィス（法人）※旧: OFFICE
+  | 'HOST'             // 拠点ホスト（施術場所提供者）
+  | 'ADMIN'            // HOGUSY本部管理者
+  | 'AFFILIATE';       // アフィリエイター
+
+// ============================================
+// 施設タイプ（拠点種別）
+// ============================================
+export type SiteType =
+  | 'CARE_CUBE'  // CARE CUBE（高強度段ボール製ブース）
+  | 'HOTEL'      // ホテル
+  | 'HOME'       // 自宅
+  | 'OFFICE'     // オフィス
+  | 'OTHER';     // その他
+
+// ============================================
+// 料金プラン
+// ============================================
+export type Plan = {
+  id: string;
+  target_role: UserRole;
+  plan_name: string;
+  initial_fee: number;
+  monthly_fee: number;
+  description?: string | null;
+  is_active?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+// ============================================
+// 収益分配ルール
+// ============================================
+export type RevenueShareRule = {
+  id: string;
+  rule_name: string;
+  priority: number;
+  therapist_rate: number;    // セラピスト配分率（例: 0.40）
+  office_rate: number;       // セラピストオフィス配分率（例: 0.25）
+  host_rate: number;         // 拠点ホスト配分率（例: 0.20）
+  platform_fee_rate: number; // HOGUSY本部手数料率（例: 0.10）
+  marketing_rate: number;    // 販促コスト率（例: 0.05）
+  conditions: string;        // JSON形式の適用条件
+  is_active?: number;
+  created_at?: string;
+  updated_at?: string;
+};
 
 // ============================================
 // JWTペイロード

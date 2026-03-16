@@ -186,7 +186,7 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
                  '完了しました'}
               </h2>
               <p className="text-gray-400 font-bold leading-relaxed text-lg italic">
-                 {processStep === 1 ? 'Stripe決済ゲートウェイと通信中...' : 'セラピストおよび施設ホストへ確定通知を送信しています。'}
+                 {processStep === 1 ? 'Stripe決済ゲートウェイと通信中...' : 'セラピストおよび拠点ホストへ確定通知を送信しています。'}
               </p>
            </div>
         </div>

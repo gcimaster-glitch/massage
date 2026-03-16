@@ -67,7 +67,7 @@ const RecruitPage: React.FC = () => {
                <Briefcase size={20} /> セラピストオフィス募集
              </button>
              <button onClick={() => scrollToSection('host')} className="bg-white/10 text-white border border-white/20 px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all backdrop-blur-sm flex items-center gap-3">
-               <Building2 size={20} /> 施設ホスト募集
+               <Building2 size={20} /> 拠点ホスト募集
              </button>
           </div>
         </div>

@@ -27,7 +27,7 @@ export type Bindings = {
 export type UserRole =
   | 'USER'
   | 'THERAPIST'
-  | 'OFFICE'
+  | 'THERAPIST_OFFICE' // セラピストオフィス（旧: OFFICE）
   | 'HOST'
   | 'ADMIN'
   | 'AFFILIATE';

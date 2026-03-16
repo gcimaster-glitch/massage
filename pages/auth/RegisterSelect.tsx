@@ -58,7 +58,7 @@ const RegisterSelect: React.FC = () => {
                     color="hover:border-indigo-500 bg-indigo-50/20"
                  />
                  <SelectCard 
-                    title="施設ホスト登録" 
+                    title="拠点ホスト登録" 
                     desc="CARE CUBEを設置し、場所を貸し出したい方" 
                     icon={<Building2 className="text-orange-600" />} 
                     onClick={() => navigate('/auth/signup/host')}

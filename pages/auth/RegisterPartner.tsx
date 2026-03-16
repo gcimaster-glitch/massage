@@ -76,7 +76,7 @@ const RegisterPartner: React.FC = () => {
                 <button onClick={() => setSelectedRole(Role.HOST)} className="p-8 bg-white border-2 border-gray-100 rounded-[40px] flex items-center gap-8 text-left hover:border-orange-500 hover:shadow-xl transition-all group">
                    <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner"><Building2 size={32}/></div>
                    <div className="flex-1">
-                     <p className="font-black text-xl text-gray-900">施設ホスト (Facility Host)</p>
+                     <p className="font-black text-xl text-gray-900">拠点ホスト (Facility Host)</p>
                      <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest mt-1">Hotel or Space Owner</p>
                    </div>
                    <ChevronRight className="text-gray-200 group-hover:text-orange-500" />

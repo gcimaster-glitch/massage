@@ -22,7 +22,7 @@ const app = new Hono()
 app.get('/recruit', (c) => {
   const html = renderPage({
     title: 'パートナー募集 - HOGUSY',
-    description: 'HOGUSYのパートナープログラム。セラピストオフィス、施設ホスト、エリアパートナーを募集中。業界最高水準の還元率と、AIによる安全監視で安心の運営を。',
+    description: 'HOGUSYのパートナープログラム。セラピストオフィス、拠点ホスト、エリアパートナーを募集中。業界最高水準の還元率と、AIによる安全監視で安心の運営を。',
     url: 'https://hogusy.com/recruit',
     body: `
     <!-- Hero -->
@@ -45,7 +45,7 @@ app.get('/recruit', (c) => {
             セラピストオフィス募集
           </a>
           <a href="#host" class="bg-white/10 text-white border border-white/20 px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all backdrop-blur-sm inline-flex items-center gap-3">
-            施設ホスト募集
+            拠点ホスト募集
           </a>
         </div>
       </div>

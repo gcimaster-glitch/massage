@@ -121,7 +121,7 @@ const SessionSummary: React.FC = () => {
                     )}
                  </div>
                  <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-                    ※ リネンの回収、オイルの拭き取り、備品の補充確認を行ってください。写真は施設ホストおよび運営に共有されます。
+                    ※ リネンの回収、オイルの拭き取り、備品の補充確認を行ってください。写真は拠点ホストおよび運営に共有されます。
                  </p>
               </section>
            )}
