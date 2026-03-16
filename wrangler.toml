@@ -3,6 +3,6 @@ compatibility_date = "2024-01-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "hogusy-db"
-database_id = "PLACEHOLDER_DATABASE_ID"
+database_name = "hogusy-db-production"
+database_id = "97aee8a1-83d8-45e3-8a30-95ca6875e8ed"
 migrations_dir = "migrations"

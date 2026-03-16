@@ -141,6 +141,7 @@ import AdminMarketingDashboard from './pages/admin/MarketingDashboard';
 import MockDataManager from './pages/admin/MockDataManager';
 import ImageUpload from './pages/admin/ImageUpload';
 import AdminFinanceDashboard from './pages/admin/FinanceDashboard';
+import AdminPlanManagement from './pages/admin/PlanManagement';
 
 // --- Shared ---
 import Chat from './pages/shared/Chat';
@@ -506,6 +507,7 @@ const App: React.FC = () => {
         <Route path="/admin/incident/:id" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminIncidentDetail /></RequireAuth>} />
         <Route path="/admin/payouts" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminPayouts /></RequireAuth>} />
         <Route path="/admin/revenue-config" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminRevenueConfig /></RequireAuth>} />
+        <Route path="/admin/plans" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminPlanManagement /></RequireAuth>} />
         <Route path="/admin/stripe" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminStripeDashboard /></RequireAuth>} />
         <Route path="/admin/affiliates" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminAffiliateManager /></RequireAuth>} />
         <Route path="/admin/emails" element={<RequireAuth allowedRoles={[Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><AdminEmailSettings /></RequireAuth>} />

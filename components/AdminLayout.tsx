@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Users, UserCheck, MapPin, Heart, Building2, Calendar, 
   CreditCard, ClipboardCheck, Shield, MessageSquare, 
-  FileText, LayoutDashboard, LogOut, ChevronRight
+  FileText, LayoutDashboard, LogOut, ChevronRight,
+  PieChart, Zap, TrendingUp, Tag
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -95,6 +96,30 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, onLogout }) => {
       label: '配信テンプレート',
       icon: <MessageSquare size={20} />,
       path: '/admin/emails'
+    },
+    {
+      id: 'plans',
+      label: '料金プラン管理',
+      icon: <Tag size={20} />,
+      path: '/admin/plans'
+    },
+    {
+      id: 'revenue-config',
+      label: '収益分配設定',
+      icon: <PieChart size={20} />,
+      path: '/admin/revenue-config'
+    },
+    {
+      id: 'stripe',
+      label: 'Stripe管理',
+      icon: <Zap size={20} />,
+      path: '/admin/stripe'
+    },
+    {
+      id: 'finance',
+      label: '財務ダッシュボード',
+      icon: <TrendingUp size={20} />,
+      path: '/admin/finance'
     },
     {
       id: 'logs',

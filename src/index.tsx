@@ -26,6 +26,7 @@ import paymentsApp from './payments-routes'
 import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
 import hostApp from './host-routes'
+import stripeWebhookApp from './stripe-webhook-routes'
 
 // ============================================
 // Type Definitions
@@ -203,9 +204,14 @@ app.route('/api/user', paymentsApp)
 app.route('/api/revenue', revenueEngineApp)
 
 // ============================================
-// Host Routes (施設ホスト向けAPI)
+// Host Routes (拠点ホスト向けAPI)
 // ============================================
 app.route('/api/host', hostApp)
+
+// ============================================
+// Stripe Webhook Routes
+// ============================================
+app.route('/api/webhook', stripeWebhookApp)
 
 // ============================================
 // Email Routes
