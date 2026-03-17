@@ -88,6 +88,21 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
+  // タイムロック管理
+  const [timelockId, setTimelockId] = useState<string | null>(null);
+  const [timelockExpiry, setTimelockExpiry] = useState<Date | null>(null);
+  const [timelockCountdown, setTimelockCountdown] = useState<number>(0);
+  const [timelockLoading, setTimelockLoading] = useState(false);
+  // セッションID（ブラウザセッション単位でタイムロックを管理）
+  const sessionId = React.useMemo(() => {
+    let sid = sessionStorage.getItem('booking_session_id');
+    if (!sid) {
+      sid = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      sessionStorage.setItem('booking_session_id', sid);
+    }
+    return sid;
+  }, []);
+  
   // Menu data
   const [courses, setCourses] = useState<Course[]>([]);
   const [availableOptions, setAvailableOptions] = useState<Option[]>([]);
@@ -109,6 +124,31 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     userAddress: '',
     postalCode: ''
   });
+
+  // =============================================
+  // Timelock Countdown Timer
+  // =============================================
+  
+  useEffect(() => {
+    if (!timelockExpiry) {
+      setTimelockCountdown(0);
+      return;
+    }
+    
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.floor((timelockExpiry.getTime() - Date.now()) / 1000));
+      setTimelockCountdown(remaining);
+      if (remaining === 0) {
+        // タイムロック期限切れ
+        setTimelockId(null);
+        setTimelockExpiry(null);
+      }
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [timelockExpiry]);
 
   // =============================================
   // Fetch User Info if Logged In
@@ -427,7 +467,7 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     setBookingData({ ...bookingData, time: e.target.value });
   };
 
-  const handleNextFromDateTime = () => {
+  const handleNextFromDateTime = async () => {
     if (!bookingData.date || !bookingData.time) {
       setErrorMessage('📅 日時を選択してください');
       return;
@@ -447,6 +487,45 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     if (hour < 10 || hour >= 21) {
       setErrorMessage('🕐 営業時間は10:00〜21:00です');
       return;
+    }
+    
+    // タイムロック取得（10分間の仮予約）
+    setTimelockLoading(true);
+    setErrorMessage('');
+    try {
+      const scheduledAt = `${bookingData.date}T${bookingData.time}:00`;
+      const timelockRes = await fetch('/api/bookings/timelock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          therapist_id: therapist.id,
+          site_id: site?.id || null,
+          scheduled_at: scheduledAt,
+          duration: bookingData.totalDuration || 60,
+          session_id: sessionId
+        })
+      });
+      
+      if (!timelockRes.ok) {
+        const errData = await timelockRes.json().catch(() => ({}));
+        if (errData.code === 'TIMELOCK_CONFLICT' || errData.code === 'BOOKING_CONFLICT') {
+          setErrorMessage('⚠️ この時間帯はすでに予約されています。別の時間を選択してください。');
+          setTimelockLoading(false);
+          return;
+        }
+        // タイムロック失敗でも続行（ソフトエラー）
+        console.warn('⚠️ Timelock failed, continuing without lock:', errData);
+      } else {
+        const timelockData = await timelockRes.json();
+        setTimelockId(timelockData.timelock_id);
+        setTimelockExpiry(new Date(timelockData.expires_at));
+        console.log('✅ Timelock acquired:', timelockData.timelock_id, 'expires:', timelockData.expires_at);
+      }
+    } catch (e) {
+      // タイムロック失敗でも続行（ネットワークエラー等）
+      console.warn('⚠️ Timelock request failed, continuing without lock:', e);
+    } finally {
+      setTimelockLoading(false);
     }
     
     goToStep(3);
@@ -515,78 +594,17 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   // =============================================
   
   const handleConfirmBooking = async () => {
-    console.log('🚀 handleConfirmBooking: 開始');
-    console.log('📍 Current bookingData:', bookingData);
+    console.log('🚀 handleConfirmBooking: 開始（後ログイン方式）');
     
     setLoading(true);
     setErrorMessage('');
     
     try {
-      // Check if user is logged in
       const token = localStorage.getItem('auth_token');
       const isLoggedIn = !!token;
       
-      console.log('🔐 認証チェック:', {
-        hasToken: !!token,
-        isLoggedIn,
-        tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
-      });
-      
-      // 未ログインの場合：予約内容を保存して会員登録へ誘導
-      if (!isLoggedIn) {
-        console.log('❌ 未ログイン: 会員登録が必要です');
-        
-        // 予約内容をlocalStorageに保存
-        const pendingBooking = {
-          therapist,
-          site,
-          bookingType,
-          bookingData: {
-            ...bookingData,
-            // 保存時に必要な情報を追加
-            therapist_id: therapist.id,
-            therapist_name: therapist.name,
-            site_id: site?.id,
-            site_name: site?.name
-          },
-          timestamp: Date.now()
-        };
-        
-        localStorage.setItem('pendingBooking', JSON.stringify(pendingBooking));
-        console.log('💾 予約内容を保存しました:', pendingBooking);
-        
-        // 会員登録ページへリダイレクト
-        alert('予約を完了するには会員登録が必要です。\n\n予約内容は保存されています。\n会員登録後、自動的に予約を続行します。');
-        window.location.href = '/signup?redirect=/app/booking/from-therapist/' + therapist.id;
-        return;
-      }
-      
-      // Create booking
-      const bookingPayload: any = {
-        therapist_id: therapist.id,
-        type: bookingType,
-        scheduled_at: `${bookingData.date}T${bookingData.time}:00`,
-        duration: bookingData.totalDuration,
-        price: bookingData.totalPrice,
-        service_name: bookingData.course?.name || '施術',
-      };
-      
-      console.log('📦 基本ペイロード作成:', bookingPayload);
-      
-      // Add site_id for ONSITE bookings
-      if (bookingType === 'ONSITE' && site?.id) {
-        bookingPayload.site_id = site.id;
-        console.log('🏢 site_id追加:', site.id);
-      }
-      
-      // Add address for MOBILE bookings
-      if (bookingType === 'MOBILE') {
-        bookingPayload.customer_address = bookingData.userAddress;
-        bookingPayload.postal_code = bookingData.postalCode;
-      }
-      
-      // Add items (consistent format for both logged-in and guest)
-      bookingPayload.items = [
+      // 共通アイテムリスト
+      const items = [
         {
           item_type: 'COURSE',
           item_id: bookingData.course?.id,
@@ -601,91 +619,90 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
         }))
       ];
       
-      console.log('📤 最終ペイロード:', JSON.stringify(bookingPayload, null, 2));
-      console.log('🔐 ログイン状態: ログイン済み（会員予約）');
-      
-      // Use member booking endpoint
-      const endpoint = '/api/bookings';
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      };
-      
-      console.log('🌐 リクエスト送信:', {
-        endpoint,
-        method: 'POST',
-        hasAuth: isLoggedIn,
-        payloadSize: JSON.stringify(bookingPayload).length
-      });
-      
-      const bookingResponse = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(bookingPayload)
-      });
-      
-      console.log('📡 レスポンス受信:', {
-        status: bookingResponse.status,
-        statusText: bookingResponse.statusText,
-        ok: bookingResponse.ok
-      });
-      
-      if (!bookingResponse.ok) {
-        let errorData;
-        try {
-          errorData = await bookingResponse.json();
-        } catch (e) {
-          const errorText = await bookingResponse.text();
-          console.error('❌ APIエラー（JSONパース失敗）:', {
-            status: bookingResponse.status,
-            statusText: bookingResponse.statusText,
-            rawResponse: errorText
-          });
-          throw new Error(`予約の作成に失敗しました (${bookingResponse.status}): ${errorText}`);
+      if (isLoggedIn) {
+        // ===== ログイン済み: 会員予約API =====
+        console.log('🔐 ログイン済み予約開始');
+        const bookingPayload: any = {
+          therapist_id: therapist.id,
+          type: bookingType,
+          scheduled_at: `${bookingData.date}T${bookingData.time}:00`,
+          duration: bookingData.totalDuration,
+          price: bookingData.totalPrice,
+          service_name: bookingData.course?.name || '施術',
+          items,
+        };
+        if (bookingType === 'ONSITE' && site?.id) bookingPayload.site_id = site.id;
+        if (bookingType === 'MOBILE') {
+          bookingPayload.customer_address = bookingData.userAddress;
+          bookingPayload.postal_code = bookingData.postalCode;
         }
         
-        console.error('❌ APIエラー:', {
-          status: bookingResponse.status,
-          statusText: bookingResponse.statusText,
-          error: errorData,
-          details: errorData.details || 'No details',
-          endpoint: endpoint,
-          isLoggedIn: isLoggedIn
+        const res = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(bookingPayload)
         });
         
-        // Show more specific error message
-        const errorMessage = errorData.details 
-          ? `${errorData.error || '予約の作成に失敗しました'}: ${errorData.details}`
-          : errorData.error || `予約の作成に失敗しました (${bookingResponse.status})`;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.details ? `${errData.error}: ${errData.details}` : errData.error || `予約の作成に失敗しました (${res.status})`);
+        }
         
-        throw new Error(errorMessage);
-      }
-      
-      console.log('✅ レスポンスOK - JSONパース中...');
-      const bookingResult = await bookingResponse.json();
-      console.log('✅ 予約作成成功:', bookingResult);
-      
-      // Redirect to payment
-      const bookingId = bookingResult.bookingId || bookingResult.booking?.id;
-      console.log('🎫 予約ID:', bookingId);
-      
-      if (bookingId) {
-        console.log('🔀 リダイレクト:', `/app/booking/payment/${bookingId}`);
+        const result = await res.json();
+        const bookingId = result.bookingId || result.booking?.id;
+        if (!bookingId) throw new Error('予約IDが取得できませんでした');
         navigate(`/app/booking/payment/${bookingId}`);
+        
       } else {
-        console.error('❌ 予約IDが見つかりません:', bookingResult);
-        throw new Error('予約IDが取得できませんでした');
+        // ===== 未ログイン: ゲスト予約API（後ログイン方式） =====
+        console.log('👤 ゲスト予約開始');
+        const guestPayload: any = {
+          therapist_id: therapist.id,
+          type: bookingType,
+          scheduled_at: `${bookingData.date}T${bookingData.time}:00`,
+          duration: bookingData.totalDuration,
+          price: bookingData.totalPrice,
+          service_name: bookingData.course?.name || '施術',
+          guest_name: bookingData.customerName,
+          guest_email: bookingData.customerEmail,
+          guest_phone: bookingData.customerPhone || null,
+          timelock_id: timelockId || null,
+          items,
+        };
+        if (bookingType === 'ONSITE' && site?.id) guestPayload.site_id = site.id;
+        if (bookingType === 'MOBILE') {
+          guestPayload.customer_address = bookingData.userAddress;
+          guestPayload.postal_code = bookingData.postalCode;
+        }
+        
+        const res = await fetch('/api/bookings/guest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(guestPayload)
+        });
+        
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          if (errData.code === 'TIMELOCK_EXPIRED') {
+            setTimelockId(null);
+            setTimelockExpiry(null);
+            throw new Error('仮予約の有効期限が切れました。日時選択からやり直してください。');
+          }
+          throw new Error(errData.details ? `${errData.error}: ${errData.details}` : errData.error || `ゲスト予約の作成に失敗しました (${res.status})`);
+        }
+        
+        const result = await res.json();
+        const bookingId = result.booking_id;
+        if (!bookingId) throw new Error('予約IDが取得できませんでした');
+        
+        // ゲスト予約完了ページへ遷移（ログイン促進UI付き）
+        navigate(`/app/booking/guest-complete/${bookingId}?email=${encodeURIComponent(bookingData.customerEmail)}`);
       }
       
     } catch (error: any) {
-      console.error('❌❌❌ 予約作成エラー（catch）:', error);
-      console.error('エラースタック:', error.stack);
-      console.error('エラータイプ:', typeof error);
-      console.error('エラーメッセージ:', error.message);
-      
+      console.error('❌ 予約作成エラー:', error);
       setErrorMessage(error.message || '予約の作成に失敗しました。もう一度お試しください。');
     } finally {
-      console.log('🏁 handleConfirmBooking: 終了（finally）');
       setLoading(false);
     }
   };
@@ -1082,10 +1099,17 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
           </button>
           <button
             onClick={handleNextFromDateTime}
-            disabled={!bookingData.date || !bookingData.time}
+            disabled={!bookingData.date || !bookingData.time || timelockLoading}
             className="flex-1 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold py-4 px-6 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            次へ（お客様情報） →
+            {timelockLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                時間を確保中...
+              </span>
+            ) : (
+              '次へ（お客様情報） →'
+            )}
           </button>
         </div>
       </div>
@@ -1248,8 +1272,68 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   };
 
   const renderStep4Confirmation = () => {
+    const token = localStorage.getItem('auth_token');
+    const isLoggedIn = !!token;
+    const timelockMinutes = Math.floor(timelockCountdown / 60);
+    const timelockSeconds = timelockCountdown % 60;
+    const isTimelockExpired = timelockId && timelockCountdown === 0;
+    
     return (
       <div className="space-y-6">
+        {/* タイムロックカウントダウン（日時選択後に表示） */}
+        {timelockId && timelockCountdown > 0 && (
+          <div className={`p-4 rounded-xl border-2 flex items-center gap-3 ${
+            timelockCountdown <= 60 
+              ? 'bg-red-50 border-red-400 text-red-700' 
+              : 'bg-teal-50 border-teal-400 text-teal-700'
+          }`}>
+            <span className="text-2xl">⏱️</span>
+            <div className="flex-1">
+              <p className="font-bold text-sm">この時間帯を仮予約中</p>
+              <p className="text-xs mt-0.5">
+                残り <strong className="text-lg">{timelockMinutes}:{String(timelockSeconds).padStart(2, '0')}</strong> 以内に予約を確定してください
+              </p>
+            </div>
+          </div>
+        )}
+        {isTimelockExpired && (
+          <div className="bg-orange-50 border-2 border-orange-400 p-4 rounded-xl flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-bold text-orange-700 text-sm">仮予約の有効期限が切れました</p>
+              <p className="text-xs text-orange-600 mt-0.5">日時選択からやり直してください</p>
+            </div>
+          </div>
+        )}
+        {/* ゲスト向けログイン促進バナー（任意） */}
+        {!isLoggedIn && (
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+            <div className="flex items-start gap-3">
+              <span className="text-xl">💡</span>
+              <div className="flex-1">
+                <p className="font-semibold text-blue-800 text-sm">会員登録でさらに便利に</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  会員登録すると予約履歴の確認・キャンセル・ポイント獲得ができます。
+                  このままゲストとして予約することも可能です。
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <a
+                    href={`/signup?redirect=/app/booking/from-therapist/${therapist.id}`}
+                    className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    会員登録する
+                  </a>
+                  <a
+                    href={`/login?redirect=/app/booking/from-therapist/${therapist.id}`}
+                    className="text-xs bg-white text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+                  >
+                    ログイン
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <h3 className="text-xl font-bold text-gray-800 mb-6">予約内容を確認してください</h3>
           

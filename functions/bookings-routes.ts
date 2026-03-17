@@ -35,18 +35,114 @@ const requireAuth = async (c: Parameters<typeof app.get>[1], next: () => Promise
 };
 
 // ============================================
-// ゲスト予約作成（認証不要）
+// タイムロック作成（認証不要・10分間の仮予約）
 // ============================================
-app.post('/guest', async (c) => {
-  // ゲスト予約を無効化：会員登録必須
-  return c.json({ 
-    error: '予約には会員登録が必要です',
-    message: '会員登録後、予約を続行してください。',
-    requireAuth: true
-  }, 401);
+app.post('/timelock', async (c) => {
+  const { DB } = c.env;
+  try {
+    const body = await c.req.json();
+    const { therapist_id, site_id, scheduled_at, duration, session_id } = body;
+    if (!therapist_id || !scheduled_at || !session_id) {
+      return c.json({ error: '必須項目が不足しています' }, 400);
+    }
+    // 既存のアクティブなタイムロックを確認（同セラピスト・同時間帯）
+    const existing = await DB.prepare(
+      `SELECT id FROM booking_timelocks 
+       WHERE therapist_id = ? AND scheduled_at = ? 
+       AND status = 'ACTIVE' AND expires_at > datetime('now')
+       LIMIT 1`
+    ).bind(therapist_id, scheduled_at).first();
+    if (existing) {
+      return c.json({ error: 'この時間帯はすでに仮予約されています', code: 'TIMELOCK_CONFLICT' }, 409);
+    }
+    // 既存の確定予約も確認
+    const existingBooking = await DB.prepare(
+      `SELECT id FROM bookings 
+       WHERE therapist_id = ? AND scheduled_at = ? 
+       AND status NOT IN ('CANCELLED', 'NO_SHOW')
+       LIMIT 1`
+    ).bind(therapist_id, scheduled_at).first();
+    if (existingBooking) {
+      return c.json({ error: 'この時間帯はすでに予約済みです', code: 'BOOKING_CONFLICT' }, 409);
+    }
+    const timelockId = `tl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
+    await DB.prepare(
+      `INSERT INTO booking_timelocks (id, therapist_id, site_id, scheduled_at, duration, expires_at, session_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`
+    ).bind(timelockId, therapist_id, site_id || null, scheduled_at, duration || 60, expiresAt, session_id).run();
+    return c.json({ success: true, timelock_id: timelockId, expires_at: expiresAt });
+  } catch (error: any) {
+    console.error('❌ Timelock error:', error);
+    return c.json({ error: 'タイムロックの作成に失敗しました', details: error.message }, 500);
+  }
 });
 
-// ゲスト予約エンドポイントは無効化済み（会員登録必須）
+// タイムロック解除（認証不要）
+app.delete('/timelock/:timelockId', async (c) => {
+  const { DB } = c.env;
+  const timelockId = c.req.param('timelockId');
+  try {
+    await DB.prepare(
+      `UPDATE booking_timelocks SET status = 'RELEASED' WHERE id = ?`
+    ).bind(timelockId).run();
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json({ error: 'タイムロックの解除に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// ゲスト予約作成（認証不要・後ログイン対応）
+// ============================================
+app.post('/guest', async (c) => {
+  const { DB } = c.env;
+  try {
+    const body = await c.req.json();
+    const {
+      therapist_id, site_id, type, service_name, duration, price,
+      scheduled_at, items, guest_name, guest_email, guest_phone, timelock_id
+    } = body;
+    if (!therapist_id || !type || !scheduled_at || !duration || !price || !guest_name || !guest_email) {
+      return c.json({ error: '必須項目が不足しています（氏名・メールアドレスは必須）' }, 400);
+    }
+    // タイムロックの確認
+    if (timelock_id) {
+      const timelock = await DB.prepare(
+        `SELECT id FROM booking_timelocks WHERE id = ? AND status = 'ACTIVE' AND expires_at > datetime('now')`
+      ).bind(timelock_id).first();
+      if (!timelock) {
+        return c.json({ error: '仮予約の有効期限が切れました。再度時間を選択してください。', code: 'TIMELOCK_EXPIRED' }, 409);
+      }
+    }
+    const therapistResult = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(therapist_id).first<{ name: string }>();
+    const therapistName = therapistResult?.name || 'セラピスト';
+    const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // ゲスト用ユーザーIDとして仮IDを生成（メールアドレスベース）
+    const guestUserId = `guest_${Buffer.from(guest_email).toString('base64').substring(0, 16)}`;
+    await DB.prepare(
+      `INSERT INTO bookings (id, user_id, therapist_id, therapist_name, site_id, type, status, service_name, duration, price, scheduled_at, guest_name, guest_email, guest_phone, timelock_id)
+       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(bookingId, guestUserId, therapist_id, therapistName, site_id || null, type, service_name || '施術', duration, price, scheduled_at, guest_name, guest_email, guest_phone || null, timelock_id || null).run();
+    // booking_itemsを保存
+    if (items && items.length > 0) {
+      for (const item of items) {
+        const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        await DB.prepare(
+          `INSERT INTO booking_items (id, booking_id, item_type, item_id, item_name, price) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(itemId, bookingId, item.item_type, item.item_id || itemId, item.item_name, item.price).run();
+      }
+    }
+    // タイムロックを確定済みに更新
+    if (timelock_id) {
+      await DB.prepare(`UPDATE booking_timelocks SET status = 'CONFIRMED' WHERE id = ?`).bind(timelock_id).run();
+    }
+    return c.json({ success: true, booking_id: bookingId, message: 'ゲスト予約が完了しました。確認メールをお送りします。' });
+  } catch (error: any) {
+    console.error('❌ Guest booking error:', error);
+    return c.json({ error: 'ゲスト予約の作成に失敗しました', details: error.message }, 500);
+  }
+});
 
 
 // ============================================

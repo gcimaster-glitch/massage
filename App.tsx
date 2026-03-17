@@ -62,6 +62,7 @@ import BookingPaymentV2 from './components/booking/BookingPaymentV2';
 import BookingPayment from './pages/user/BookingPayment';
 import BookingNew from './pages/user/BookingNew';
 import BookingCompleteV2 from './components/booking/BookingCompleteV2';
+import GuestBookingComplete from './components/booking/GuestBookingComplete';
 
 // --- Therapist ---
 import TherapistDashboard from './pages/therapist/Dashboard';
@@ -398,6 +399,7 @@ const App: React.FC = () => {
         <Route path="/app/booking/payment/:bookingId" element={<BookingPaymentV2 />} />
         <Route path="/app/booking/payment" element={<BookingPayment />} />
         <Route path="/app/booking/complete/:bookingId" element={<BookingCompleteV2 />} />
+        <Route path="/app/booking/guest-complete/:bookingId" element={<GuestBookingComplete />} />
         
         {/* New Simple Booking Flow */}
         <Route path="/app/booking/:therapistId" element={<SimpleBookingWrapper />} />
