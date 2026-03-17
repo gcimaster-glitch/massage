@@ -767,6 +767,51 @@ const SiteMapSearch: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* 近隣レコメンドパネル（地図上にオーバーレイ表示） */}
+        {showNearbyRecommend && (
+          <div className="absolute bottom-4 left-4 z-30 w-80 max-h-[calc(100vh-200px)] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-gray-200 animate-fade-in">
+            {/* パネルヘッダー */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <span className="font-black text-gray-900 text-sm">近隣のおすすめ</span>
+              <button
+                onClick={() => setShowNearbyRecommend(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-all"
+              >
+                <X size={16} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-2">
+              <NearbyRecommend
+                userLocation={userLocation}
+                compact={true}
+                onSiteSelect={(site) => {
+                  setShowNearbyRecommend(false);
+                  setSelectedSite(site);
+                }}
+                onAIBook={() => {
+                  setShowNearbyRecommend(false);
+                  navigate('/app/booking/auto-assign');
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 近隣レコメンドを開くフローティングボタン（地図内） */}
+        {!showNearbyRecommend && (
+          <button
+            onClick={() => setShowNearbyRecommend(true)}
+            className="absolute bottom-32 left-4 z-30 flex items-center gap-2 text-white font-black py-3 px-5 rounded-2xl shadow-2xl hover:scale-105 transition-transform"
+            style={{
+              background: 'linear-gradient(135deg, #0d9488 0%, #0891b2 50%, #7c3aed 100%)',
+              boxShadow: '0 0 20px rgba(13,148,136,0.5)',
+            }}
+          >
+            <Zap className="w-5 h-5" />
+            <span className="text-sm">近隣のおすすめ</span>
+          </button>
+        )}
       </div>
 
       {/* フローティング施設リスト */}
@@ -1315,31 +1360,7 @@ const SiteMapSearch: React.FC = () => {
          </div>
       </div>
       
-      {/* 近隣レコメンドパネル */}
-      <NearbyRecommend
-        isOpen={showNearbyRecommend}
-        onClose={() => setShowNearbyRecommend(false)}
-        userLocation={userLocation}
-        onBookTherapist={(_therapistId: string, _siteId: string) => {
-          setShowNearbyRecommend(false);
-          setShowQuickBooking(true);
-        }}
-      />
 
-      {/* 近隣レコメンドを開くフローティングボタン */}
-      {!showNearbyRecommend && (
-        <button
-          onClick={() => setShowNearbyRecommend(true)}
-          className="absolute bottom-32 left-4 z-30 flex items-center gap-2 text-white font-black py-3 px-5 rounded-2xl shadow-2xl hover:scale-105 transition-transform"
-          style={{
-            background: 'linear-gradient(135deg, #0d9488 0%, #0891b2 50%, #7c3aed 100%)',
-            boxShadow: '0 0 20px rgba(13,148,136,0.5)',
-          }}
-        >
-          <Zap className="w-5 h-5" />
-          <span className="text-sm">近隣のおすすめ</span>
-        </button>
-      )}
 
       {/* クイック予約パネル */}
       <QuickBookingPanel
