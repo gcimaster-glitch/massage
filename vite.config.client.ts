@@ -72,6 +72,17 @@ export default defineConfig({
             './pages/office/OfficeSupportInbox',
             './pages/office/MenuManagement',
             './pages/office/OfficeSafety'
+          ],
+          'booking': [
+            './components/booking/TherapistDetailModal',
+            './components/booking/TherapistSelect',
+            './components/NearbyRecommend',
+            './components/booking/BookingFlowV2',
+            './pages/user/SiteMapSearch'
+          ],
+          'shared': [
+            './pages/shared/KYCVerification',
+            './pages/user/UserDashboard'
           ]
         }
       }

@@ -10,6 +10,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import QuickBookingPanel from '../../components/QuickBookingPanel';
+import NearbyRecommend from '../../components/NearbyRecommend';
 
 // Google Maps の型定義
 declare global {
@@ -35,6 +36,7 @@ const SiteMapSearch: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [isListMinimized, setIsListMinimized] = useState(false); // リスト最小化状態
   const [isListClosed, setIsListClosed] = useState(false); // リスト完全非表示
+  const [showNearbyRecommend, setShowNearbyRecommend] = useState(false); // 近隣レコメンドパネル
   
   // フィルター設定
   const [distanceRange, setDistanceRange] = useState<number>(10); // 1km, 2km, 3km, 5km, 10km
@@ -1313,6 +1315,32 @@ const SiteMapSearch: React.FC = () => {
          </div>
       </div>
       
+      {/* 近隣レコメンドパネル */}
+      <NearbyRecommend
+        isOpen={showNearbyRecommend}
+        onClose={() => setShowNearbyRecommend(false)}
+        userLocation={userLocation}
+        onBookTherapist={(_therapistId: string, _siteId: string) => {
+          setShowNearbyRecommend(false);
+          setShowQuickBooking(true);
+        }}
+      />
+
+      {/* 近隣レコメンドを開くフローティングボタン */}
+      {!showNearbyRecommend && (
+        <button
+          onClick={() => setShowNearbyRecommend(true)}
+          className="absolute bottom-32 left-4 z-30 flex items-center gap-2 text-white font-black py-3 px-5 rounded-2xl shadow-2xl hover:scale-105 transition-transform"
+          style={{
+            background: 'linear-gradient(135deg, #0d9488 0%, #0891b2 50%, #7c3aed 100%)',
+            boxShadow: '0 0 20px rgba(13,148,136,0.5)',
+          }}
+        >
+          <Zap className="w-5 h-5" />
+          <span className="text-sm">近隣のおすすめ</span>
+        </button>
+      )}
+
       {/* クイック予約パネル */}
       <QuickBookingPanel
         isOpen={showQuickBooking}
