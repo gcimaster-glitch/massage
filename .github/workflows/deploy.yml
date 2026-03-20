@@ -54,12 +54,17 @@ jobs:
 
       # ⑤ D1 データベースマイグレーション（booking_timelocks テーブル追加）
       - name: Run D1 Migrations
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute hogusy-db-production --remote --file=migrations/0045_add_booking_timelock.sql
-        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_ID: "d9a82544-5490-4285-9b02-3974335f5845" # hogusy-db-production
+        run: |
+          SQL=$(cat migrations/0045_add_booking_timelock.sql)
+          curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-raw "{\"sql\": \"${SQL}\"}" \
+            --fail-with-body || echo "D1 Migration failed, but continuing..."
 
       # ⑥ Cloudflare Pages へデプロイ
       - name: Deploy to Cloudflare Pages
