@@ -57,14 +57,9 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DATABASE_ID: "d9a82544-5490-4285-9b02-3974335f5845" # hogusy-db-production
+          DATABASE_ID: "97aee8a1-83d8-45e3-8a30-95ca6875e8ed" # hogusy-db-production (from wrangler.jsonc)
         run: |
-          SQL=$(cat migrations/0045_add_booking_timelock.sql)
-          curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            --data-raw "{\"sql\": \"${SQL}\"}" \
-            --fail-with-body || echo "D1 Migration failed, but continuing..."
+          python3 scripts/run_d1_migration.py migrations/0045_add_booking_timelock.sql || echo "⚠️  D1 Migration failed (may already be applied), continuing..."
 
       # ⑥ Cloudflare Pages へデプロイ
       - name: Deploy to Cloudflare Pages
