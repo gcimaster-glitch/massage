@@ -174,6 +174,11 @@ app.post('/api/admin/run-migration', async (c) => {
       `CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)`,
     ]
+  } else if (action === 'restore_data') {
+    // bookings_oldからbookingsへデータを復元
+    statements = [
+      `INSERT OR IGNORE INTO bookings (id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, notes, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at) SELECT id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, notes, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at FROM bookings_old`,
+    ]
   } else {
     // デフォルト: 初期マイグレーション
     statements = [
