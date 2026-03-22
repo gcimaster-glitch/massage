@@ -119,11 +119,11 @@ app.post('/guest', async (c) => {
     const therapistName = therapistResult?.name || 'セラピスト';
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     // ゲスト用ユーザーIDとして仮IDを生成（メールアドレスベース）
-    const guestUserId = `guest_${Buffer.from(guest_email).toString('base64').substring(0, 16)}`;
+    // ゲスト予約はuser_id = NULL（FOREIGN KEY制約を回避）
     await DB.prepare(
       `INSERT INTO bookings (id, user_id, therapist_id, therapist_name, site_id, type, status, service_name, duration, price, scheduled_at, guest_name, guest_email, guest_phone, timelock_id)
        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(bookingId, guestUserId, therapist_id, therapistName, site_id || null, type, service_name || '施術', duration, price, scheduled_at, guest_name, guest_email, guest_phone || null, timelock_id || null).run();
+    ).bind(bookingId, null, therapist_id, therapistName, site_id || null, type, service_name || '施術', duration, price, scheduled_at, guest_name, guest_email, guest_phone || null, timelock_id || null).run();
     // booking_itemsを保存
     if (items && items.length > 0) {
       for (const item of items) {
