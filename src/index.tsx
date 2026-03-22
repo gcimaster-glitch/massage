@@ -146,6 +146,44 @@ app.get('/api/health', (c) => {
   })
 })
 
+
+// ============================================
+// [TEMP] D1 Migration Endpoint - 使用後は必ず削除すること
+// ============================================
+app.post('/api/admin/run-migration', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const secret = (body as any).secret || ''
+  if (secret !== 'hogusy-migrate-2026') {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  const db = c.env.DB
+  const results: { sql: string; success: boolean; error?: string }[] = []
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS booking_timelocks (id TEXT PRIMARY KEY, therapist_id TEXT NOT NULL, site_id TEXT, scheduled_at DATETIME NOT NULL, duration INTEGER NOT NULL DEFAULT 60, expires_at DATETIME NOT NULL, session_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE INDEX IF NOT EXISTS idx_timelocks_therapist_time ON booking_timelocks(therapist_id, scheduled_at, status)`,
+    `CREATE INDEX IF NOT EXISTS idx_timelocks_expires ON booking_timelocks(expires_at, status)`,
+    `ALTER TABLE bookings ADD COLUMN guest_name TEXT`,
+    `ALTER TABLE bookings ADD COLUMN guest_email TEXT`,
+    `ALTER TABLE bookings ADD COLUMN guest_phone TEXT`,
+    `ALTER TABLE bookings ADD COLUMN timelock_id TEXT`,
+  ]
+  for (const sql of statements) {
+    try {
+      await db.prepare(sql).run()
+      results.push({ sql: sql.substring(0, 60) + '...', success: true })
+    } catch (e: any) {
+      const msg = e?.message || String(e)
+      if (msg.includes('already exists') || msg.includes('duplicate column')) {
+        results.push({ sql: sql.substring(0, 60) + '...', success: true, error: 'skipped (already exists)' })
+      } else {
+        results.push({ sql: sql.substring(0, 60) + '...', success: false, error: msg })
+      }
+    }
+  }
+  const allOk = results.every(r => r.success)
+  return c.json({ ok: allOk, results }, allOk ? 200 : 500)
+})
+
 // ============================================
 // Auth Routes
 // ============================================
