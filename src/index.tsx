@@ -148,35 +148,55 @@ app.get('/api/health', (c) => {
 
 
 // ============================================
-// [TEMP] D1 Migration Endpoint - 使用後は必ず削除すること
+// [TEMP] D1 Migration Endpoint v2 - 使用後は必ず削除すること
 // ============================================
 app.post('/api/admin/run-migration', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const secret = (body as any).secret || ''
+  const action = (body as any).action || 'default'
   if (secret !== 'hogusy-migrate-2026') {
     return c.json({ error: 'Unauthorized' }, 401)
   }
   const db = c.env.DB
   const results: { sql: string; success: boolean; error?: string }[] = []
-  const statements = [
-    `CREATE TABLE IF NOT EXISTS booking_timelocks (id TEXT PRIMARY KEY, therapist_id TEXT NOT NULL, site_id TEXT, scheduled_at DATETIME NOT NULL, duration INTEGER NOT NULL DEFAULT 60, expires_at DATETIME NOT NULL, session_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
-    `CREATE INDEX IF NOT EXISTS idx_timelocks_therapist_time ON booking_timelocks(therapist_id, scheduled_at, status)`,
-    `CREATE INDEX IF NOT EXISTS idx_timelocks_expires ON booking_timelocks(expires_at, status)`,
-    `ALTER TABLE bookings ADD COLUMN guest_name TEXT`,
-    `ALTER TABLE bookings ADD COLUMN guest_email TEXT`,
-    `ALTER TABLE bookings ADD COLUMN guest_phone TEXT`,
-    `ALTER TABLE bookings ADD COLUMN timelock_id TEXT`,
-  ]
+
+  // actionに応じてSQL文を選択
+  let statements: string[] = []
+  if (action === 'rebuild_bookings') {
+    // bookingsテーブルをuser_id NULL許容で再作成
+    statements = [
+      `CREATE TABLE IF NOT EXISTS bookings_new (id TEXT PRIMARY KEY, user_id TEXT, therapist_id TEXT NOT NULL, therapist_name TEXT, site_id TEXT, office_id TEXT, type TEXT NOT NULL CHECK(type IN ('ONSITE', 'HOTEL', 'HOME', 'OFFICE', 'OUTCALL')), status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')), service_name TEXT NOT NULL DEFAULT '施術', duration INTEGER NOT NULL, scheduled_at DATETIME, scheduled_start DATETIME, scheduled_end DATETIME, price INTEGER NOT NULL, payment_intent_id TEXT, payment_status TEXT DEFAULT 'PENDING' CHECK(payment_status IN ('PENDING', 'PAID', 'REFUNDED')), notes TEXT, guest_name TEXT, guest_email TEXT, guest_phone TEXT, timelock_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, completed_at DATETIME)`,
+      `INSERT OR IGNORE INTO bookings_new (id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, scheduled_start, scheduled_end, price, payment_intent_id, payment_status, notes, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at) SELECT id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, scheduled_start, scheduled_end, price, payment_intent_id, payment_status, notes, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at FROM bookings`,
+      `DROP TABLE IF EXISTS bookings_old`,
+      `ALTER TABLE bookings RENAME TO bookings_old`,
+      `ALTER TABLE bookings_new RENAME TO bookings`,
+      `CREATE INDEX IF NOT EXISTS idx_bookings_therapist ON bookings(therapist_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)`,
+    ]
+  } else {
+    // デフォルト: 初期マイグレーション
+    statements = [
+      `CREATE TABLE IF NOT EXISTS booking_timelocks (id TEXT PRIMARY KEY, therapist_id TEXT NOT NULL, site_id TEXT, scheduled_at DATETIME NOT NULL, duration INTEGER NOT NULL DEFAULT 60, expires_at DATETIME NOT NULL, session_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+      `CREATE INDEX IF NOT EXISTS idx_timelocks_therapist_time ON booking_timelocks(therapist_id, scheduled_at, status)`,
+      `CREATE INDEX IF NOT EXISTS idx_timelocks_expires ON booking_timelocks(expires_at, status)`,
+      `ALTER TABLE bookings ADD COLUMN guest_name TEXT`,
+      `ALTER TABLE bookings ADD COLUMN guest_email TEXT`,
+      `ALTER TABLE bookings ADD COLUMN guest_phone TEXT`,
+      `ALTER TABLE bookings ADD COLUMN timelock_id TEXT`,
+    ]
+  }
+
   for (const sql of statements) {
     try {
       await db.prepare(sql).run()
-      results.push({ sql: sql.substring(0, 60) + '...', success: true })
+      results.push({ sql: sql.substring(0, 80) + '...', success: true })
     } catch (e: any) {
       const msg = e?.message || String(e)
       if (msg.includes('already exists') || msg.includes('duplicate column')) {
-        results.push({ sql: sql.substring(0, 60) + '...', success: true, error: 'skipped (already exists)' })
+        results.push({ sql: sql.substring(0, 80) + '...', success: true, error: 'skipped (already exists)' })
       } else {
-        results.push({ sql: sql.substring(0, 60) + '...', success: false, error: msg })
+        results.push({ sql: sql.substring(0, 80) + '...', success: false, error: msg })
       }
     }
   }
