@@ -38,6 +38,7 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     { label: 'サービス案内', path: '/about' }, 
     { label: 'マップ検索', path: '/app/map', icon: Map },
     { label: 'セラピスト', path: '/therapists' },
+    { label: '事業について', path: '/business' },
     { label: '料金プラン', path: '/fee' },
     { label: '採用・パートナー', path: '/recruit' },
   ];
@@ -172,6 +173,10 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                <ul className="space-y-4 text-sm font-black">
                 <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">サービスについて</Link></li>
                 <li><Link to="/strategy" className="text-gray-400 hover:text-white transition-colors">事業モデル</Link></li>
+                <li><Link to="/business" className="text-gray-400 hover:text-white transition-colors">事業について</Link></li>
+                <li><Link to="/business/partner" className="text-gray-400 hover:text-white transition-colors">施設・パートナー向け</Link></li>
+                <li><Link to="/business/therapist" className="text-gray-400 hover:text-white transition-colors">セラピスト向け</Link></li>
+                <li><Link to="/business/care-cube" className="text-gray-400 hover:text-white transition-colors">CARE CUBE</Link></li>
                 <li><Link to="/recruit" className="text-gray-400 hover:text-white transition-colors">採用・パートナー募集</Link></li>
                 <li><Link to="/news" className="text-gray-400 hover:text-white transition-colors">お知らせ</Link></li>
               </ul>

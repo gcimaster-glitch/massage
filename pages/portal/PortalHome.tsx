@@ -5,7 +5,7 @@ import {
   MapPin, Star, ArrowRight, ShieldCheck, Users, 
   CheckCircle, Zap, Search, Calendar, Heart, ChevronRight, Sparkles, 
   Timer, UserCheck, Building2, Navigation, Filter, Clock, Target,
-  Map as MapIcon, X
+  Map as MapIcon, X, ArrowUpRight, Lock, Cpu, ChevronDown
 } from 'lucide-react';
 
 import PortalLayout from './PortalLayout';
@@ -19,6 +19,32 @@ declare global {
 
 // タブの種類
 type TabType = 'map' | 'therapist' | 'sites';
+
+// アニメーションカウンター
+const AnimatedCounter: React.FC<{ end: number; suffix?: string; duration?: number }> = ({ end, suffix = '', duration = 2000 }) => {
+  const [count, setCount] = React.useState(0);
+  const ref = React.useRef<HTMLSpanElement>(null);
+  const started = React.useRef(false);
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !started.current) {
+        started.current = true;
+        const startTime = performance.now();
+        const tick = (now: number) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setCount(Math.floor(eased * end));
+          if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }, { threshold: 0.3 });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [end, duration]);
+  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
+};
 
 // 施設タイプ → 表示用マッピング（APIの type フィールドに対応）
 const SITE_TYPE_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -333,23 +359,115 @@ const PortalHome: React.FC = () => {
           <button onClick={() => setOauthError(null)} className="ml-auto text-white/80 hover:text-white font-black text-lg leading-none">×</button>
         </div>
       )}
-      {/* ===== HERO (コンパクト) ===== */}
-      <section className="relative min-h-[50vh] md:min-h-[55vh] flex items-center justify-center overflow-hidden bg-slate-900">
-        <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-40">
+      {/* ===== HERO (フルスクリーン・インパクト) ===== */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gray-950">
+        <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-25">
           <source src="/videos/hero-spa.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 via-slate-900/30 to-slate-900/80"></div>
-        <div className="relative z-10 text-center px-6 max-w-5xl space-y-6">
-          <div className="inline-flex items-center gap-2 bg-teal-500/20 backdrop-blur-md text-teal-400 px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest border border-teal-500/30">
-            <Sparkles size={14} /> Wellness Infrastructure by HOGUSY
+        {/* グラデーションオーバーレイ */}
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-950/70 via-gray-950/40 to-gray-950" />
+        {/* グリッドパターン */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+        {/* グロー */}
+        <div className="absolute top-1/3 left-1/4 w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="relative z-10 text-center px-6 max-w-6xl w-full space-y-10">
+          <div className="inline-flex items-center gap-2 bg-teal-500/15 backdrop-blur-md text-teal-400 px-5 py-2.5 rounded-full font-black text-[10px] uppercase tracking-[0.2em] border border-teal-500/30">
+            <Sparkles size={12} /> Japan's Wellness Infrastructure Platform
           </div>
-          <h1 className="text-5xl md:text-8xl lg:text-[100px] font-black text-white leading-[0.85] tracking-tighter drop-shadow-2xl">
-            ほぐす、を、<br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-200 to-indigo-300">もっと身近に。</span>
+          <h1 className="text-6xl md:text-8xl lg:text-[108px] font-black text-white leading-[0.88] tracking-[-0.03em]">
+            癒やしを、<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-cyan-400">インフラに。</span>
           </h1>
-          <p className="text-white/80 font-bold text-base md:text-xl tracking-tight max-w-2xl mx-auto leading-relaxed">
-            街のあらゆる場所に、プロの施術空間。探して、選んで、すぐに整う。
+          <p className="text-xl md:text-2xl text-gray-400 font-medium max-w-2xl mx-auto leading-relaxed">
+            プロのセラピストと、あなたの近くの施術空間を<br className="hidden md:block" />
+            いつでも、どこでも、シームレスにつなぐ。
           </p>
+
+          {/* 検索バー */}
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-2 flex flex-col md:flex-row gap-2 shadow-2xl">
+              <div className="flex-1 flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+                <MapPin size={18} className="text-teal-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="エリア・施設名・メニューで探す"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && navigate(searchQuery ? `/therapists?q=${encodeURIComponent(searchQuery)}` : '/therapists')}
+                  className="flex-1 bg-transparent text-white placeholder-gray-400 text-sm font-medium outline-none"
+                />
+              </div>
+              <button
+                onClick={() => navigate(searchQuery ? `/therapists?q=${encodeURIComponent(searchQuery)}` : '/therapists')}
+                className="bg-teal-500 hover:bg-teal-400 text-white px-8 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-teal-500/30"
+              >
+                <Search size={16} /> 検索する
+              </button>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {['渋谷・恵比寿', '新宿・代々木', '銀座・有楽町', 'CARE CUBE', 'アロマ', 'ヘッドスパ'].map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => navigate(`/therapists?q=${encodeURIComponent(tag)}`)}
+                  className="text-xs text-gray-400 hover:text-teal-400 border border-white/10 hover:border-teal-500/40 rounded-full px-4 py-1.5 transition-all"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* CTAボタン */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate('/therapists')}
+              className="bg-white text-gray-900 px-10 py-4 rounded-2xl font-black text-base hover:bg-teal-400 hover:text-white transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 group"
+            >
+              セラピストを探す
+              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button
+              onClick={() => navigate('/business')}
+              className="border border-white/20 text-white px-10 py-4 rounded-2xl font-black text-base hover:bg-white/10 transition-all flex items-center justify-center gap-3 group"
+            >
+              事業者の方はこちら
+              <ArrowUpRight size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+          </div>
+        </div>
+
+        {/* スクロールインジケーター */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-gray-500 animate-bounce">
+          <span className="text-[10px] font-black tracking-widest uppercase">Scroll</span>
+          <ChevronDown size={16} />
+        </div>
+      </section>
+
+      {/* ===== KPIバー ===== */}
+      <section className="bg-gray-950 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-0 md:divide-x divide-white/10">
+            {[
+              { label: '登録セラピスト', end: 500, suffix: '名+', icon: UserCheck },
+              { label: '提携施設・スポット', end: 120, suffix: '拠点+', icon: Building2 },
+              { label: '累計予約数', end: 10000, suffix: '件+', icon: Calendar },
+              { label: '顧客満足度', end: 97, suffix: '%', icon: Star },
+            ].map(({ label, end, suffix, icon: Icon }) => (
+              <div key={label} className="text-center px-6">
+                <div className="flex justify-center mb-3">
+                  <div className="w-10 h-10 bg-teal-500/10 rounded-xl flex items-center justify-center">
+                    <Icon size={20} className="text-teal-400" />
+                  </div>
+                </div>
+                <div className="text-4xl md:text-5xl font-black text-white mb-1">
+                  <AnimatedCounter end={end} suffix={suffix} />
+                </div>
+                <div className="text-sm text-gray-500 font-medium">{label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -825,9 +943,14 @@ const PortalHome: React.FC = () => {
                   <li className="flex items-center gap-3"><CheckCircle size={14}/> IOT空調・アロマ完備</li>
                 </ul>
               </div>
-              <button onClick={() => navigate('/about')} className="bg-white text-gray-900 px-12 py-6 rounded-[32px] font-black text-lg hover:bg-teal-400 hover:text-white transition-all shadow-2xl active:scale-95 flex items-center gap-4 group">
-                事業モデル・詳細を見る <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button onClick={() => navigate('/business')} className="bg-white text-gray-900 px-10 py-5 rounded-[28px] font-black text-base hover:bg-teal-400 hover:text-white transition-all shadow-2xl active:scale-95 flex items-center gap-3 group">
+                  事業モデル・詳細を見る <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button onClick={() => navigate('/business/partner')} className="border border-white/20 text-white px-10 py-5 rounded-[28px] font-black text-base hover:bg-white/10 transition-all flex items-center gap-3 group">
+                  パートナーになる <ArrowUpRight size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </button>
+              </div>
             </div>
             <div className="aspect-video rounded-[60px] overflow-hidden shadow-2xl border-8 border-white/5 relative">
               <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200" className="w-full h-full object-cover" alt="CARE CUBE" />
@@ -837,6 +960,102 @@ const PortalHome: React.FC = () => {
                 <p className="text-sm font-bold leading-relaxed italic">「ホテルの客室に人を呼びたくない」という宿泊客と、「外部スタッフを客室へ誘導したくない」ホテル。CARE CUBEは、館内共用スペースでその双方の課題を解決します。</p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+      {/* ===== ビジネスモデル3軸 ===== */}
+      <section className="py-24 px-4 bg-white">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-4">
+            <span className="text-[10px] font-black text-teal-600 uppercase tracking-[0.4em] block">Business Model</span>
+            <h2 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter">
+              3つのステークホルダーへ
+            </h2>
+            <p className="text-gray-500 font-medium text-lg max-w-2xl mx-auto">
+              HOGUSYはユーザー・セラピスト・施設オーナーの3軸を結び、日本のウェルネスインフラを構築します。
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* BtoC */}
+            <div className="group relative overflow-hidden bg-gradient-to-br from-teal-50 to-teal-100/50 rounded-[40px] p-10 border-2 border-teal-100 hover:border-teal-400 transition-all hover:shadow-2xl cursor-pointer" onClick={() => navigate('/therapists')}>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-teal-400/10 rounded-full blur-3xl" />
+              <div className="relative space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest bg-teal-100 px-3 py-1.5 rounded-full">BtoC</span>
+                  <ArrowUpRight size={20} className="text-teal-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </div>
+                <div className="w-14 h-14 bg-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30">
+                  <Users size={28} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-2">一般ユーザー層</h3>
+                  <p className="text-gray-600 font-medium leading-relaxed text-sm">スマートフォンから即座に予約。ログイン不要のゲスト予約、タイムロック機能で二重予約を防止。キャッシュレス決済でスムーズに。</p>
+                </div>
+                <ul className="space-y-2">
+                  {['ゲスト予約（ログイン不要）', 'タイムロック機能', 'ストライプ決済', 'レビュー・履歴管理'].map(f => (
+                    <li key={f} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                      <CheckCircle size={14} className="text-teal-500 shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            {/* BtoB */}
+            <div className="group relative overflow-hidden bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-[40px] p-10 border-2 border-indigo-100 hover:border-indigo-400 transition-all hover:shadow-2xl cursor-pointer" onClick={() => navigate('/business/partner')}>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-400/10 rounded-full blur-3xl" />
+              <div className="relative space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-100 px-3 py-1.5 rounded-full">BtoB</span>
+                  <ArrowUpRight size={20} className="text-indigo-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </div>
+                <div className="w-14 h-14 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                  <Building2 size={28} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-2">施設・パートナー</h3>
+                  <p className="text-gray-600 font-medium leading-relaxed text-sm">ホテル・オフィス・商業施設に、CARE CUBEを設置して新たな収益源を創出。スマートロック完全無人運用。</p>
+                </div>
+                <ul className="space-y-2">
+                  {['CARE CUBE設置・運用', 'レベニューシェアモデル', 'スマートロック連携', 'リアルタイム稼働監視'].map(f => (
+                    <li key={f} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                      <CheckCircle size={14} className="text-indigo-500 shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            {/* BtoBセラピスト */}
+            <div className="group relative overflow-hidden bg-gradient-to-br from-rose-50 to-rose-100/50 rounded-[40px] p-10 border-2 border-rose-100 hover:border-rose-400 transition-all hover:shadow-2xl cursor-pointer" onClick={() => navigate('/business/therapist')}>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-rose-400/10 rounded-full blur-3xl" />
+              <div className="relative space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest bg-rose-100 px-3 py-1.5 rounded-full">セラピスト</span>
+                  <ArrowUpRight size={20} className="text-rose-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </div>
+                <div className="w-14 h-14 bg-rose-500 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-500/30">
+                  <UserCheck size={28} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-2">セラピスト登録</h3>
+                  <p className="text-gray-600 font-medium leading-relaxed text-sm">プロフィール作成から予約管理・報酷受取まで一元管理。稼働時間の自由度と高単価の両立を実現。</p>
+                </div>
+                <ul className="space-y-2">
+                  {['プロフィール・スケジュール管理', '報酷自動計算', 'KYC認証システム', 'レビュー累積・ブランディング'].map(f => (
+                    <li key={f} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                      <CheckCircle size={14} className="text-rose-500 shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="text-center">
+            <button
+              onClick={() => navigate('/business')}
+              className="inline-flex items-center gap-3 bg-gray-900 hover:bg-teal-600 text-white font-black py-4 px-10 rounded-full text-sm transition-all shadow-lg hover:scale-105"
+            >
+              事業詳細を見る <ArrowRight size={18} />
+            </button>
           </div>
         </div>
       </section>

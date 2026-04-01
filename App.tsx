@@ -25,6 +25,10 @@ import SignupOffice from './pages/auth/SignupOffice';
 import PortalHome from './pages/portal/PortalHome';
 import AboutPage from './pages/portal/About';
 import BusinessStrategy from './pages/portal/BusinessStrategy'; // New
+import BusinessIndex from './pages/business/BusinessIndex';
+import BusinessPartner from './pages/business/BusinessPartner';
+import BusinessTherapist from './pages/business/BusinessTherapist';
+import BusinessCareCube from './pages/business/BusinessCareCube';
 import NewsPage from './pages/portal/News';
 import RecruitPage from './pages/portal/Recruit';
 import TherapistListPage from './pages/portal/TherapistList';
@@ -328,6 +332,10 @@ const App: React.FC = () => {
         <Route path="/" element={<PortalHome />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/strategy" element={<BusinessStrategy />} />
+        <Route path="/business" element={<BusinessIndex />} />
+        <Route path="/business/partner" element={<BusinessPartner />} />
+        <Route path="/business/therapist" element={<BusinessTherapist />} />
+        <Route path="/business/care-cube" element={<BusinessCareCube />} />
         <Route path="/news" element={<NewsPage />} />
         <Route path="/recruit" element={<RecruitPage />} />
         <Route path="/therapists" element={<TherapistListPage />} />
