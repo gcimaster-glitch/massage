@@ -175,6 +175,22 @@ app.post('/api/admin/run-migration', async (c) => {
       `CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)`,
     ]
+  } else if (action === 'rebuild_reviews') {
+    // reviews テーブルを削除して再作成（スキーマ変更時に使用）
+    statements = [
+      `DROP TABLE IF EXISTS reviews`,
+      `DROP INDEX IF EXISTS idx_reviews_therapist_id`,
+      `DROP INDEX IF EXISTS idx_reviews_booking_id`,
+      `DROP INDEX IF EXISTS idx_reviews_user_id`,
+      `DROP INDEX IF EXISTS idx_reviews_created_at`,
+      `DROP INDEX IF EXISTS idx_reviews_rating`,
+      `CREATE TABLE reviews (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, therapist_id TEXT NOT NULL, user_id TEXT, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), comment TEXT, customer_age_range TEXT, customer_gender TEXT, customer_occupation TEXT, body_concerns TEXT DEFAULT '[]', ng_items TEXT DEFAULT '[]', is_public INTEGER NOT NULL DEFAULT 1, therapist_reply TEXT, therapist_replied_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+      `CREATE INDEX idx_reviews_therapist_id ON reviews(therapist_id)`,
+      `CREATE INDEX idx_reviews_booking_id ON reviews(booking_id)`,
+      `CREATE INDEX idx_reviews_user_id ON reviews(user_id)`,
+      `CREATE INDEX idx_reviews_created_at ON reviews(therapist_id, created_at)`,
+      `CREATE INDEX idx_reviews_rating ON reviews(therapist_id, rating)`,
+    ]
   } else if (action === 'restore_data') {
     // bookings_oldからbookingsへデータを復元
     statements = [
