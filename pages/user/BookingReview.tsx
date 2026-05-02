@@ -1,246 +1,160 @@
+import React, { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import ReviewForm from '../../components/review/ReviewForm'
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Star, ThumbsUp, AlertTriangle, CheckCircle, ArrowRight, Share2, MessageSquare, Loader2, Sparkles } from 'lucide-react';
-import { api } from '../../services/api';
+interface BookingInfo {
+  id: string
+  therapist_id: string
+  therapist_name?: string
+  scheduled_at?: string
+  status?: string
+}
 
 const BookingReview: React.FC = () => {
-  const { bookingId } = useParams();
-  const navigate = useNavigate();
-
-  const [booking, setBooking] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
-  // State for Review Form
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [isSafe, setIsSafe] = useState<boolean | null>(null);
-  const [safetyDetail, setSafetyDetail] = useState('');
-
-  // State for Submission
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { bookingId } = useParams<{ bookingId: string }>()
+  const navigate = useNavigate()
+  const [booking, setBooking] = useState<BookingInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false)
+  const [reviewDone, setReviewDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!bookingId) return;
-    api.bookings.get(bookingId)
-      .then(data => setBooking(data))
-      .catch(() => setNotFound(true))
-      .finally(() => setIsLoading(false));
-  }, [bookingId]);
+    if (!bookingId) return
 
-  if (isLoading) return (
-    <div className="h-[60vh] flex items-center justify-center">
-      <Loader2 className="animate-spin text-teal-600" size={48} />
-    </div>
-  );
-
-  if (notFound || !booking) return (
-    <div className="p-20 text-center font-black text-gray-500">予約が見つかりません</div>
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bookingId) return;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await fetch(`/api/bookings/${bookingId}/review`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          rating,
-          comment: comment || undefined,
-          tags,
-          is_safe: isSafe
-        })
-      }).then(async res => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || `HTTP ${res.status}`);
-        }
-        return res.json();
-      });
-      setIsSuccess(true);
-    } catch (err: any) {
-      setError(err.message || '送信中にエラーが発生しました。');
-    } finally {
-      setIsSubmitting(false);
+    const token = localStorage.getItem('auth_token')
+    if (!token) {
+      navigate('/login', { replace: true })
+      return
     }
-  };
 
-  const toggleTag = (tag: string) => {
-    setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
-  };
+    // 予約情報取得 + レビュー済み確認を並行実行
+    Promise.all([
+      fetch(`/api/bookings/${bookingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+      fetch(`/api/reviews/check/${bookingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+    ])
+      .then(([bookingData, reviewCheck]) => {
+        if (bookingData.ok || bookingData.booking) {
+          const b = bookingData.booking || bookingData
+          setBooking({
+            id: b.id || bookingId,
+            therapist_id: b.therapist_id || b.therapistId || '',
+            therapist_name: b.therapist_name || b.therapistName || '',
+            scheduled_at: b.scheduled_at || b.scheduledAt || '',
+            status: b.status || '',
+          })
+        } else {
+          setError('予約情報が見つかりません')
+        }
+        if (reviewCheck.ok && reviewCheck.has_review) {
+          setAlreadyReviewed(true)
+        }
+      })
+      .catch(() => setError('データの取得に失敗しました'))
+      .finally(() => setLoading(false))
+  }, [bookingId, navigate])
 
-  const therapistName = booking.therapist_name || booking.therapistName || 'セラピスト';
-  const serviceName = booking.service_name || booking.serviceName || '施術';
-
-  if (isSuccess) {
+  if (loading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-12 pb-32 pt-10 animate-fade-in">
-        <div className="bg-white p-12 rounded-[64px] shadow-2xl border border-gray-100 text-center space-y-8 relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500 rounded-full blur-[100px] opacity-10 translate-x-1/2 -translate-y-1/2"></div>
-           <div className="w-24 h-24 bg-teal-50 text-teal-600 rounded-[32px] flex items-center justify-center mx-auto shadow-inner ring-8 ring-teal-50/30">
-              <CheckCircle size={56} />
-           </div>
-           <div className="space-y-4">
-              <h1 className="text-4xl font-black text-gray-900 tracking-tighter">レビューの送信が完了しました</h1>
-              <p className="text-gray-500 font-bold">ご協力ありがとうございました。{therapistName}さんにフィードバックを共有しました。</p>
-           </div>
-           {isSafe === false && (
-             <div className="bg-red-50 p-8 rounded-[40px] border-2 border-red-100 text-left">
-               <p className="font-black text-red-900 flex items-center gap-2">
-                 <AlertTriangle size={18} /> 安全上の懸念を受け付けました
-               </p>
-               <p className="text-sm text-red-700 font-bold mt-2">運営スタッフが内容を確認し、適切に対応いたします。</p>
-             </div>
-           )}
-           <div className="flex flex-col md:flex-row gap-4 pt-6">
-              <button
-                onClick={() => navigate('/app/bookings')}
-                className="flex-1 bg-gray-900 text-white py-5 rounded-[28px] font-black text-sm hover:bg-teal-600 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95"
-              >
-                予約一覧へ戻る <ArrowRight size={18} />
-              </button>
-           </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/app/bookings')}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700"
+          >
+            予約一覧へ戻る
+          </button>
         </div>
       </div>
-    );
+    )
+  }
+
+  // レビュー投稿完了
+  if (reviewDone) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">レビューを投稿しました</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            ご評価いただきありがとうございます。<br />
+            セラピストへの大切なフィードバックになります。
+          </p>
+          <button
+            onClick={() => navigate('/app/bookings')}
+            className="w-full px-4 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 transition-colors"
+          >
+            予約一覧へ戻る
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // 既にレビュー済み
+  if (alreadyReviewed) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">レビュー投稿済みです</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            この予約に対するレビューは既に投稿されています。
+          </p>
+          <button
+            onClick={() => navigate('/app/bookings')}
+            className="w-full px-4 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 transition-colors"
+          >
+            予約一覧へ戻る
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-10 pb-32 animate-fade-in">
-      <div className="text-center space-y-4 pt-6">
-        <h1 className="text-4xl font-black text-gray-900 tracking-tighter">施術はいかがでしたか？</h1>
-        <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-          Reviewing: {serviceName} by {therapistName}
-        </p>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* パンくずリスト */}
+        <nav className="flex items-center gap-2 text-sm text-gray-400 mb-6">
+          <button onClick={() => navigate('/app/bookings')} className="hover:text-teal-600 transition-colors">
+            予約一覧
+          </button>
+          <span>›</span>
+          <span className="text-gray-600">レビュー投稿</span>
+        </nav>
+
+        <ReviewForm
+          bookingId={bookingId || ''}
+          therapistId={booking?.therapist_id || ''}
+          therapistName={booking?.therapist_name}
+          onSuccess={() => setReviewDone(true)}
+          onCancel={() => navigate('/app/bookings')}
+        />
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-10">
-        {/* Safety Check Card */}
-        <div className="bg-white p-10 rounded-[48px] shadow-sm border border-gray-100 space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center"><AlertTriangle size={24} /></div>
-            <h3 className="text-xl font-black text-gray-900">安全性の確認</h3>
-          </div>
-          <p className="text-sm font-bold text-gray-500 leading-relaxed">
-            施術中に不安な点や、規約違反（直接取引の勧誘、連絡先の交換要求など）はありませんでしたか？
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setIsSafe(true)}
-              className={`py-5 rounded-3xl border-2 font-black transition-all flex items-center justify-center gap-2 ${
-                isSafe === true ? 'bg-teal-600 border-teal-600 text-white shadow-xl scale-105' : 'bg-white border-gray-100 text-gray-400 hover:border-teal-500'
-              }`}
-            >
-              {isSafe === true && <CheckCircle size={18} />} 問題なし
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsSafe(false)}
-              className={`py-5 rounded-3xl border-2 font-black transition-all flex items-center justify-center gap-2 ${
-                isSafe === false ? 'bg-red-600 border-red-600 text-white shadow-xl scale-105' : 'bg-white border-gray-100 text-gray-400 hover:border-red-500'
-              }`}
-            >
-              {isSafe === false && <AlertTriangle size={18} />} 問題があった
-            </button>
-          </div>
-        </div>
-
-        {isSafe === false && (
-           <div className="bg-red-50 p-8 rounded-[40px] border-2 border-red-100 animate-fade-in-up">
-              <p className="font-black text-red-900 mb-4 flex items-center gap-2">
-                <ShieldAlert size={18} /> 状況の詳細をご記入ください
-              </p>
-              <textarea
-                className="w-full p-6 rounded-[28px] border border-red-200 bg-white text-gray-900 font-bold text-sm focus:outline-none focus:border-red-500 shadow-inner h-32"
-                placeholder="運営スタッフのみが閲覧し、適切に対応いたします。"
-                value={safetyDetail}
-                onChange={e => setSafetyDetail(e.target.value)}
-              ></textarea>
-           </div>
-        )}
-
-        {/* Rating and Tags Card */}
-        <div className="bg-white p-12 rounded-[56px] shadow-sm border border-gray-100 text-center space-y-10">
-          <div className="space-y-4">
-             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">Satisfaction Rating</h3>
-             <div className="flex justify-center gap-4">
-               {[1, 2, 3, 4, 5].map((star) => (
-                 <button
-                   key={star}
-                   type="button"
-                   onClick={() => setRating(star)}
-                   className={`transition-all hover:scale-125 transform active:scale-90 ${rating >= star ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-100'}`}
-                 >
-                   <Star size={56} fill="currentColor" />
-                 </button>
-               ))}
-             </div>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3">
-            {['とてもリラックスできた', '技術が高い', '丁寧な接客', '清潔感がある', '時間通り'].map(tag => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                className={`px-6 py-3 rounded-2xl text-xs font-black border-2 transition-all ${
-                  tags.includes(tag) ? 'bg-teal-500 text-white border-teal-500 shadow-lg' : 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-2 text-left">
-             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 flex items-center gap-2">
-               <MessageSquare size={12} /> Feedback Comment
-             </label>
-             <textarea
-               className="w-full p-8 bg-gray-50 rounded-[36px] border border-transparent focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/5 transition-all text-gray-900 font-bold placeholder:text-gray-300 placeholder:font-normal h-48 outline-none shadow-inner"
-               placeholder="セラピストへの感謝の気持ちや感想をご記入ください..."
-               value={comment}
-               onChange={(e) => setComment(e.target.value)}
-             ></textarea>
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-700 font-bold text-sm p-6 rounded-3xl border border-red-100">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={rating === 0 || isSafe === null || isSubmitting}
-          className="w-full bg-gray-900 text-white py-7 rounded-[32px] font-black text-xl shadow-2xl hover:bg-teal-600 disabled:bg-gray-100 disabled:text-gray-300 transition-all flex items-center justify-center gap-4 active:scale-95 group relative overflow-hidden"
-        >
-          {isSubmitting ? <Loader2 className="animate-spin" size={28} /> : <ThumbsUp size={28} className="group-hover:scale-110 transition-transform" />}
-          {isSubmitting ? '送信中...' : 'レビューを送信して完了'}
-        </button>
-      </form>
     </div>
-  );
-};
+  )
+}
 
-const ShieldAlert = ({ size, className = "" }: { size: number, className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-    <path d="M12 8v4" />
-    <path d="M12 16h.01" />
-  </svg>
-);
-
-export default BookingReview;
+export default BookingReview

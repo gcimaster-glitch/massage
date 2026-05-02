@@ -27,6 +27,7 @@ import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
 import hostApp from './host-routes'
 import stripeWebhookApp from './stripe-webhook-routes'
+import reviewsApp from './reviews-routes'
 
 // ============================================
 // Type Definitions
@@ -282,6 +283,11 @@ app.route('/api/areas', areasRoutesApp)
 // Bookings Routes (Auth required)
 // ============================================
 app.route('/api/bookings', bookingsRoutesApp)
+
+// ============================================
+// Reviews Routes
+// ============================================
+app.route('/api/reviews', reviewsApp)
 
 // ============================================
 // Schedules Routes

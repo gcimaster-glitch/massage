@@ -86,6 +86,7 @@ import TherapistSupport from './pages/therapist/Support';
 import ActiveSession from './pages/therapist/ActiveSession';
 import SessionSummary from './pages/therapist/SessionSummary';
 import BioEditor from './pages/therapist/BioEditor';
+import ReviewDashboard from './pages/therapist/ReviewDashboard';
 import BankSettings from './pages/therapist/settings/BankSettings';
 import StripeSettings from './pages/therapist/settings/StripeSettings';
 import ServiceSettings from './pages/therapist/settings/ServiceSettings';
@@ -471,6 +472,7 @@ const App: React.FC = () => {
         <Route path="/t/bio" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><BioEditor /></RequireAuth>} />
         <Route path="/t/session/:bookingId" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><ActiveSession /></RequireAuth>} />
         <Route path="/t/session-summary/:bookingId" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><SessionSummary /></RequireAuth>} />
+        <Route path="/t/reviews" element={<RequireAuth allowedRoles={[Role.THERAPIST, Role.ADMIN]} currentUser={currentUser} onLogout={handleLogout}><ReviewDashboard currentUser={currentUser} /></RequireAuth>} />
         
         {/* New Therapist Portal Pages */}
         <Route path="/t/notifications" element={<RequireAuth allowedRoles={[Role.THERAPIST]} currentUser={currentUser} onLogout={handleLogout}><TherapistNotifications /></RequireAuth>} />
