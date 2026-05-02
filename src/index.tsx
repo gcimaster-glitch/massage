@@ -181,8 +181,16 @@ app.post('/api/admin/run-migration', async (c) => {
       `INSERT OR IGNORE INTO bookings (id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at) SELECT id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at FROM bookings_old`,
     ]
   } else {
-    // デフォルト: 初期マイグレーション
+    // デフォルト: 初期マイグレーション + reviews テーブル
     statements = [
+      // reviews テーブル（お客様レビューシステム）
+      `CREATE TABLE IF NOT EXISTS reviews (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, therapist_id TEXT NOT NULL, user_id TEXT, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), comment TEXT, customer_age_range TEXT, customer_gender TEXT, customer_occupation TEXT, body_concerns TEXT DEFAULT '[]', ng_items TEXT DEFAULT '[]', is_public INTEGER NOT NULL DEFAULT 1, therapist_reply TEXT, therapist_replied_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS idx_reviews_therapist_id ON reviews(therapist_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_reviews_booking_id ON reviews(booking_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(therapist_id, created_at)`,
+      `CREATE INDEX IF NOT EXISTS idx_reviews_rating ON reviews(therapist_id, rating)`,
+      // booking_timelocks テーブル（既存）
       `CREATE TABLE IF NOT EXISTS booking_timelocks (id TEXT PRIMARY KEY, therapist_id TEXT NOT NULL, site_id TEXT, scheduled_at DATETIME NOT NULL, duration INTEGER NOT NULL DEFAULT 60, expires_at DATETIME NOT NULL, session_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
       `CREATE INDEX IF NOT EXISTS idx_timelocks_therapist_time ON booking_timelocks(therapist_id, scheduled_at, status)`,
       `CREATE INDEX IF NOT EXISTS idx_timelocks_expires ON booking_timelocks(expires_at, status)`,
