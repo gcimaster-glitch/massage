@@ -171,6 +171,7 @@ reviewsApp.get('/therapist/:therapistId', async (c) => {
 
   const db = c.env.DB
 
+  try {
   const [rows, countRow] = await Promise.all([
     db
       .prepare(`
@@ -210,6 +211,9 @@ reviewsApp.get('/therapist/:therapistId', async (c) => {
       total_pages: Math.ceil(total / limit),
     },
   })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e?.message || 'DB error', reviews: [], pagination: { page: 1, limit: 10, total: 0, total_pages: 0 } })
+  }
 })
 
 // ============================================
@@ -220,6 +224,7 @@ reviewsApp.get('/stats/:therapistId', async (c) => {
   const therapistId = c.req.param('therapistId')
   const db = c.env.DB
 
+  try {
   const [statsRow, distributionRows, concernsRows] = await Promise.all([
     // 平均・件数
     db
@@ -293,6 +298,9 @@ reviewsApp.get('/stats/:therapistId', async (c) => {
       age_distribution: concernsRows.results,
     },
   })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e?.message || 'DB error', stats: { total_count: 0, average_rating: null, rating_distribution: {5:0,4:0,3:0,2:0,1:0}, gender_distribution: [], age_distribution: [] } })
+  }
 })
 
 // ============================================
