@@ -1,0 +1,85 @@
+name: Set Cloudflare Pages Environment Variables
+on:
+  workflow_dispatch:
+    inputs:
+      google_client_id:
+        description: 'GOOGLE_CLIENT_ID'
+        required: true
+        default: ''
+      google_client_secret:
+        description: 'GOOGLE_CLIENT_SECRET'
+        required: true
+        default: ''
+      line_client_id:
+        description: 'LINE_CLIENT_ID'
+        required: true
+        default: ''
+      line_client_secret:
+        description: 'LINE_CLIENT_SECRET'
+        required: true
+        default: ''
+
+jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current project config
+        id: get-config
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/hogusy" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json")
+          echo "Current env var keys:"
+          echo "$RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if data.get('success'):
+    env_vars = data.get('result', {}).get('deployment_configs', {}).get('production', {}).get('env_vars', {})
+    print(list(env_vars.keys()))
+else:
+    print('Error:', data.get('errors'))
+"
+
+      - name: Set OAuth environment variables
+        run: |
+          # Cloudflare Pages PATCH APIで環境変数を設定
+          RESPONSE=$(curl -s -X PATCH \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/hogusy" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "deployment_configs": {
+                "production": {
+                  "env_vars": {
+                    "GOOGLE_CLIENT_ID": {
+                      "value": "${{ github.event.inputs.google_client_id }}",
+                      "type": "secret_text"
+                    },
+                    "GOOGLE_CLIENT_SECRET": {
+                      "value": "${{ github.event.inputs.google_client_secret }}",
+                      "type": "secret_text"
+                    },
+                    "LINE_CLIENT_ID": {
+                      "value": "${{ github.event.inputs.line_client_id }}",
+                      "type": "secret_text"
+                    },
+                    "LINE_CLIENT_SECRET": {
+                      "value": "${{ github.event.inputs.line_client_secret }}",
+                      "type": "secret_text"
+                    }
+                  }
+                }
+              }
+            }')
+          echo "$RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if data.get('success'):
+    print('✅ Environment variables set successfully!')
+    env_vars = data.get('result', {}).get('deployment_configs', {}).get('production', {}).get('env_vars', {})
+    print('Set vars:', list(env_vars.keys()))
+else:
+    print('❌ Error:', data.get('errors'))
+    exit(1)
+"
