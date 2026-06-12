@@ -1,13 +1,12 @@
-// HOGUSY Service Worker v6
+// HOGUSY Service Worker v7
 // 戦略:
-//   静的アセット (JS/CSS/画像/フォント) → Cache-First
-//   APIリクエスト (/api/*) → Network-First (オフライン時は503フォールバック)
+//   静的アセット (JS/CSS/画像/フォント) → Cache-First（高速表示）
+//   APIリクエスト (/api/*) → Network-Only（個人データをキャッシュしない・セキュリティ優先）
 //   HTMLページ → Network-First (オフライン時はキャッシュ済みシェルにフォールバック)
 
-const CACHE_VERSION = 'hogusy-v6';
+const CACHE_VERSION = 'hogusy-v7';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const API_CACHE = `${CACHE_VERSION}-api`;
-const ALL_CACHES = [STATIC_CACHE, API_CACHE];
+const ALL_CACHES = [STATIC_CACHE];
 
 // プリキャッシュするシェル（アプリの骨格）
 const PRECACHE_URLS = ['/'];
@@ -50,11 +49,9 @@ self.addEventListener('fetch', (event) => {
   // POSTなど変更系リクエストはキャッシュしない
   if (request.method !== 'GET') return;
 
-  // --- API: Network-First ---
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request, API_CACHE, 4000));
-    return;
-  }
+  // --- API: Network-Only ---
+  // 認証トークン・個人情報を含むレスポンスはキャッシュしない
+  if (url.pathname.startsWith('/api/')) return;
 
   // --- 静的アセット (JS/CSS/画像/フォント): Cache-First ---
   if (isStaticAsset(url.pathname)) {
