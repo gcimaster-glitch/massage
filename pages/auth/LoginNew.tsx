@@ -28,8 +28,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     if (token) {
       // Store token and user info
-      localStorage.setItem('authToken', token);
-      
+      localStorage.setItem('auth_token', token);
+
       // Decode token to get user info
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -37,7 +37,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           role: payload.role as Role,
           displayName: payload.name || 'ユーザー'
         };
-        
+
         localStorage.setItem('currentUser', JSON.stringify(user));
         onLogin(payload.role);
         
@@ -101,7 +101,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
 
       const { token } = data;
-      localStorage.setItem('authToken', token);
+      localStorage.setItem('auth_token', token);
 
       const payload = JSON.parse(atob(token.split('.')[1]));
       localStorage.setItem('currentUser', JSON.stringify({

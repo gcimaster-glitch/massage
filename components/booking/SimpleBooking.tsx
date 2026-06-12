@@ -62,6 +62,26 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     return savedStep ? parseInt(savedStep, 10) : 1;
   });
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('auth_token'));
+  const [loggedInUser, setLoggedInUser] = useState<{ name: string; phone: string; email: string } | null>(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return null;
+    try {
+      const p = JSON.parse(atob(token.split('.')[1]));
+      if (p.exp && p.exp * 1000 < Date.now()) return null;
+      return { name: p.name || '', phone: p.phone || '', email: p.email || '' };
+    } catch { return null; }
+  });
+
+  // 認証ゲート（予約開始前）
+  const [showAuthGate, setShowAuthGate] = useState(() => !sessionStorage.getItem('bookingStep'));
+
+  // 出張コンプライアンスゲート
+  const [showOutcallGate, setShowOutcallGate] = useState(false);
+  const [isOutcall, setIsOutcall] = useState(false);
+  const [outcallTermsAgreed, setOutcallTermsAgreed] = useState(false);
+  const [outcallSafetyAgreed, setOutcallSafetyAgreed] = useState(false);
+  const [kycVerified, setKycVerified] = useState(false);
+
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   
@@ -121,6 +141,186 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     }
   }, [step]);
 
+  // KYC状態チェック
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    fetch('/api/kyc/status', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.verified) setKycVerified(true); })
+      .catch(() => {});
+  }, [isLoggedIn]);
+
+  // ==============================
+  // 認証ゲート
+  // ==============================
+  const AuthGate = () => {
+    const handleLogin = () => {
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      navigate(`/auth/login/user?redirect=${returnUrl}`);
+    };
+    const handleRegister = () => {
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      navigate(`/auth/register/user?redirect=${returnUrl}`);
+    };
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-4">
+          <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i className="fas fa-calendar-check text-teal-600 text-2xl"></i>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">予約をはじめる</h2>
+          <p className="text-gray-500 text-sm mt-2">会員ログインで予約履歴の確認・情報自動入力が使えます</p>
+        </div>
+
+        {isLoggedIn && loggedInUser ? (
+          <div className="bg-teal-50 border border-teal-300 rounded-xl p-5 flex items-center gap-4">
+            <div className="w-12 h-12 bg-teal-600 rounded-full flex items-center justify-center flex-shrink-0">
+              <i className="fas fa-user-check text-white text-lg"></i>
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-teal-900">{loggedInUser.name || 'ログイン中'}</p>
+              <p className="text-xs text-teal-600">{loggedInUser.email}</p>
+            </div>
+            <button
+              onClick={() => setShowAuthGate(false)}
+              className="px-5 py-2 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 text-sm"
+            >
+              この会員で予約する
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <button
+              onClick={handleLogin}
+              className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-base hover:bg-teal-700 transition-all flex items-center justify-center gap-3"
+            >
+              <i className="fas fa-sign-in-alt"></i>
+              会員ログインして予約する
+            </button>
+            <button
+              onClick={handleRegister}
+              className="w-full py-4 bg-white border-2 border-teal-600 text-teal-600 rounded-xl font-bold text-base hover:bg-teal-50 transition-all flex items-center justify-center gap-3"
+            >
+              <i className="fas fa-user-plus"></i>
+              新規会員登録して予約する
+            </button>
+          </div>
+        )}
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+          <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-gray-400">または</span></div>
+        </div>
+
+        <button
+          onClick={() => setShowAuthGate(false)}
+          className="w-full py-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-base hover:bg-gray-200 transition-all"
+        >
+          ゲストとして続ける
+        </button>
+        <p className="text-center text-xs text-gray-400">
+          ゲスト予約では予約番号で履歴を確認できます
+        </p>
+      </div>
+    );
+  };
+
+  // ==============================
+  // 出張コンプライアンスゲート
+  // ==============================
+  const OutcallGate = () => {
+    const canProceed = outcallTermsAgreed && outcallSafetyAgreed && (!isLoggedIn || kycVerified);
+    const handleProceed = () => {
+      if (!outcallTermsAgreed || !outcallSafetyAgreed) { setErrorMessage('すべての項目に同意してください'); return; }
+      if (isLoggedIn && !kycVerified) { setErrorMessage('出張サービスのご利用には本人確認（KYC）が必要です'); return; }
+      setShowOutcallGate(false);
+      setStep(2);
+    };
+    return (
+      <div className="space-y-6">
+        <button onClick={() => { setShowOutcallGate(false); setStep(1); }} className="text-teal-600 font-semibold hover:text-teal-800 flex items-center gap-2">
+          <i className="fas fa-arrow-left"></i> 戻る
+        </button>
+        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <i className="fas fa-exclamation-triangle text-orange-500 text-xl mt-0.5"></i>
+            <div>
+              <h2 className="text-lg font-black text-orange-900">出張サービスご利用前の必須確認</h2>
+              <p className="text-sm text-orange-700 mt-1">安全のため、以下をすべてご確認・同意いただく必要があります</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 本人確認 */}
+        <div className={`rounded-xl border-2 p-5 ${isLoggedIn ? (kycVerified ? 'border-green-400 bg-green-50' : 'border-red-300 bg-red-50') : 'border-yellow-300 bg-yellow-50'}`}>
+          <div className="flex items-start gap-3">
+            <i className={`fas fa-id-card text-xl mt-0.5 ${isLoggedIn ? (kycVerified ? 'text-green-600' : 'text-red-500') : 'text-yellow-600'}`}></i>
+            <div className="flex-1">
+              <p className="font-bold text-gray-900">① 本人確認（KYC）</p>
+              {!isLoggedIn ? (
+                <p className="text-sm text-yellow-700 mt-1">会員ログインの上、本人確認書類のご提出が必要です</p>
+              ) : kycVerified ? (
+                <p className="text-sm text-green-700 mt-1">✅ 本人確認済みです</p>
+              ) : (
+                <div>
+                  <p className="text-sm text-red-700 mt-1">本人確認が完了していません。出張サービスには必須です。</p>
+                  <button onClick={() => navigate('/kyc')} className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700">
+                    本人確認を完了する
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 事前決済 */}
+        <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-5">
+          <div className="flex items-start gap-3">
+            <i className="fas fa-credit-card text-blue-600 text-xl mt-0.5"></i>
+            <div>
+              <p className="font-bold text-gray-900">② 事前決済について</p>
+              <p className="text-sm text-blue-700 mt-1">出張サービスは安全確保のため、予約時のカード決済が必須です。現金払いはご利用いただけません。</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 契約約款 */}
+        <label className={`flex items-start gap-3 rounded-xl border-2 p-5 cursor-pointer transition-all ${outcallTermsAgreed ? 'border-teal-400 bg-teal-50' : 'border-gray-200 bg-white hover:border-teal-300'}`}>
+          <input type="checkbox" checked={outcallTermsAgreed} onChange={e => setOutcallTermsAgreed(e.target.checked)} className="w-5 h-5 mt-0.5 accent-teal-600 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-gray-900">③ 契約約款への同意 <span className="text-red-500">*</span></p>
+            <p className="text-sm text-gray-600 mt-1">
+              <a href="/terms" target="_blank" className="text-teal-600 underline font-semibold">HOGUSY出張サービス利用規約</a>および
+              <a href="/terms#safety" target="_blank" className="text-teal-600 underline font-semibold">安全プロトコル</a>を読み、同意します。
+            </p>
+          </div>
+        </label>
+
+        {/* 注意事項 */}
+        <label className={`flex items-start gap-3 rounded-xl border-2 p-5 cursor-pointer transition-all ${outcallSafetyAgreed ? 'border-teal-400 bg-teal-50' : 'border-gray-200 bg-white hover:border-teal-300'}`}>
+          <input type="checkbox" checked={outcallSafetyAgreed} onChange={e => setOutcallSafetyAgreed(e.target.checked)} className="w-5 h-5 mt-0.5 accent-teal-600 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-gray-900">④ 予約前注意事項への同意 <span className="text-red-500">*</span></p>
+            <ul className="text-sm text-gray-600 mt-2 space-y-1 list-disc list-inside">
+              <li>施術場所は安全・清潔な環境を確保してください</li>
+              <li>第三者の同席はセラピストの判断で断られる場合があります</li>
+              <li>不適切な要求はいかなる場合もお断りします</li>
+              <li>緊急時はHOGUSYサポートへ連絡してください</li>
+            </ul>
+          </div>
+        </label>
+
+        {errorMessage && <p className="text-red-600 text-sm font-semibold">{errorMessage}</p>}
+
+        <button onClick={handleProceed} disabled={!canProceed}
+          className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-lg hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all">
+          同意して日時選択へ進む
+        </button>
+      </div>
+    );
+  };
+
   // Step 1: メニュー選択
   const MenuStep = () => {
     const [courses, setCourses] = useState<Course[]>([]);
@@ -178,15 +378,26 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
       // コースを選択して価格と時間を計算
       const totalPrice = course.base_price + selectedOptions.reduce((sum, opt) => sum + opt.base_price, 0);
       const totalDuration = course.duration + selectedOptions.reduce((sum, opt) => sum + opt.duration, 0);
-      
+      const courseIsOutcall = course.name.includes('出張') || (course as any).is_outcall;
+
       setBookingData(prev => ({
         ...prev,
         course,
         options: selectedOptions,
         totalPrice,
         totalDuration,
+        bookingType: courseIsOutcall ? 'MOBILE' : (bookingType || 'ONSITE'),
       }));
-      setStep(2);
+
+      if (courseIsOutcall) {
+        setIsOutcall(true);
+        setOutcallTermsAgreed(false);
+        setOutcallSafetyAgreed(false);
+        setShowOutcallGate(true);
+      } else {
+        setIsOutcall(false);
+        setStep(2);
+      }
     };
 
     const handleToggleOption = (option: Course) => {
@@ -1524,8 +1735,28 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
+
+        {/* 認証ゲート */}
+        {showAuthGate && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <AuthGate />
+          </div>
+        )}
+
+        {/* 出張コンプライアンスゲート */}
+        {!showAuthGate && showOutcallGate && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            {errorMessage && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm font-semibold">
+                {errorMessage}
+              </div>
+            )}
+            <OutcallGate />
+          </div>
+        )}
+
         {/* プログレスバー（完了画面では非表示） */}
-        {step < totalSteps && (
+        {!showAuthGate && !showOutcallGate && step < totalSteps && (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-3">
               <div>
@@ -1574,40 +1805,30 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         )}
 
         {/* ステップ表示 */}
-        {step === 1 && <MenuStep />}
-        {step === 2 && <DateTimeStep />}
-        {step === 3 && (
+        {!showAuthGate && !showOutcallGate && step === 1 && <MenuStep />}
+        {!showAuthGate && !showOutcallGate && step === 2 && <DateTimeStep />}
+        {!showAuthGate && !showOutcallGate && step === 3 && (
           // 出張予約の場合は住所入力、店舗予約の場合は確認画面
           bookingType === 'MOBILE' ? <AddressStep /> : <ConfirmStep />
         )}
-        {step === 4 && (() => {
-          console.log('📍 ステップ4表示判定:', { bookingType, isLoggedIn });
+        {!showAuthGate && !showOutcallGate && step === 4 && (() => {
           // 出張予約: 確認画面、店舗予約: 会員登録（非会員のみ）または決済（会員）
-          if (bookingType === 'MOBILE') {
-            console.log('→ 出張予約: 確認画面表示');
-            return <ConfirmStep />;
-          } else if (isLoggedIn) {
-            console.log('→ 店舗予約 + ログイン済み: 決済画面表示');
-            return <PaymentStepWrapper />;
-          } else {
-            console.log('→ 店舗予約 + 未ログイン: 会員登録画面表示');
-            return <RegisterStep />;
-          }
+          if (bookingType === 'MOBILE') return <ConfirmStep />;
+          else if (isLoggedIn) return <PaymentStepWrapper />;
+          else return <RegisterStep />;
         })()}
-        {step === 5 && (
-          // 出張予約: 会員登録（非会員のみ）または決済（会員）、店舗予約: 決済（非会員）または完了（会員）
+        {!showAuthGate && !showOutcallGate && step === 5 && (
           bookingType === 'MOBILE'
             ? (isLoggedIn ? <PaymentStepWrapper /> : <RegisterStep />)
             : (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)
         )}
-        {step === 6 && (
-          // 出張予約: KYC（非会員のみ）または完了（会員）、店舗予約: 完了（非会員）
+        {!showAuthGate && !showOutcallGate && step === 6 && (
           bookingType === 'MOBILE'
             ? (isLoggedIn ? <CompleteStep /> : <KYCStep />)
             : <CompleteStep />
         )}
-        {step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <PaymentStepWrapper />}
-        {step === 8 && bookingType === 'MOBILE' && !isLoggedIn && <CompleteStep />}
+        {!showAuthGate && !showOutcallGate && step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <PaymentStepWrapper />}
+        {!showAuthGate && !showOutcallGate && step === 8 && bookingType === 'MOBILE' && !isLoggedIn && <CompleteStep />}
       </div>
     </div>
   );
