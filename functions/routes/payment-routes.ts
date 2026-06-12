@@ -53,7 +53,7 @@ payment.post('/create-intent', async (c) => {
     });
   } catch (error: unknown) {
     console.error('❌ Payment Intent creation failed:', error);
-    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return c.json({ error: '決済処理に失敗しました' }, 500);
   }
 });
 
@@ -129,7 +129,7 @@ payment.post('/confirm', async (c) => {
     });
   } catch (error: unknown) {
     console.error('❌ Payment confirmation failed:', error);
-    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return c.json({ error: '決済処理に失敗しました' }, 500);
   }
 });
 
@@ -159,7 +159,7 @@ payment.get('/status/:paymentIntentId', async (c) => {
     });
   } catch (error: unknown) {
     console.error('❌ Payment status retrieval failed:', error);
-    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return c.json({ error: '決済処理に失敗しました' }, 500);
   }
 });
 

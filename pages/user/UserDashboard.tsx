@@ -107,12 +107,21 @@ const UserDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             .filter((b: Booking) => b.status === 'completed')
             .reduce((sum: number, b: Booking) => sum + b.amount, 0);
 
-          setStats({
-            totalBookings,
-            totalSpent,
-            favoriteCount: 0, // TODO: お気に入りAPI実装後
-            points: 0 // TODO: ポイントAPI実装後
-          });
+          // お気に入り件数とポイントを並行取得
+          let favoriteCount = 0;
+          let points = 0;
+          await Promise.all([
+            fetch('/api/favorites/count', { headers: { 'Authorization': `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+              .then(d => { if (d) favoriteCount = d.count ?? 0; })
+              .catch(() => {}),
+            fetch('/api/users/points', { headers: { 'Authorization': `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+              .then(d => { if (d) points = d.balance ?? 0; })
+              .catch(() => {}),
+          ]);
+
+          setStats({ totalBookings, totalSpent, favoriteCount, points });
         } else {
           console.error('Failed to fetch bookings:', bookingsResponse.status);
         }

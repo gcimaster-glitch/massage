@@ -397,4 +397,123 @@ app.post('/bookings/:bookingId/cancel', requireAuth, async (c) => {
   }
 });
 
+// ============================================
+// 振込先設定
+// ============================================
+
+app.get('/bank-settings', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const profile = await c.env.DB.prepare(`
+      SELECT bank_name, bank_branch, bank_branch_code, bank_account_type, bank_account_number, bank_account_holder
+      FROM therapist_profiles WHERE user_id = ?
+    `).bind(userId).first() as Record<string, unknown> | null;
+
+    if (!profile) {
+      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
+    }
+
+    return c.json({ bankSettings: profile });
+  } catch (error: unknown) {
+    console.error('振込先設定取得エラー:', error);
+    return c.json({ error: '振込先設定の取得に失敗しました' }, 500);
+  }
+});
+
+app.put('/bank-settings', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { bankName, branchName, branchCode, accountType, accountNumber, accountHolderName } = await c.req.json();
+
+    if (!bankName || !branchName || !accountNumber || !accountHolderName) {
+      return c.json({ error: '銀行名・支店名・口座番号・口座名義は必須です' }, 400);
+    }
+
+    if (!/^\d{1,4}$/.test(branchCode || '')) {
+      return c.json({ error: '支店コードは数字4桁以内で入力してください' }, 400);
+    }
+
+    if (!/^\d{1,7}$/.test(accountNumber)) {
+      return c.json({ error: '口座番号は数字7桁以内で入力してください' }, 400);
+    }
+
+    const profile = await c.env.DB.prepare(
+      'SELECT id FROM therapist_profiles WHERE user_id = ?'
+    ).bind(userId).first();
+
+    if (!profile) {
+      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
+    }
+
+    await c.env.DB.prepare(`
+      UPDATE therapist_profiles
+      SET bank_name = ?, bank_branch = ?, bank_branch_code = ?,
+          bank_account_type = ?, bank_account_number = ?, bank_account_holder = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = ?
+    `).bind(bankName, branchName, branchCode || null, accountType || 'NORMAL', accountNumber, accountHolderName, userId).run();
+
+    return c.json({ success: true, message: '振込先情報を保存しました' });
+  } catch (error: unknown) {
+    console.error('振込先設定更新エラー:', error);
+    return c.json({ error: '振込先設定の保存に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// サービス設定（対応可能メニュー）
+// ============================================
+
+app.get('/service-settings', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const profile = await c.env.DB.prepare(
+      'SELECT specialties FROM therapist_profiles WHERE user_id = ?'
+    ).bind(userId).first() as Record<string, unknown> | null;
+
+    if (!profile) {
+      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
+    }
+
+    const services: string[] = profile.specialties
+      ? JSON.parse(profile.specialties as string)
+      : [];
+
+    return c.json({ services });
+  } catch (error: unknown) {
+    console.error('サービス設定取得エラー:', error);
+    return c.json({ error: 'サービス設定の取得に失敗しました' }, 500);
+  }
+});
+
+app.put('/service-settings', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { services } = await c.req.json();
+
+    if (!Array.isArray(services) || services.length === 0) {
+      return c.json({ error: '1つ以上のサービスを選択してください' }, 400);
+    }
+
+    const profile = await c.env.DB.prepare(
+      'SELECT id FROM therapist_profiles WHERE user_id = ?'
+    ).bind(userId).first();
+
+    if (!profile) {
+      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
+    }
+
+    await c.env.DB.prepare(`
+      UPDATE therapist_profiles
+      SET specialties = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = ?
+    `).bind(JSON.stringify(services), userId).run();
+
+    return c.json({ success: true, message: '対応可能メニューを保存しました' });
+  } catch (error: unknown) {
+    console.error('サービス設定更新エラー:', error);
+    return c.json({ error: 'サービス設定の保存に失敗しました' }, 500);
+  }
+});
+
 export default app;

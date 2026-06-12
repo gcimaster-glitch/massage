@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Briefcase, Check } from 'lucide-react';
 import SimpleLayout from '../../../components/SimpleLayout';
@@ -6,6 +6,7 @@ import SimpleLayout from '../../../components/SimpleLayout';
 const ServiceSettings: React.FC = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // 提供可能な施術メニュー
   const availableServices = [
@@ -21,9 +22,24 @@ const ServiceSettings: React.FC = () => {
     { id: 'acupressure', name: '指圧・経絡', duration: 60 },
   ];
 
-  const [selectedServices, setSelectedServices] = useState<Set<string>>(
-    new Set(['relaxation', 'sports', 'shiatsu'])
-  );
+  const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    fetch('/api/therapists/service-settings', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.services) && data.services.length > 0) {
+          setSelectedServices(new Set(data.services));
+        } else {
+          setSelectedServices(new Set(['relaxation', 'sports', 'shiatsu']));
+        }
+      })
+      .catch(() => setSelectedServices(new Set(['relaxation', 'sports', 'shiatsu'])));
+  }, []);
 
   const toggleService = (serviceId: string) => {
     const newSelected = new Set(selectedServices);
@@ -38,13 +54,28 @@ const ServiceSettings: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    
-    // TODO: API呼び出し
-    console.log('Selected services:', Array.from(selectedServices));
-    setTimeout(() => {
+    setError(null);
+    const token = localStorage.getItem('authToken');
+    try {
+      const res = await fetch('/api/therapists/service-settings', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ services: Array.from(selectedServices) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || '保存に失敗しました');
+      } else {
+        alert(data.message || '対応可能メニューを保存しました');
+      }
+    } catch {
+      setError('ネットワークエラーが発生しました');
+    } finally {
       setSaving(false);
-      alert('対応可能メニューを保存しました');
-    }, 1000);
+    }
   };
 
   return (
@@ -67,6 +98,12 @@ const ServiceSettings: React.FC = () => {
             提供できる施術メニューを選択してください（複数選択可）
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
+          </div>
+        )}
 
         {/* フォーム */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">

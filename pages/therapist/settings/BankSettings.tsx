@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, CreditCard, Building2, User } from 'lucide-react';
 import SimpleLayout from '../../../components/SimpleLayout';
@@ -6,25 +6,77 @@ import SimpleLayout from '../../../components/SimpleLayout';
 const BankSettings: React.FC = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    bankName: '三菱UFJ銀行',
-    branchName: '渋谷支店',
-    branchCode: '123',
+    bankName: '',
+    branchName: '',
+    branchCode: '',
     accountType: 'NORMAL',
-    accountNumber: '1234567',
-    accountHolderName: 'ヤマダ タロウ'
+    accountNumber: '',
+    accountHolderName: ''
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    fetch('/api/therapists/bank-settings', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.bankSettings) {
+          const s = data.bankSettings;
+          setFormData({
+            bankName: s.bank_name || '',
+            branchName: s.bank_branch || '',
+            branchCode: s.bank_branch_code || '',
+            accountType: s.bank_account_type || 'NORMAL',
+            accountNumber: s.bank_account_number || '',
+            accountHolderName: s.bank_account_holder || '',
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    
-    // TODO: API呼び出し
-    setTimeout(() => {
+    setError(null);
+    const token = localStorage.getItem('authToken');
+    try {
+      const res = await fetch('/api/therapists/bank-settings', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || '保存に失敗しました');
+      } else {
+        alert(data.message || '振込先情報を保存しました');
+      }
+    } catch {
+      setError('ネットワークエラーが発生しました');
+    } finally {
       setSaving(false);
-      alert('振込先情報を保存しました');
-    }, 1000);
+    }
   };
+
+  if (loading) {
+    return (
+      <SimpleLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">読み込み中...</div>
+        </div>
+      </SimpleLayout>
+    );
+  }
 
   return (
     <SimpleLayout>
@@ -46,6 +98,12 @@ const BankSettings: React.FC = () => {
             報酬振込先の銀行口座情報を設定します
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
+          </div>
+        )}
 
         {/* フォーム */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">

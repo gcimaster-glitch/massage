@@ -133,7 +133,7 @@ app.get('/', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Error fetching sites:', error);
-    return c.json({ error: 'Failed to fetch sites', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to fetch sites' }, 500);
   }
 });
 
@@ -164,7 +164,7 @@ app.get('/:id', async (c) => {
     return c.json({ site });
   } catch (error: unknown) {
     console.error('Error fetching site:', error);
-    return c.json({ error: 'Failed to fetch site', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to fetch site' }, 500);
   }
 });
 
@@ -229,7 +229,7 @@ app.post('/', async (c) => {
     return c.json({ success: true, id }, 201);
   } catch (error: unknown) {
     console.error('Error creating site:', error);
-    return c.json({ error: 'Failed to create site', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to create site' }, 500);
   }
 });
 
@@ -277,7 +277,7 @@ app.put('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: unknown) {
     console.error('Error updating site:', error);
-    return c.json({ error: 'Failed to update site', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to update site' }, 500);
   }
 });
 
@@ -298,7 +298,7 @@ app.delete('/:id', async (c) => {
     return c.json({ success: true });
   } catch (error: unknown) {
     console.error('Error deleting site:', error);
-    return c.json({ error: 'Failed to delete site', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to delete site' }, 500);
   }
 });
 
@@ -328,7 +328,7 @@ app.post('/bulk/hide', async (c) => {
     return c.json({ success: true, count: ids.length });
   } catch (error: unknown) {
     console.error('Error hiding sites:', error);
-    return c.json({ error: 'Failed to hide sites', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to hide sites' }, 500);
   }
 });
 
@@ -358,7 +358,7 @@ app.post('/bulk/archive', async (c) => {
     return c.json({ success: true, count: ids.length });
   } catch (error: unknown) {
     console.error('Error archiving sites:', error);
-    return c.json({ error: 'Failed to archive sites', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to archive sites' }, 500);
   }
 });
 
@@ -392,7 +392,7 @@ app.post('/bulk/status', async (c) => {
     return c.json({ success: true, count: ids.length, status });
   } catch (error: unknown) {
     console.error('Error updating site status:', error);
-    return c.json({ error: 'Failed to update site status', details: (error as Error).message }, 500);
+    return c.json({ error: 'Failed to update site status' }, 500);
   }
 });
 
