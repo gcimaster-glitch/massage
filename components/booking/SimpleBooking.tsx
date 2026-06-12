@@ -72,8 +72,8 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
     } catch { return null; }
   });
 
-  // 認証ゲート（予約開始前）
-  const [showAuthGate, setShowAuthGate] = useState(() => !sessionStorage.getItem('bookingStep'));
+  // 認証ゲート（予約開始時に必ず表示）
+  const [showAuthGate, setShowAuthGate] = useState(true);
 
   // 出張コンプライアンスゲート
   const [showOutcallGate, setShowOutcallGate] = useState(false);
@@ -579,14 +579,59 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   const DateTimeStep = () => {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
+    const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+    const [workingHours, setWorkingHours] = useState<{ start: number; end: number } | null>(null);
+    const [loadingSlots, setLoadingSlots] = useState(false);
 
-    const dates = Array.from({ length: 7 }, (_, i) => {
+    const dates = Array.from({ length: 14 }, (_, i) => {
       const d = new Date();
-      d.setDate(d.getDate() + i);
+      d.setDate(d.getDate() + i + 1); // 翌日から14日間
       return d.toISOString().split('T')[0];
     });
 
-    const times = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    const allTimes = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+
+    // 日付選択時に空き状況を取得
+    useEffect(() => {
+      if (!selectedDate || !therapist?.id) return;
+      setLoadingSlots(true);
+      setBookedSlots([]);
+
+      const dayOfWeek = new Date(selectedDate).getDay();
+
+      Promise.all([
+        // セラピストの営業スケジュール取得
+        fetch(`/api/schedules?therapist_id=${therapist.id}&day_of_week=${dayOfWeek}`)
+          .then(r => r.ok ? r.json() : { schedules: [] }),
+        // その日の予約済みスロット取得
+        fetch(`/api/therapists/${therapist.id}/booked-slots?date=${selectedDate}`)
+          .then(r => r.ok ? r.json() : { booked: [] }),
+      ]).then(([scheduleData, bookedData]) => {
+        // 営業時間を設定
+        const schedule = scheduleData.schedules?.[0];
+        if (schedule?.is_available && schedule.start_time && schedule.end_time) {
+          const start = parseInt(schedule.start_time.split(':')[0]);
+          const end = parseInt(schedule.end_time.split(':')[0]);
+          setWorkingHours({ start, end });
+        } else {
+          setWorkingHours(null); // スケジュール未設定は全時間帯表示
+        }
+        setBookedSlots(bookedData.booked || []);
+      }).catch(() => {
+        setWorkingHours(null);
+      }).finally(() => setLoadingSlots(false));
+    }, [selectedDate]);
+
+    const isSlotAvailable = (time: string): boolean => {
+      if (bookedSlots.includes(time)) return false;
+      if (workingHours) {
+        const hour = parseInt(time.split(':')[0]);
+        if (hour < workingHours.start || hour >= workingHours.end) return false;
+      }
+      return true;
+    };
+
+    const times = allTimes;
 
     const handleNext = () => {
       if (!selectedDate || !selectedTime) {
@@ -656,19 +701,37 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         {selectedDate && (
           <div className="bg-white p-4 rounded-lg border">
             <h3 className="font-semibold mb-3">時間を選択</h3>
-            <div className="grid grid-cols-4 gap-2">
-              {times.map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedTime(time)}
-                  className={`p-2 rounded text-center ${
-                    selectedTime === time ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
+            {loadingSlots ? (
+              <div className="flex items-center gap-2 py-4 text-gray-500 text-sm">
+                <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                空き状況を確認中...
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {times.map((time) => {
+                  const available = isSlotAvailable(time);
+                  const isSelected = selectedTime === time;
+                  return (
+                    <button
+                      key={time}
+                      onClick={() => available && setSelectedTime(time)}
+                      disabled={!available}
+                      className={`p-2 rounded text-center text-sm transition-all ${
+                        !available
+                          ? 'bg-gray-100 text-gray-300 cursor-not-allowed line-through'
+                          : isSelected
+                          ? 'bg-teal-600 text-white font-bold'
+                          : 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200'
+                      }`}
+                    >
+                      {time}
+                      {!available && <span className="block text-[9px]">×</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-2">× は予約済み・営業時間外のスロットです</p>
           </div>
         )}
 

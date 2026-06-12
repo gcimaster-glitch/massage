@@ -33,8 +33,7 @@ app.get('/', async (c) => {
   
   try {
     // WHERE句の構築（有効なセラピストのみ表示）
-    // 新スキーマ: status = 'APPROVED'のみ
-    const conditions: string[] = ["tp.status = 'APPROVED'"];
+    const conditions: string[] = ["(tp.status = 'APPROVED' OR tp.status IS NULL)"];
     const params: any[] = [];
     
     if (search) {
@@ -292,6 +291,37 @@ app.get('/:id/menu', async (c) => {
   } catch (error: unknown) {
     console.error('Error fetching therapist menu:', error);
     return c.json({ error: 'メニューの取得に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// セラピストの予約済みスロット取得（パブリック）
+// GET /api/therapists/:id/booked-slots?date=YYYY-MM-DD
+// ============================================
+app.get('/:id/booked-slots', async (c) => {
+  const { DB } = c.env;
+  const therapistId = c.req.param('id');
+  const date = c.req.query('date');
+
+  if (!date) return c.json({ error: 'dateパラメータが必要です' }, 400);
+
+  try {
+    // その日の確定・進行中予約を取得
+    const result = await DB.prepare(`
+      SELECT scheduled_at FROM bookings
+      WHERE therapist_id = ?
+        AND DATE(scheduled_at) = ?
+        AND status NOT IN ('CANCELLED', 'REJECTED')
+    `).bind(therapistId, date).all<{ scheduled_at: string }>();
+
+    const booked = (result.results || []).map(row => {
+      const t = new Date(row.scheduled_at);
+      return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    });
+
+    return c.json({ booked });
+  } catch {
+    return c.json({ booked: [] });
   }
 });
 
