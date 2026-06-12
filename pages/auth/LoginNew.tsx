@@ -85,10 +85,44 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // TODO: Implement email/password login
-    alert('メール/パスワードログインは準備中です');
-    setIsSubmitting(false);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'ログインに失敗しました');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { token } = data;
+      localStorage.setItem('authToken', token);
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      localStorage.setItem('currentUser', JSON.stringify({
+        role: payload.role as Role,
+        displayName: payload.userName || 'ユーザー',
+      }));
+      onLogin(payload.role);
+
+      const paths: Record<string, string> = {
+        ADMIN: '/admin',
+        THERAPIST: '/t',
+        HOST: '/h',
+        THERAPIST_OFFICE: '/o',
+        USER: '/app',
+        AFFILIATE: '/affiliate',
+      };
+      navigate(paths[payload.role] || '/app');
+    } catch {
+      alert('ネットワークエラーが発生しました');
+      setIsSubmitting(false);
+    }
   };
 
   return (
