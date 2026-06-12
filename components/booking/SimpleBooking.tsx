@@ -75,6 +75,9 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
   // 認証ゲート（予約開始時に必ず表示）
   const [showAuthGate, setShowAuthGate] = useState(true);
 
+  // 日時確定後のログイン必須ゲート
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
+
   // 出張コンプライアンスゲート
   const [showOutcallGate, setShowOutcallGate] = useState(false);
   const [isOutcall, setIsOutcall] = useState(false);
@@ -316,6 +319,63 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         <button onClick={handleProceed} disabled={!canProceed}
           className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-lg hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all">
           同意して日時選択へ進む
+        </button>
+      </div>
+    );
+  };
+
+  // ==============================
+  // ログイン必須ゲート（日時確定後）
+  // ==============================
+  const LoginRequiredGate = () => {
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-4">
+          <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i className="fas fa-lock text-teal-600 text-2xl"></i>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">予約を続けるにはログインが必要です</h2>
+          <p className="text-gray-500 text-sm mt-2">予約の確定・管理には会員登録またはログインが必要です</p>
+        </div>
+
+        {/* 選択済み内容サマリー */}
+        <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 space-y-2 text-sm">
+          <p className="font-bold text-teal-800 text-xs uppercase tracking-wider">選択済みの予約内容</p>
+          <div className="flex justify-between text-gray-700">
+            <span>コース</span><span className="font-semibold">{bookingData.course?.name}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>日時</span>
+            <span className="font-semibold">
+              {bookingData.date && new Date(bookingData.date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' })} {bookingData.time}
+            </span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>料金</span><span className="font-bold text-teal-700">¥{bookingData.totalPrice.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => navigate(`/auth/login/user?redirect=${returnUrl}`)}
+          className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-base hover:bg-teal-700 transition-all flex items-center justify-center gap-3"
+        >
+          <i className="fas fa-sign-in-alt"></i>
+          ログインして予約を続ける
+        </button>
+        <button
+          onClick={() => navigate(`/auth/register/user?redirect=${returnUrl}`)}
+          className="w-full py-4 bg-white border-2 border-teal-600 text-teal-600 rounded-xl font-bold text-base hover:bg-teal-50 transition-all flex items-center justify-center gap-3"
+        >
+          <i className="fas fa-user-plus"></i>
+          新規会員登録して予約を続ける
+        </button>
+
+        <button
+          onClick={() => { setShowLoginRequired(false); }}
+          className="w-full py-3 text-gray-400 text-sm hover:text-gray-600 transition-all"
+        >
+          ← 日時選択に戻る
         </button>
       </div>
     );
@@ -657,17 +717,18 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
       }
       
       setBookingData(prev => ({ ...prev, date: selectedDate, time: selectedTime }));
-      
+
+      // 未ログインの場合はログイン必須ゲートを表示
+      if (!isLoggedIn) {
+        setShowLoginRequired(true);
+        return;
+      }
+
       // 出張予約の場合は住所入力へ
       if (bookingType === 'MOBILE') {
-        setStep(isLoggedIn ? 3 : 4); // 会員は住所入力(3)、非会員は会員登録(4)
+        setStep(3);
       } else {
-        // 店舗予約の場合
-        if (isLoggedIn) {
-          setStep(3); // 会員は確認へ
-        } else {
-          setStep(4); // 非会員は会員登録へ
-        }
+        setStep(3);
       }
     };
 
@@ -1806,6 +1867,13 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
           </div>
         )}
 
+        {/* ログイン必須ゲート（日時確定後・未ログイン時） */}
+        {!showAuthGate && !showOutcallGate && showLoginRequired && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <LoginRequiredGate />
+          </div>
+        )}
+
         {/* 出張コンプライアンスゲート */}
         {!showAuthGate && showOutcallGate && (
           <div className="bg-white rounded-xl shadow-sm p-6">
@@ -1819,7 +1887,7 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         )}
 
         {/* プログレスバー（完了画面では非表示） */}
-        {!showAuthGate && !showOutcallGate && step < totalSteps && (
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step < totalSteps && (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-3">
               <div>
@@ -1868,30 +1936,30 @@ const SimpleBooking: React.FC<SimpleBookingProps> = ({ therapist, bookingType = 
         )}
 
         {/* ステップ表示 */}
-        {!showAuthGate && !showOutcallGate && step === 1 && <MenuStep />}
-        {!showAuthGate && !showOutcallGate && step === 2 && <DateTimeStep />}
-        {!showAuthGate && !showOutcallGate && step === 3 && (
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 1 && <MenuStep />}
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 2 && <DateTimeStep />}
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 3 && (
           // 出張予約の場合は住所入力、店舗予約の場合は確認画面
           bookingType === 'MOBILE' ? <AddressStep /> : <ConfirmStep />
         )}
-        {!showAuthGate && !showOutcallGate && step === 4 && (() => {
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 4 && (() => {
           // 出張予約: 確認画面、店舗予約: 会員登録（非会員のみ）または決済（会員）
           if (bookingType === 'MOBILE') return <ConfirmStep />;
           else if (isLoggedIn) return <PaymentStepWrapper />;
           else return <RegisterStep />;
         })()}
-        {!showAuthGate && !showOutcallGate && step === 5 && (
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 5 && (
           bookingType === 'MOBILE'
             ? (isLoggedIn ? <PaymentStepWrapper /> : <RegisterStep />)
             : (isLoggedIn ? <CompleteStep /> : <PaymentStepWrapper />)
         )}
-        {!showAuthGate && !showOutcallGate && step === 6 && (
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 6 && (
           bookingType === 'MOBILE'
             ? (isLoggedIn ? <CompleteStep /> : <KYCStep />)
             : <CompleteStep />
         )}
-        {!showAuthGate && !showOutcallGate && step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <PaymentStepWrapper />}
-        {!showAuthGate && !showOutcallGate && step === 8 && bookingType === 'MOBILE' && !isLoggedIn && <CompleteStep />}
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 7 && bookingType === 'MOBILE' && !isLoggedIn && <PaymentStepWrapper />}
+        {!showAuthGate && !showOutcallGate && !showLoginRequired && step === 8 && bookingType === 'MOBILE' && !isLoggedIn && <CompleteStep />}
       </div>
     </div>
   );
