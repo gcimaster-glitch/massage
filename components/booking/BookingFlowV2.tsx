@@ -57,19 +57,31 @@ const BookingFlowV2: React.FC = () => {
   const navigate = useNavigate();
   const { therapistId } = useParams<{ therapistId: string }>();
   const [searchParams] = useSearchParams();
-  
+
   // ステップ管理（1-5）
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4; // 完了画面は除く
-  
+
+  // 認証ゲート（予約開始前に表示）
+  const [showAuthGate, setShowAuthGate] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<{ name: string; phone: string; email: string } | null>(null);
+
+  // 出張コンプライアンスゲート
+  const [showOutcallGate, setShowOutcallGate] = useState(false);
+  const [isOutcall, setIsOutcall] = useState(false);
+  const [outcallTermsAgreed, setOutcallTermsAgreed] = useState(false);
+  const [outcallSafetyAgreed, setOutcallSafetyAgreed] = useState(false);
+  const [kycVerified, setKycVerified] = useState(false);
+
   // ローディング・エラー管理
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
-  
+
   // セラピスト情報
   const [therapist, setTherapist] = useState<Therapist | null>(null);
-  
+
   // メニュー情報
   const [courses, setCourses] = useState<Course[]>([]);
   const [options, setOptions] = useState<Course[]>([]);
@@ -169,6 +181,27 @@ const BookingFlowV2: React.FC = () => {
     fetchMenu();
   }, [therapist]);
 
+  // ログイン状態チェック
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) return;
+      setIsLoggedIn(true);
+      setLoggedInUser({
+        name: payload.name || '',
+        phone: payload.phone || '',
+        email: payload.email || '',
+      });
+      // KYC状態確認
+      fetch('/api/kyc/status', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.verified) setKycVerified(true); })
+        .catch(() => {});
+    } catch { /* トークン解析失敗は無視 */ }
+  }, []);
+
   // エラー・成功メッセージの自動クリア
   useEffect(() => {
     if (error) {
@@ -183,6 +216,205 @@ const BookingFlowV2: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  // ===================================
+  // Auth Gate: ログイン選択
+  // ===================================
+  const AuthGate = () => {
+    const handleLogin = () => {
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      navigate(`/auth/login/user?redirect=${returnUrl}`);
+    };
+    const handleRegister = () => {
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      navigate(`/auth/register/user?redirect=${returnUrl}`);
+    };
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-4">
+          <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i className="fas fa-calendar-check text-teal-600 text-2xl"></i>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">予約をはじめる</h2>
+          <p className="text-gray-500 text-sm mt-2">会員ログインで予約履歴の確認や情報自動入力が使えます</p>
+        </div>
+
+        {isLoggedIn && loggedInUser ? (
+          <div className="bg-teal-50 border border-teal-300 rounded-xl p-5 flex items-center gap-4">
+            <div className="w-12 h-12 bg-teal-600 rounded-full flex items-center justify-center flex-shrink-0">
+              <i className="fas fa-user-check text-white text-lg"></i>
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-teal-900">{loggedInUser.name || 'ログイン中'}</p>
+              <p className="text-xs text-teal-600">{loggedInUser.email}</p>
+            </div>
+            <button
+              onClick={() => setShowAuthGate(false)}
+              className="px-5 py-2 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 text-sm"
+            >
+              この会員で予約する
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <button
+              onClick={handleLogin}
+              className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-base hover:bg-teal-700 transition-all flex items-center justify-center gap-3"
+            >
+              <i className="fas fa-sign-in-alt"></i>
+              会員ログインして予約する
+            </button>
+            <button
+              onClick={handleRegister}
+              className="w-full py-4 bg-white border-2 border-teal-600 text-teal-600 rounded-xl font-bold text-base hover:bg-teal-50 transition-all flex items-center justify-center gap-3"
+            >
+              <i className="fas fa-user-plus"></i>
+              新規会員登録して予約する
+            </button>
+          </div>
+        )}
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+          <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-gray-400">または</span></div>
+        </div>
+
+        <button
+          onClick={() => setShowAuthGate(false)}
+          className="w-full py-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-base hover:bg-gray-200 transition-all"
+        >
+          ゲストとして続ける
+        </button>
+
+        <p className="text-center text-xs text-gray-400">
+          ゲスト予約では予約履歴の確認に予約番号が必要です
+        </p>
+      </div>
+    );
+  };
+
+  // ===================================
+  // Outcall Gate: 出張利用必須確認
+  // ===================================
+  const OutcallComplianceGate = () => {
+    const canProceed = outcallTermsAgreed && outcallSafetyAgreed && (kycVerified || !isLoggedIn);
+
+    const handleProceed = () => {
+      if (!outcallTermsAgreed || !outcallSafetyAgreed) {
+        setError('すべての項目に同意してください');
+        return;
+      }
+      if (isLoggedIn && !kycVerified) {
+        setError('出張サービスのご利用には本人確認（KYC）が必要です');
+        return;
+      }
+      setShowOutcallGate(false);
+      setCurrentStep(2);
+    };
+
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => { setShowOutcallGate(false); setCurrentStep(1); }}
+          className="text-teal-600 font-semibold hover:text-teal-800 flex items-center gap-2"
+        >
+          <i className="fas fa-arrow-left"></i> 戻る
+        </button>
+
+        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <i className="fas fa-exclamation-triangle text-orange-500 text-xl mt-0.5"></i>
+            <div>
+              <h2 className="text-lg font-black text-orange-900">出張サービスご利用前の必須確認</h2>
+              <p className="text-sm text-orange-700 mt-1">安全のため、以下をすべてご確認・同意いただく必要があります</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 本人確認 */}
+        <div className={`rounded-xl border-2 p-5 ${isLoggedIn ? (kycVerified ? 'border-green-400 bg-green-50' : 'border-red-300 bg-red-50') : 'border-yellow-300 bg-yellow-50'}`}>
+          <div className="flex items-start gap-3">
+            <i className={`fas fa-id-card text-xl mt-0.5 ${isLoggedIn ? (kycVerified ? 'text-green-600' : 'text-red-500') : 'text-yellow-600'}`}></i>
+            <div className="flex-1">
+              <p className="font-bold text-gray-900">① 本人確認（KYC）</p>
+              {!isLoggedIn ? (
+                <p className="text-sm text-yellow-700 mt-1">会員ログインの上、本人確認書類のご提出が必要です</p>
+              ) : kycVerified ? (
+                <p className="text-sm text-green-700 mt-1">✅ 本人確認済みです</p>
+              ) : (
+                <div>
+                  <p className="text-sm text-red-700 mt-1">本人確認が完了していません。出張サービスのご利用には必須です。</p>
+                  <button
+                    onClick={() => navigate('/kyc')}
+                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                  >
+                    本人確認を完了する
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 事前決済 */}
+        <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-5">
+          <div className="flex items-start gap-3">
+            <i className="fas fa-credit-card text-blue-600 text-xl mt-0.5"></i>
+            <div>
+              <p className="font-bold text-gray-900">② 事前決済について</p>
+              <p className="text-sm text-blue-700 mt-1">出張サービスは安全確保のため、予約時にカード決済が完了していることが必須です。現金払いはご利用いただけません。</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 契約約款への同意 */}
+        <label className={`flex items-start gap-3 rounded-xl border-2 p-5 cursor-pointer transition-all ${outcallTermsAgreed ? 'border-teal-400 bg-teal-50' : 'border-gray-200 bg-white hover:border-teal-300'}`}>
+          <input
+            type="checkbox"
+            checked={outcallTermsAgreed}
+            onChange={e => setOutcallTermsAgreed(e.target.checked)}
+            className="w-5 h-5 mt-0.5 accent-teal-600 flex-shrink-0"
+          />
+          <div>
+            <p className="font-bold text-gray-900">③ 契約約款への同意 <span className="text-red-500">*</span></p>
+            <p className="text-sm text-gray-600 mt-1">
+              <a href="/terms" target="_blank" className="text-teal-600 underline font-semibold">HOGUSY出張サービス利用規約</a>
+              および
+              <a href="/terms#safety" target="_blank" className="text-teal-600 underline font-semibold">安全プロトコル</a>
+              を読み、同意します。
+            </p>
+          </div>
+        </label>
+
+        {/* 予約前注意事項への同意 */}
+        <label className={`flex items-start gap-3 rounded-xl border-2 p-5 cursor-pointer transition-all ${outcallSafetyAgreed ? 'border-teal-400 bg-teal-50' : 'border-gray-200 bg-white hover:border-teal-300'}`}>
+          <input
+            type="checkbox"
+            checked={outcallSafetyAgreed}
+            onChange={e => setOutcallSafetyAgreed(e.target.checked)}
+            className="w-5 h-5 mt-0.5 accent-teal-600 flex-shrink-0"
+          />
+          <div>
+            <p className="font-bold text-gray-900">④ 予約前注意事項への同意 <span className="text-red-500">*</span></p>
+            <ul className="text-sm text-gray-600 mt-2 space-y-1 list-disc list-inside">
+              <li>施術場所は安全・清潔な環境を確保してください</li>
+              <li>第三者の同席はセラピストの判断で断られる場合があります</li>
+              <li>不適切な要求はいかなる場合もお断りします</li>
+              <li>緊急時はHOGUSYサポート（緊急連絡先）へ連絡してください</li>
+            </ul>
+          </div>
+        </label>
+
+        <button
+          onClick={handleProceed}
+          disabled={!canProceed}
+          className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-lg hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+        >
+          同意して日時選択へ進む
+        </button>
+      </div>
+    );
+  };
 
   // ===================================
   // Step 1: メニュー選択
@@ -212,6 +444,11 @@ const BookingFlowV2: React.FC = () => {
       const totalPrice = selectedCourse.base_price + selectedOptions.reduce((sum, opt) => sum + opt.base_price, 0);
       const totalDuration = selectedCourse.duration + selectedOptions.reduce((sum, opt) => sum + opt.duration, 0);
 
+      const courseIsOutcall = selectedCourse.name.includes('出張') || (selectedCourse as any).is_outcall;
+      setIsOutcall(courseIsOutcall);
+      setOutcallTermsAgreed(false);
+      setOutcallSafetyAgreed(false);
+
       setBookingData(prev => ({
         ...prev,
         course: selectedCourse,
@@ -221,7 +458,11 @@ const BookingFlowV2: React.FC = () => {
       }));
 
       setSuccess('✅ メニューを選択しました');
-      setCurrentStep(2);
+      if (courseIsOutcall) {
+        setShowOutcallGate(true);
+      } else {
+        setCurrentStep(2);
+      }
     };
 
     return (
@@ -510,9 +751,9 @@ const BookingFlowV2: React.FC = () => {
   // Step 3: お客様情報入力
   // ===================================
   const Step3CustomerInfo = () => {
-    const [name, setName] = useState(bookingData.customerName);
-    const [phone, setPhone] = useState(bookingData.customerPhone);
-    const [email, setEmail] = useState(bookingData.customerEmail);
+    const [name, setName] = useState(bookingData.customerName || loggedInUser?.name || '');
+    const [phone, setPhone] = useState(bookingData.customerPhone || loggedInUser?.phone || '');
+    const [email, setEmail] = useState(bookingData.customerEmail || loggedInUser?.email || '');
 
     const handleNext = () => {
       // バリデーション
@@ -557,12 +798,22 @@ const BookingFlowV2: React.FC = () => {
 
         <h2 className="text-2xl font-bold text-gray-900">お客様情報</h2>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <i className="fas fa-info-circle mr-2"></i>
-            予約確認メールをお送りします。正確な情報を入力してください。
-          </p>
-        </div>
+        {isLoggedIn && loggedInUser ? (
+          <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 flex items-center gap-3">
+            <i className="fas fa-user-check text-teal-600 text-xl"></i>
+            <div>
+              <p className="text-sm font-bold text-teal-800">会員情報を自動入力しました</p>
+              <p className="text-xs text-teal-600">内容を確認・修正してください</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800">
+              <i className="fas fa-info-circle mr-2"></i>
+              予約確認メールをお送りします。正確な情報を入力してください。
+            </p>
+          </div>
+        )}
 
         {/* お名前 */}
         <div className="space-y-2">
@@ -631,15 +882,18 @@ const BookingFlowV2: React.FC = () => {
       setError('');
 
       try {
+        const token = localStorage.getItem('auth_token');
+        const endpoint = (isLoggedIn && token) ? '/api/bookings' : '/api/bookings/guest';
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (isLoggedIn && token) headers['Authorization'] = `Bearer ${token}`;
+
         // 予約作成API呼び出し
-        const response = await fetch('/api/bookings/guest', {
+        const response = await fetch(endpoint, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({
             therapist_id: bookingData.therapist.id,
-            booking_type: 'ONSITE',
+            booking_type: isOutcall ? 'OUTCALL' : 'ONSITE',
             site_id: null,
             total_duration: bookingData.totalDuration,
             total_price: bookingData.totalPrice,
@@ -883,8 +1137,16 @@ const BookingFlowV2: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">予約手続き</h1>
           
+          {/* 会員バッジ */}
+          {isLoggedIn && !showAuthGate && (
+            <div className="mb-3 flex items-center gap-2 text-teal-700 bg-teal-50 rounded-lg px-3 py-2">
+              <i className="fas fa-user-check text-sm"></i>
+              <span className="text-xs font-bold">会員として予約中 — {loggedInUser?.email}</span>
+            </div>
+          )}
+
           {/* プログレスバー */}
-          {currentStep <= totalSteps && (
+          {!showAuthGate && !showOutcallGate && currentStep <= totalSteps && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="font-semibold text-teal-600">ステップ {currentStep} / {totalSteps}</span>
@@ -932,11 +1194,13 @@ const BookingFlowV2: React.FC = () => {
 
         {/* メインコンテンツ */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          {currentStep === 1 && <Step1MenuSelection />}
-          {currentStep === 2 && <Step2DateTimeSelection />}
-          {currentStep === 3 && <Step3CustomerInfo />}
-          {currentStep === 4 && <Step4Confirmation />}
-          {currentStep === 5 && <Step5Complete />}
+          {showAuthGate && <AuthGate />}
+          {!showAuthGate && showOutcallGate && <OutcallComplianceGate />}
+          {!showAuthGate && !showOutcallGate && currentStep === 1 && <Step1MenuSelection />}
+          {!showAuthGate && !showOutcallGate && currentStep === 2 && <Step2DateTimeSelection />}
+          {!showAuthGate && !showOutcallGate && currentStep === 3 && <Step3CustomerInfo />}
+          {!showAuthGate && !showOutcallGate && currentStep === 4 && <Step4Confirmation />}
+          {!showAuthGate && !showOutcallGate && currentStep === 5 && <Step5Complete />}
         </div>
       </div>
     </div>
