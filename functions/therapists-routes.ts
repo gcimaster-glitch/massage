@@ -97,6 +97,11 @@ app.get('/', async (c) => {
       totalPages: Math.ceil(total / limit)
     });
   } catch (error: unknown) {
+    // テーブル未作成など初期状態でも空リストを返す（500にしない）
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('no such table') || msg.includes('SQLITE_ERROR')) {
+      return c.json({ therapists: [], total: 0, page: 1, limit: 20, totalPages: 0 });
+    }
     console.error('Error fetching therapists:', error);
     return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
   }
@@ -187,6 +192,10 @@ app.get('/:id', async (c) => {
       reviews: reviewsResult.results || []
     });
   } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('no such table') || msg.includes('SQLITE_ERROR')) {
+      return c.json({ error: 'セラピストが見つかりません' }, 404);
+    }
     console.error('Error fetching therapist detail:', error);
     return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
   }
