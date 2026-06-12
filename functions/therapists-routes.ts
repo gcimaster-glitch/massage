@@ -189,10 +189,7 @@ app.get('/:id', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Error fetching therapist detail:', error);
-    return c.json({ 
-      error: 'セラピストの取得に失敗しました',
-      details: (error as Error).message || String(error)
-    }, 500);
+    return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
   }
 });
 

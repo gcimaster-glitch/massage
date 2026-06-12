@@ -506,10 +506,7 @@ authApp.post('/register', async (c) => {
           }, 200)
         } catch (updateError: unknown) {
           console.error('❌ Failed to update existing user:', updateError)
-          return c.json({ 
-            error: 'アカウント情報の更新に失敗しました。',
-            details: updateError.message 
-          }, 500)
+          return c.json({ error: 'アカウント情報の更新に失敗しました。' }, 500)
         }
       }
 
@@ -1147,6 +1144,18 @@ authApp.post('/admin/delete-users', async (c) => {
 // ============================================
 authApp.post('/refresh', async (c) => {
   try {
+    const ipAddress = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')?.split(',')[0] || 'unknown'
+    if (c.env.DB) {
+      const rateLimitResult = await checkRateLimit(c.env.DB, ipAddress, '/api/auth/refresh', {
+        limit: 20,
+        windowMs: 60 * 1000,
+        message: 'トークン更新リクエストが多すぎます。しばらく待ってから再試行してください。',
+      })
+      if (!rateLimitResult.allowed) {
+        return c.json({ error: 'トークン更新リクエストが多すぎます', retryAfter: rateLimitResult.retryAfter }, 429)
+      }
+    }
+
     // c.req.json()はCloudflare Workers環境でPromise rejectを起こす場合があるため
     // try/catchで安全にパースする
     let sessionToken: string | undefined

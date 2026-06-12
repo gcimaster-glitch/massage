@@ -72,9 +72,9 @@ app.post('/timelock', async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`
     ).bind(timelockId, therapist_id, site_id || null, scheduled_at, duration || 60, expiresAt, session_id).run();
     return c.json({ success: true, timelock_id: timelockId, expires_at: expiresAt });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Timelock error:', error);
-    return c.json({ error: 'タイムロックの作成に失敗しました', details: error.message }, 500);
+    return c.json({ error: 'タイムロックの作成に失敗しました' }, 500);
   }
 });
 
@@ -138,9 +138,9 @@ app.post('/guest', async (c) => {
       await DB.prepare(`UPDATE booking_timelocks SET status = 'CONFIRMED' WHERE id = ?`).bind(timelock_id).run();
     }
     return c.json({ success: true, booking_id: bookingId, message: 'ゲスト予約が完了しました。確認メールをお送りします。' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Guest booking error:', error);
-    return c.json({ error: 'ゲスト予約の作成に失敗しました', details: error.message }, 500);
+    return c.json({ error: 'ゲスト予約の作成に失敗しました' }, 500);
   }
 });
 
@@ -180,12 +180,7 @@ app.get('/guest/:bookingId', async (c) => {
     return c.json({ success: true, booking });
   } catch (error: unknown) {
     console.error('❌ Error fetching guest booking:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    return c.json({ 
-      error: '予約情報の取得に失敗しました',
-      details: (error as Error).message 
-    }, 500);
+    return c.json({ error: '予約情報の取得に失敗しました' }, 500);
   }
 });
 
@@ -376,16 +371,7 @@ app.post('/', requireAuth, async (c) => {
     }, 201);
   } catch (error: unknown) {
     console.error('❌ Error creating booking:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause
-    });
-    return c.json({ 
-      error: '予約の作成に失敗しました',
-      details: (error as Error).message || 'Unknown error',
-      errorType: (error as Error).constructor.name
-    }, 500);
+    return c.json({ error: '予約の作成に失敗しました' }, 500);
   }
 });
 
@@ -766,10 +752,7 @@ app.patch('/:id/status', requireAuth, async (c) => {
     });
   } catch (error: unknown) {
     console.error('❌ Error updating booking status:', error);
-    return c.json({ 
-      error: 'ステータスの更新に失敗しました',
-      details: (error as Error).message 
-    }, 500);
+    return c.json({ error: 'ステータスの更新に失敗しました' }, 500);
   }
 });
 
