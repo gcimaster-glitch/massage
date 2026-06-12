@@ -27,6 +27,9 @@ import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
 import hostApp from './host-routes'
 import stripeWebhookApp from './stripe-webhook-routes'
+import favoritesApp from './favorites-routes'
+import adminPlansApp from './admin-plans-routes'
+import userSelfApp from './user-self-routes'
 
 // ============================================
 // Type Definitions
@@ -259,6 +262,21 @@ app.route('/api/email', emailApp)
 // ============================================
 app.route('/api/notify', notifyApp)
 app.route('/api/storage', notifyApp)
+
+// ============================================
+// Favorites Routes
+// ============================================
+app.route('/api/favorites', favoritesApp)
+
+// ============================================
+// Admin Plans Routes
+// ============================================
+app.route('/api/admin/plans', adminPlansApp)
+
+// ============================================
+// User Self Routes (points, etc.)
+// ============================================
+app.route('/api/users', userSelfApp)
 
 // ============================================
 // SSR Public Pages（SEO対応のサーバーサイドHTML）

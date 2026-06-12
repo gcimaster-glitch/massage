@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Search, Filter, Grid, Map as MapIcon, Star, Navigation, Building2, Home } from 'lucide-react'
+import GoogleMap from '../../components/GoogleMap'
 
 interface Site {
   id: string
@@ -344,13 +345,22 @@ export default function SitesList() {
             ))}
           </div>
         ) : (
-          // 地図ビュー (次のステップで実装)
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            <div className="text-center text-gray-500">
-              <MapIcon size={48} className="mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-semibold mb-2">地図ビューは準備中です</p>
-              <p className="text-sm">Google Maps統合を実装予定</p>
-            </div>
+          // 地図ビュー
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style={{ height: '600px' }}>
+            <GoogleMap
+              center={userLocation || { lat: 35.6895, lng: 139.6917 }}
+              zoom={13}
+              showSearch={false}
+              showCurrentLocation={true}
+              markers={filteredSites
+                .filter(s => s.lat && s.lng)
+                .map(s => ({
+                  lat: s.lat,
+                  lng: s.lng,
+                  title: s.name,
+                  info: `<div style="padding:8px"><strong>${s.name}</strong><br/>${s.address}<br/><a href="/app/sites/${s.id}" style="color:#0d9488">予約する →</a></div>`,
+                }))}
+            />
           </div>
         )}
       </div>
