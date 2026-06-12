@@ -27,6 +27,7 @@ import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
 import hostApp from './host-routes'
 import stripeWebhookApp from './stripe-webhook-routes'
+import aiConfigApp from './ai-config-routes'
 import favoritesApp from './favorites-routes'
 import adminPlansApp from './admin-plans-routes'
 import userSelfApp from './user-self-routes'
@@ -262,6 +263,11 @@ app.route('/api/email', emailApp)
 // ============================================
 app.route('/api/notify', notifyApp)
 app.route('/api/storage', notifyApp)
+
+// ============================================
+// AI Config Route (Gemini API key for client)
+// ============================================
+app.route('/api/ai', aiConfigApp)
 
 // ============================================
 // Favorites Routes

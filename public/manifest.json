@@ -1,0 +1,23 @@
+{
+  "name": "HOGUSY",
+  "short_name": "HOGUSY",
+  "description": "ほぐす、を、もっと身近に。プロのセラピストとあなたを繋ぐウェルネスプラットフォーム",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#14b8a6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["health", "lifestyle", "wellness"],
+  "lang": "ja",
+  "dir": "ltr",
+  "prefer_related_applications": false
+}
