@@ -87,6 +87,12 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // 任意ログイン案内（未ログイン時のみ表示）
+  const [showAuthSuggestion, setShowAuthSuggestion] = useState(() => !localStorage.getItem('auth_token'));
+  // 出張コース選択時の注意事項（本人確認必須）
+  const [showOutcallNotice, setShowOutcallNotice] = useState(false);
+  const [outcallNoticeAcknowledged, setOutcallNoticeAcknowledged] = useState(false);
   
   // タイムロック管理
   const [timelockId, setTimelockId] = useState<string | null>(null);
@@ -442,12 +448,32 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
     });
   };
 
+  const isOutcallCourse = (course: Course | null): boolean => {
+    if (!course) return false;
+    return bookingType === 'MOBILE' || course.name.includes('出張');
+  };
+
   const handleNextFromMenu = () => {
     if (!bookingData.course) {
       setErrorMessage('📋 コースを選択してください');
       return;
     }
+    // 出張コースかつ未確認の場合、注意事項を表示
+    if (isOutcallCourse(bookingData.course) && !outcallNoticeAcknowledged) {
+      setShowOutcallNotice(true);
+      return;
+    }
     // カレンダーから日時が渡されている場合はStep2（日時選択）をスキップしてStep3へ
+    if (hasPresetDateTime) {
+      goToStep(3);
+    } else {
+      goToStep(2);
+    }
+  };
+
+  const handleOutcallNoticeAccept = () => {
+    setOutcallNoticeAcknowledged(true);
+    setShowOutcallNotice(false);
     if (hasPresetDateTime) {
       goToStep(3);
     } else {
@@ -708,9 +734,114 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   };
 
   // =============================================
+  // Render: Auth Suggestion (Optional, Dismissible)
+  // =============================================
+
+  const renderAuthSuggestion = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="text-center mb-5">
+          <div className="text-5xl mb-3">🌿</div>
+          <h2 className="text-xl font-bold text-gray-800">HOGUSYへようこそ</h2>
+          <p className="text-sm text-gray-500 mt-1">ログインすると便利な機能が使えます</p>
+        </div>
+
+        <div className="space-y-2 mb-5 text-sm text-gray-700">
+          <div className="flex items-center gap-2"><span className="text-teal-600">✓</span>予約履歴の確認・管理</div>
+          <div className="flex items-center gap-2"><span className="text-teal-600">✓</span>ポイント獲得・利用</div>
+          <div className="flex items-center gap-2"><span className="text-teal-600">✓</span>お気に入りセラピスト登録</div>
+          <div className="flex items-center gap-2"><span className="text-teal-600">✓</span>お客様情報の自動入力</div>
+        </div>
+
+        <div className="space-y-3">
+          <a
+            href={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`}
+            className="block w-full bg-teal-600 text-white text-center font-bold py-3 rounded-xl hover:bg-teal-700 transition-colors"
+          >
+            ログイン
+          </a>
+          <a
+            href={`/signup?redirect=${encodeURIComponent(location.pathname + location.search)}`}
+            className="block w-full bg-white text-teal-600 border-2 border-teal-600 text-center font-bold py-3 rounded-xl hover:bg-teal-50 transition-colors"
+          >
+            新規会員登録
+          </a>
+          <button
+            onClick={() => setShowAuthSuggestion(false)}
+            className="block w-full text-gray-500 text-center text-sm py-2 hover:text-gray-700 transition-colors"
+          >
+            ゲストとして続ける →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =============================================
+  // Render: Outcall Notice (出張予約の注意事項)
+  // =============================================
+
+  const renderOutcallNotice = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="text-center mb-5">
+          <div className="text-4xl mb-3">🏠</div>
+          <h2 className="text-xl font-bold text-gray-800">出張サービスのご利用にあたって</h2>
+          <p className="text-sm text-gray-500 mt-1">ご予約前にご確認ください</p>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 space-y-3 text-sm text-gray-700">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-600 mt-0.5">⚠️</span>
+            <div>
+              <p className="font-semibold text-amber-800">本人確認（eKYC）が必須です</p>
+              <p className="text-xs text-amber-700 mt-1">
+                出張サービスでは安全のため、ご利用前に本人確認書類の提出が必要です。未確認の場合は予約確定時にご案内します。
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-blue-600 mt-0.5">💳</span>
+            <div>
+              <p className="font-semibold text-gray-800">事前決済が必要です</p>
+              <p className="text-xs text-gray-600 mt-1">
+                出張サービスは予約確定時にクレジットカードでの事前決済が必要です。
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-green-600 mt-0.5">📋</span>
+            <div>
+              <p className="font-semibold text-gray-800">利用規約・安全案内への同意</p>
+              <p className="text-xs text-gray-600 mt-1">
+                ご予約確定前に利用規約および安全に関する注意事項への同意が必要です。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={handleOutcallNoticeAccept}
+            className="block w-full bg-teal-600 text-white text-center font-bold py-3 rounded-xl hover:bg-teal-700 transition-colors"
+          >
+            内容を確認しました。予約に進む
+          </button>
+          <button
+            onClick={() => setShowOutcallNotice(false)}
+            className="block w-full text-gray-500 text-center text-sm py-2 hover:text-gray-700 transition-colors"
+          >
+            ← コース選択に戻る
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =============================================
   // Render Functions
   // =============================================
-  
+
   const renderStepIndicator = () => {
     const steps = [
       { num: 1, label: 'メニュー' },
@@ -1456,6 +1587,8 @@ const SimpleBookingV2: React.FC<SimpleBookingV2Props> = ({
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50 py-8 px-4">
+      {showAuthSuggestion && renderAuthSuggestion()}
+      {showOutcallNotice && renderOutcallNotice()}
       <div className="max-w-3xl mx-auto">
         {/* Header with back button */}
         <div className="flex items-center justify-between mb-8">
