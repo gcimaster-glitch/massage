@@ -21,12 +21,19 @@ export interface Env {
 // キャッシュ用のJWKSセット
 let _JWKS: any = null;
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Content-Type': 'application/json',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+const ALLOWED_ORIGINS = ['https://ma-x.tech', 'https://www.ma-x.tech'];
+
+function getCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('Origin') ?? '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin',
+  };
+}
 
 /**
  * 1. 段階的住所開示・PIIマスク処理 (Privacy Guard)
@@ -117,8 +124,9 @@ async function authenticate(request: Request, env: Env) {
 export default {
   // Added fixed ExecutionContext parameter type definition above
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const corsHeaders = getCorsHeaders(request);
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
+      return new Response(null, { headers: corsHeaders });
     }
 
     try {
@@ -138,9 +146,9 @@ export default {
 
       const requiredRoles = Object.entries(rbacRules).find(([p]) => path.startsWith(p))?.[1];
       if (requiredRoles && !requiredRoles.includes(user.role)) {
-        return new Response(JSON.stringify({ error: 'Forbidden: Insufficient Permissions' }), { 
-          status: 403, 
-          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+        return new Response(JSON.stringify({ error: 'Forbidden: Insufficient Permissions' }), {
+          status: 403,
+          headers: corsHeaders,
         });
       }
 
@@ -169,13 +177,15 @@ export default {
 
       return new Response(JSON.stringify(safeData), {
         status: backendResponse.status,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: corsHeaders,
       });
 
     } catch (error: any) {
-      return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { 
-        status: error.message?.includes('Unauthorized') ? 401 : 500,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } 
+      console.error('[bff] Unhandled error:', error);
+      const isUnauthorized = error.message?.includes('Unauthorized');
+      return new Response(JSON.stringify({ error: isUnauthorized ? 'Unauthorized' : 'Internal server error' }), {
+        status: isUnauthorized ? 401 : 500,
+        headers: corsHeaders,
       });
     }
   }

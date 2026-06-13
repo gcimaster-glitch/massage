@@ -1,13 +1,25 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { requireAdmin } from '../../auth-middleware';
 
 type Bindings = {
   DB: D1Database;
+  JWT_SECRET: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use('/api/admin/*', cors());
+
+// 管理者認証ミドルウェア
+app.use('/api/admin/*', async (c, next) => {
+  const authHeader = c.req.header('Authorization') ?? null;
+  const result = await requireAdmin(authHeader, c.env.JWT_SECRET);
+  if (!result.success) {
+    return c.json({ error: result.error ?? 'Unauthorized' }, 401);
+  }
+  await next();
+});
 
 // 統計データ取得API
 app.get('/api/admin/stats/:period', async (c) => {
