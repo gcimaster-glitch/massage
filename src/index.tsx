@@ -163,6 +163,18 @@ app.post('/api/admin/run-migration', async (c) => {
 
   // actionに応じてSQL文を選択
   let statements: string[] = []
+
+  if (action === 'debug_query') {
+    const sql = (body as any).sql || ''
+    if (!sql) return c.json({ error: 'No SQL provided' }, 400)
+    try {
+      const result = await db.prepare(sql).all()
+      return c.json({ results: result.results, meta: result.meta })
+    } catch (e: any) {
+      return c.json({ error: e.message })
+    }
+  }
+
   if (action === 'rebuild_bookings') {
     // bookingsテーブルをuser_id NULL許容で再作成
     statements = [
