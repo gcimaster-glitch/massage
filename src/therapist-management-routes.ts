@@ -423,7 +423,7 @@ app.put('/availability', requireAuth, async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json();
     const { is_accepting } = body;
-    const newStatus = is_accepting ? 'APPROVED' : 'PAUSED';
+    const newStatus = is_accepting ? 'APPROVED' : 'SUSPENDED';
     await c.env.DB.prepare(
       "UPDATE therapist_profiles SET status = ?, updated_at = datetime('now') WHERE user_id = ?"
     ).bind(newStatus, userId).run();

@@ -35,8 +35,31 @@ const TherapistTravelSettings: React.FC = () => {
 
   const [message, setMessage] = useState('');
 
-  const handleSave = () => {
-    setMessage('出張設定を保存しました');
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('auth_token') || '';
+      const res = await fetch('/api/therapists/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          outcall_available: settings.outcall_available,
+          incall_available: settings.incall_available,
+          base_location: settings.base_location,
+          base_lat: settings.base_lat,
+          base_lng: settings.base_lng,
+          travel_methods: JSON.stringify(settings.travel_methods),
+          outcall_hours: JSON.stringify(settings.outcall_hours),
+          incall_hours: JSON.stringify(settings.incall_hours),
+        })
+      });
+      if (res.ok) {
+        setMessage('出張設定を保存しました');
+      } else {
+        setMessage('保存に失敗しました');
+      }
+    } catch (e) {
+      setMessage('エラーが発生しました');
+    }
     setTimeout(() => setMessage(''), 3000);
   };
 

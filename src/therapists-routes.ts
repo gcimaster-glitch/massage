@@ -206,7 +206,7 @@ app.get('/:id/schedule', async (c) => {
   
   try {
     // その日の予約状況を取得
-    const query = `
+    const bookingsQuery = `
       SELECT 
         scheduled_at,
         duration,
@@ -214,15 +214,28 @@ app.get('/:id/schedule', async (c) => {
       FROM bookings
       WHERE therapist_id = ? 
         AND DATE(scheduled_at) = ?
-        AND status IN ('CONFIRMED', 'IN_PROGRESS')
+        AND status IN ('CONFIRMED', 'IN_PROGRESS', 'PENDING')
       ORDER BY scheduled_at
     `;
-    
-    const result = await DB.prepare(query).bind(therapistId, date).all();
-    
+    const result = await DB.prepare(bookingsQuery).bind(therapistId, date).all();
+
+    // その曜日の営業時間を取得
+    const dayOfWeek = new Date(date).getDay();
+    const scheduleQuery = `
+      SELECT start_time, end_time, is_available
+      FROM therapist_schedules
+      WHERE therapist_id = ? AND day_of_week = ?
+    `;
+    const scheduleResult = await DB.prepare(scheduleQuery).bind(therapistId, dayOfWeek).first();
+
     return c.json({
       date,
-      bookings: result.results || []
+      bookings: result.results || [],
+      working_hours: scheduleResult ? {
+        start_time: scheduleResult.start_time,
+        end_time: scheduleResult.end_time,
+        is_available: scheduleResult.is_available === 1
+      } : null
     });
   } catch (error: unknown) {
     console.error('Error fetching therapist schedule:', error);
