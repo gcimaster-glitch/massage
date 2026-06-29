@@ -260,30 +260,10 @@ app.post('/', requireAuth, async (c) => {
     const therapistName = therapistResult?.name || 'セラピスト';
     console.log('👤 Therapist name:', therapistName);
     
-    // 環境に応じてtherapist_idを決定
-    // ローカル: therapist_profiles.idを使用
-    // 本番: users.idを使用
-    let finalTherapistId = therapist_id;
-    
-    // therapist_profilesテーブルからIDを取得して環境判別
-    const profileResult = await DB.prepare(
-      'SELECT user_id FROM therapist_profiles WHERE user_id = ? LIMIT 1'
-    ).bind(therapist_id).first<{ user_id: string }>();
-    
-    if (profileResult) {
-      // ローカル環境: therapist_profiles(id)が主キー
-      // profile-xxxの形式のIDを取得
-      const localProfileResult = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(therapist_id).first<{ id: string }>();
-      
-      if (localProfileResult?.id && localProfileResult.id !== therapist_id) {
-        finalTherapistId = localProfileResult.id;
-        console.log(`🔄 Using therapist profile ID: ${finalTherapistId} (local env)`);
-      } else {
-        console.log(`✅ Using user ID: ${finalTherapistId} (production env)`);
-      }
-    }
+    // therapist_idはuser_id（users.id）をそのまま使用
+    // therapist_profilesのuser_idカラムと一致させる
+    const finalTherapistId = therapist_id;
+    console.log(`✅ Using therapist user_id: ${finalTherapistId}`);
     
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -407,19 +387,12 @@ app.get('/', requireAuth, async (c) => {
     let whereClause = '';
     let params: (string | number)[] = [];
 
-    // ロールに応じてクエリを変更
+        // ロールに応じてクエリを変更
     if (userRole === 'THERAPIST') {
       // セラピストの場合：自分が担当する予約を取得
-      const therapistProfile = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<Record<string, unknown>>();
-
-      if (!therapistProfile) {
-        return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
-      }
-
+      // bookings.therapist_id = users.id（user_id）で保存されているので直接マッチ
       whereClause = 'b.therapist_id = ?';
-      params.push(therapistProfile.id);
+      params.push(userId);
     } else if (userRole === 'USER') {
       // ユーザーの場合：自分の予約を取得
       whereClause = 'b.user_id = ?';
@@ -454,8 +427,8 @@ app.get('/', requireAuth, async (c) => {
         s.name as site_name,
         s.address as site_address
       FROM bookings b
-      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
-      LEFT JOIN users u ON tp.user_id = u.id
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
+      LEFT JOIN users u ON b.therapist_id = u.id
       LEFT JOIN sites s ON b.site_id = s.id
       WHERE ${whereClause}
       ORDER BY b.scheduled_at DESC
@@ -500,8 +473,8 @@ app.get('/:id', requireAuth, async (c) => {
         s.name as site_name,
         s.address as site_address
       FROM bookings b
-      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
-      LEFT JOIN users t_user ON tp.user_id = t_user.id
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
+      LEFT JOIN users t_user ON b.therapist_id = t_user.id
       LEFT JOIN users c_user ON b.user_id = c_user.id
       LEFT JOIN sites s ON b.site_id = s.id
       WHERE b.id = ?
@@ -518,12 +491,9 @@ app.get('/:id', requireAuth, async (c) => {
       return c.json({ error: '他のユーザーの予約は閲覧できません' }, 403);
     }
 
-    if (userRole === 'THERAPIST') {
-      const therapistProfile = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<Record<string, unknown>>();
-
-      if (!therapistProfile || booking.therapist_id !== therapistProfile.id) {
+        if (userRole === 'THERAPIST') {
+      // bookings.therapist_id = user_idで保存されているので直接比較
+      if (booking.therapist_id !== userId) {
         return c.json({ error: '他のセラピストの予約は閲覧できません' }, 403);
       }
     }
@@ -719,14 +689,10 @@ app.patch('/:id/status', requireAuth, async (c) => {
       }
     }
 
-    // セラピストの場合は自分の予約のみ変更可能
+        // セラピストの場合は自分の予約のみ変更可能
     if (userRole === 'THERAPIST') {
-      // therapist_idがセラピストプロフィールIDと一致するか確認
-      const therapistProfile = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<Record<string, unknown>>();
-
-      if (!therapistProfile || booking.therapist_id !== therapistProfile.id) {
+      // bookings.therapist_id = user_idで保存されているので直接比較
+      if (booking.therapist_id !== userId) {
         return c.json({ error: '他のセラピストの予約は変更できません' }, 403);
       }
     }

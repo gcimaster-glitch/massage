@@ -251,7 +251,7 @@ app.get('/bookings', requireAdmin, async (c) => {
         tp.id as therapist_profile_id
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.id
-      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
       WHERE 1=1
     `
 
