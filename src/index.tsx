@@ -230,6 +230,17 @@ app.post('/api/admin/run-migration', async (c) => {
       `CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)`,
       `CREATE INDEX IF NOT EXISTS idx_bookings_type ON bookings(type)`,
     ]
+  } else if (action === 'fix_booking_items_fk') {
+    // booking_itemsのFOREIGN KEYがbookings_oldを参照している問題を修正
+    statements = [
+      `DROP TABLE IF EXISTS booking_items_new`,
+      `CREATE TABLE booking_items_new (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, item_type TEXT NOT NULL CHECK (item_type IN ('COURSE', 'OPTION')), item_id TEXT NOT NULL, item_name TEXT NOT NULL, price INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE)`,
+      `INSERT OR IGNORE INTO booking_items_new SELECT * FROM booking_items`,
+      `DROP TABLE IF EXISTS booking_items`,
+      `ALTER TABLE booking_items_new RENAME TO booking_items`,
+      `CREATE INDEX IF NOT EXISTS idx_booking_items_booking ON booking_items(booking_id)`,
+      `DROP TABLE IF EXISTS bookings_old`,
+    ]
   } else {
     // デフォルト: 初期マイグレーション + reviews テーブル
     statements = [
