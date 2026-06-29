@@ -335,8 +335,8 @@ app.route('/api/earnings', earningsManagementApp)
 // Therapist Routes
 // ============================================
 app.route('/api/therapist-edits', therapistEditApp)
-app.route('/api/therapists', therapistsRoutesApp)
 app.route('/api/therapists', therapistManagementApp)
+app.route('/api/therapists', therapistsRoutesApp)
 
 // ============================================
 // Image Routes (R2 Storage)
