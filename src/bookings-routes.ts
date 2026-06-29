@@ -101,7 +101,8 @@ app.post('/guest', async (c) => {
     const body = await c.req.json();
     const {
       therapist_id, site_id, type, service_name, duration, price,
-      scheduled_at, items, guest_name, guest_email, guest_phone, timelock_id
+      scheduled_at, items, guest_name, guest_email, guest_phone, timelock_id,
+      customer_address, postal_code
     } = body;
     if (!therapist_id || !type || !scheduled_at || !duration || !price || !guest_name || !guest_email) {
       return c.json({ error: '必須項目が不足しています（氏名・メールアドレスは必須）' }, 400);
@@ -121,9 +122,9 @@ app.post('/guest', async (c) => {
     // ゲスト用ユーザーIDとして仮IDを生成（メールアドレスベース）
     // ゲスト予約はuser_id = NULL（FOREIGN KEY制約を回避）
     await DB.prepare(
-      `INSERT INTO bookings (id, user_id, therapist_id, therapist_name, site_id, type, status, service_name, duration, price, scheduled_at, guest_name, guest_email, guest_phone, timelock_id)
-       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(bookingId, null, therapist_id, therapistName, site_id || null, type, service_name || '施術', duration, price, scheduled_at, guest_name, guest_email, guest_phone || null, timelock_id || null).run();
+      `INSERT INTO bookings (id, user_id, therapist_id, therapist_name, site_id, type, status, service_name, duration, price, scheduled_at, guest_name, guest_email, guest_phone, timelock_id, customer_address, postal_code)
+       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(bookingId, null, therapist_id, therapistName, site_id || null, type, service_name || '施術', duration, price, scheduled_at, guest_name, guest_email, guest_phone || null, timelock_id || null, customer_address || null, postal_code || null).run();
     // booking_itemsを保存
     if (items && items.length > 0) {
       for (const item of items) {
@@ -224,6 +225,8 @@ app.post('/', requireAuth, async (c) => {
       duration,
       price,
       scheduled_at,
+      customer_address,
+      postal_code,
       items, // { item_type: 'COURSE' | 'OPTION', item_id: string, item_name: string, price: number }[]
     } = body;
     
@@ -280,7 +283,9 @@ app.post('/', requireAuth, async (c) => {
       service_name || '施術',
       duration,
       price,
-      scheduled_at
+      scheduled_at,
+      customer_address || null,
+      postal_code || null
     ];
     
     console.log('📋 Bind values:', bindValues.map((v, i) => `[${i}] ${typeof v}: ${v}`));
@@ -293,8 +298,8 @@ app.post('/', requireAuth, async (c) => {
     let insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, therapist_id, therapist_name, office_id, site_id,
-        type, status, service_name, duration, price, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, datetime('now'))
+        type, status, service_name, duration, price, scheduled_at, customer_address, postal_code, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
     
     try {

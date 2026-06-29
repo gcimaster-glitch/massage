@@ -208,6 +208,28 @@ app.post('/api/admin/run-migration', async (c) => {
     statements = [
       `INSERT OR IGNORE INTO bookings (id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at) SELECT id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at FROM bookings_old`,
     ]
+  } else if (action === 'add_booking_address') {
+    // 出張予約（MOBILE）の住所保存用カラム追加
+    statements = [
+      `ALTER TABLE bookings ADD COLUMN customer_address TEXT`,
+      `ALTER TABLE bookings ADD COLUMN postal_code TEXT`,
+      `ALTER TABLE bookings ADD COLUMN customer_lat REAL`,
+      `ALTER TABLE bookings ADD COLUMN customer_lng REAL`,
+    ]
+  } else if (action === 'rebuild_bookings_v2') {
+    // bookingsテーブルをMOBILE対応 + customer_addressカラム追加で再構築
+    statements = [
+      `DROP TABLE IF EXISTS bookings_new`,
+      `CREATE TABLE bookings_new (id TEXT PRIMARY KEY, user_id TEXT, therapist_id TEXT NOT NULL, therapist_name TEXT, site_id TEXT, office_id TEXT, type TEXT NOT NULL CHECK(type IN ('ONSITE', 'MOBILE', 'HOTEL', 'HOME', 'OFFICE', 'OUTCALL')), status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')), service_name TEXT NOT NULL DEFAULT '施術', duration INTEGER NOT NULL, scheduled_at DATETIME, scheduled_start DATETIME, scheduled_end DATETIME, price INTEGER NOT NULL, payment_intent_id TEXT, payment_status TEXT DEFAULT 'PENDING' CHECK(payment_status IN ('PENDING', 'PAID', 'REFUNDED')), notes TEXT, guest_name TEXT, guest_email TEXT, guest_phone TEXT, timelock_id TEXT, customer_address TEXT, postal_code TEXT, customer_lat REAL, customer_lng REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, completed_at DATETIME)`,
+      `INSERT OR IGNORE INTO bookings_new (id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, scheduled_start, scheduled_end, price, payment_intent_id, payment_status, notes, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at) SELECT id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, scheduled_start, scheduled_end, price, payment_intent_id, payment_status, notes, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at FROM bookings`,
+      `DROP TABLE IF EXISTS bookings_old`,
+      `ALTER TABLE bookings RENAME TO bookings_old`,
+      `ALTER TABLE bookings_new RENAME TO bookings`,
+      `CREATE INDEX IF NOT EXISTS idx_bookings_therapist ON bookings(therapist_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_bookings_type ON bookings(type)`,
+    ]
   } else {
     // デフォルト: 初期マイグレーション + reviews テーブル
     statements = [
@@ -226,6 +248,11 @@ app.post('/api/admin/run-migration', async (c) => {
       `ALTER TABLE bookings ADD COLUMN guest_email TEXT`,
       `ALTER TABLE bookings ADD COLUMN guest_phone TEXT`,
       `ALTER TABLE bookings ADD COLUMN timelock_id TEXT`,
+      // 出張予約（MOBILE）の住所保存用カラム
+      `ALTER TABLE bookings ADD COLUMN customer_address TEXT`,
+      `ALTER TABLE bookings ADD COLUMN postal_code TEXT`,
+      `ALTER TABLE bookings ADD COLUMN customer_lat REAL`,
+      `ALTER TABLE bookings ADD COLUMN customer_lng REAL`,
     ]
   }
 
