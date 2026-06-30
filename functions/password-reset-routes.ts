@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { EmailService } from './services/email-service';
-import { hashPassword } from './auth-helpers';
 
 type Bindings = {
   DB: D1Database;
@@ -210,6 +209,7 @@ app.post('/forgot-password', async (c) => {
     // リセットリンクを生成
     const resetUrl = `${new URL(c.req.url).origin}/auth/reset-password?token=${resetToken}`;
 
+    console.log(`🔐 パスワードリセット申請 - Email: ${email}, Token ID: ${tokenId}`);
 
     // セキュリティログ記録
     await logSecurityEvent(c.env.DB, 'password_reset_request', {
@@ -353,5 +353,17 @@ app.post('/reset-password', async (c) => {
     return c.json({ error: 'パスワードリセットに失敗しました' }, 500);
   }
 });
+
+// ============================================
+// パスワードハッシュ化（Web Crypto API使用）
+// ============================================
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
 
 export default app;

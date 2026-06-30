@@ -318,29 +318,4 @@ kycApp.patch('/admin/:userId', async (c) => {
   }
 })
 
-// ============================================
-// GET /api/kyc/status - KYC検証状態確認（ユーザー用）
-// ============================================
-kycApp.get('/status', async (c) => {
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401)
-
-  try {
-    const token = authHeader.replace('Bearer ', '')
-    const payload = await verifyJWT(token, c.env.JWT_SECRET)
-    if (!payload) return c.json({ error: 'Invalid token' }, 401)
-
-    const row = await c.env.DB.prepare(
-      `SELECT status FROM kyc_submissions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`
-    ).bind(payload.userId).first<{ status: string }>()
-
-    return c.json({
-      verified: row?.status === 'APPROVED',
-      status: row?.status || 'NONE',
-    })
-  } catch {
-    return c.json({ error: 'Failed to check KYC status' }, 500)
-  }
-})
-
 export default kycApp

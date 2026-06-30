@@ -33,7 +33,8 @@ app.get('/', async (c) => {
   
   try {
     // WHERE句の構築（有効なセラピストのみ表示）
-    const conditions: string[] = ["(tp.status = 'APPROVED' OR tp.status IS NULL)"];
+    // 新スキーマ: status = 'APPROVED'のみ
+    const conditions: string[] = ["tp.status = 'APPROVED'"];
     const params: any[] = [];
     
     if (search) {
@@ -97,11 +98,6 @@ app.get('/', async (c) => {
       totalPages: Math.ceil(total / limit)
     });
   } catch (error: unknown) {
-    // テーブル未作成など初期状態でも空リストを返す（500にしない）
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes('no such table') || msg.includes('SQLITE_ERROR')) {
-      return c.json({ therapists: [], total: 0, page: 1, limit: 20, totalPages: 0 });
-    }
     console.error('Error fetching therapists:', error);
     return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
   }
@@ -192,12 +188,11 @@ app.get('/:id', async (c) => {
       reviews: reviewsResult.results || []
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes('no such table') || msg.includes('SQLITE_ERROR')) {
-      return c.json({ error: 'セラピストが見つかりません' }, 404);
-    }
     console.error('Error fetching therapist detail:', error);
-    return c.json({ error: 'セラピストの取得に失敗しました' }, 500);
+    return c.json({ 
+      error: 'セラピストの取得に失敗しました',
+      details: (error as Error).message || String(error)
+    }, 500);
   }
 });
 
@@ -211,7 +206,7 @@ app.get('/:id/schedule', async (c) => {
   
   try {
     // その日の予約状況を取得
-    const query = `
+    const bookingsQuery = `
       SELECT 
         scheduled_at,
         duration,
@@ -219,15 +214,28 @@ app.get('/:id/schedule', async (c) => {
       FROM bookings
       WHERE therapist_id = ? 
         AND DATE(scheduled_at) = ?
-        AND status IN ('CONFIRMED', 'IN_PROGRESS')
+        AND status IN ('CONFIRMED', 'IN_PROGRESS', 'PENDING')
       ORDER BY scheduled_at
     `;
-    
-    const result = await DB.prepare(query).bind(therapistId, date).all();
-    
+    const result = await DB.prepare(bookingsQuery).bind(therapistId, date).all();
+
+    // その曜日の営業時間を取得
+    const dayOfWeek = new Date(date).getDay();
+    const scheduleQuery = `
+      SELECT start_time, end_time, is_available
+      FROM therapist_schedules
+      WHERE therapist_id = ? AND day_of_week = ?
+    `;
+    const scheduleResult = await DB.prepare(scheduleQuery).bind(therapistId, dayOfWeek).first();
+
     return c.json({
       date,
-      bookings: result.results || []
+      bookings: result.results || [],
+      working_hours: scheduleResult ? {
+        start_time: scheduleResult.start_time,
+        end_time: scheduleResult.end_time,
+        is_available: scheduleResult.is_available === 1
+      } : null
     });
   } catch (error: unknown) {
     console.error('Error fetching therapist schedule:', error);
@@ -300,37 +308,6 @@ app.get('/:id/menu', async (c) => {
   } catch (error: unknown) {
     console.error('Error fetching therapist menu:', error);
     return c.json({ error: 'メニューの取得に失敗しました' }, 500);
-  }
-});
-
-// ============================================
-// セラピストの予約済みスロット取得（パブリック）
-// GET /api/therapists/:id/booked-slots?date=YYYY-MM-DD
-// ============================================
-app.get('/:id/booked-slots', async (c) => {
-  const { DB } = c.env;
-  const therapistId = c.req.param('id');
-  const date = c.req.query('date');
-
-  if (!date) return c.json({ error: 'dateパラメータが必要です' }, 400);
-
-  try {
-    // その日の確定・進行中予約を取得
-    const result = await DB.prepare(`
-      SELECT scheduled_at FROM bookings
-      WHERE therapist_id = ?
-        AND DATE(scheduled_at) = ?
-        AND status NOT IN ('CANCELLED', 'REJECTED')
-    `).bind(therapistId, date).all<{ scheduled_at: string }>();
-
-    const booked = (result.results || []).map(row => {
-      const t = new Date(row.scheduled_at);
-      return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
-    });
-
-    return c.json({ booked });
-  } catch {
-    return c.json({ booked: [] });
   }
 });
 

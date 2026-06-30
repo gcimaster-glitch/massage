@@ -72,9 +72,9 @@ app.post('/timelock', async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`
     ).bind(timelockId, therapist_id, site_id || null, scheduled_at, duration || 60, expiresAt, session_id).run();
     return c.json({ success: true, timelock_id: timelockId, expires_at: expiresAt });
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('❌ Timelock error:', error);
-    return c.json({ error: 'タイムロックの作成に失敗しました' }, 500);
+    return c.json({ error: 'タイムロックの作成に失敗しました', details: error.message }, 500);
   }
 });
 
@@ -101,7 +101,8 @@ app.post('/guest', async (c) => {
     const body = await c.req.json();
     const {
       therapist_id, site_id, type, service_name, duration, price,
-      scheduled_at, items, guest_name, guest_email, guest_phone, timelock_id
+      scheduled_at, items, guest_name, guest_email, guest_phone, timelock_id,
+      customer_address, postal_code
     } = body;
     if (!therapist_id || !type || !scheduled_at || !duration || !price || !guest_name || !guest_email) {
       return c.json({ error: '必須項目が不足しています（氏名・メールアドレスは必須）' }, 400);
@@ -119,11 +120,11 @@ app.post('/guest', async (c) => {
     const therapistName = therapistResult?.name || 'セラピスト';
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     // ゲスト用ユーザーIDとして仮IDを生成（メールアドレスベース）
-    const guestUserId = `guest_${Buffer.from(guest_email).toString('base64').substring(0, 16)}`;
+    // ゲスト予約はuser_id = NULL（FOREIGN KEY制約を回避）
     await DB.prepare(
-      `INSERT INTO bookings (id, user_id, therapist_id, therapist_name, site_id, type, status, service_name, duration, price, scheduled_at, guest_name, guest_email, guest_phone, timelock_id)
-       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(bookingId, guestUserId, therapist_id, therapistName, site_id || null, type, service_name || '施術', duration, price, scheduled_at, guest_name, guest_email, guest_phone || null, timelock_id || null).run();
+      `INSERT INTO bookings (id, user_id, therapist_id, therapist_name, site_id, type, status, service_name, duration, price, scheduled_at, guest_name, guest_email, guest_phone, timelock_id, customer_address, postal_code)
+       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(bookingId, null, therapist_id, therapistName, site_id || null, type, service_name || '施術', duration, price, scheduled_at, guest_name, guest_email, guest_phone || null, timelock_id || null, customer_address || null, postal_code || null).run();
     // booking_itemsを保存
     if (items && items.length > 0) {
       for (const item of items) {
@@ -138,9 +139,9 @@ app.post('/guest', async (c) => {
       await DB.prepare(`UPDATE booking_timelocks SET status = 'CONFIRMED' WHERE id = ?`).bind(timelock_id).run();
     }
     return c.json({ success: true, booking_id: bookingId, message: 'ゲスト予約が完了しました。確認メールをお送りします。' });
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('❌ Guest booking error:', error);
-    return c.json({ error: 'ゲスト予約の作成に失敗しました' }, 500);
+    return c.json({ error: 'ゲスト予約の作成に失敗しました', details: error.message }, 500);
   }
 });
 
@@ -180,7 +181,12 @@ app.get('/guest/:bookingId', async (c) => {
     return c.json({ success: true, booking });
   } catch (error: unknown) {
     console.error('❌ Error fetching guest booking:', error);
-    return c.json({ error: '予約情報の取得に失敗しました' }, 500);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    return c.json({ 
+      error: '予約情報の取得に失敗しました',
+      details: (error as Error).message 
+    }, 500);
   }
 });
 
@@ -219,6 +225,8 @@ app.post('/', requireAuth, async (c) => {
       duration,
       price,
       scheduled_at,
+      customer_address,
+      postal_code,
       items, // { item_type: 'COURSE' | 'OPTION', item_id: string, item_name: string, price: number }[]
     } = body;
     
@@ -255,30 +263,10 @@ app.post('/', requireAuth, async (c) => {
     const therapistName = therapistResult?.name || 'セラピスト';
     console.log('👤 Therapist name:', therapistName);
     
-    // 環境に応じてtherapist_idを決定
-    // ローカル: therapist_profiles.idを使用
-    // 本番: users.idを使用
-    let finalTherapistId = therapist_id;
-    
-    // therapist_profilesテーブルからIDを取得して環境判別
-    const profileResult = await DB.prepare(
-      'SELECT user_id FROM therapist_profiles WHERE user_id = ? LIMIT 1'
-    ).bind(therapist_id).first<{ user_id: string }>();
-    
-    if (profileResult) {
-      // ローカル環境: therapist_profiles(id)が主キー
-      // profile-xxxの形式のIDを取得
-      const localProfileResult = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(therapist_id).first<{ id: string }>();
-      
-      if (localProfileResult?.id && localProfileResult.id !== therapist_id) {
-        finalTherapistId = localProfileResult.id;
-        console.log(`🔄 Using therapist profile ID: ${finalTherapistId} (local env)`);
-      } else {
-        console.log(`✅ Using user ID: ${finalTherapistId} (production env)`);
-      }
-    }
+    // therapist_idはuser_id（users.id）をそのまま使用
+    // therapist_profilesのuser_idカラムと一致させる
+    const finalTherapistId = therapist_id;
+    console.log(`✅ Using therapist user_id: ${finalTherapistId}`);
     
     // 予約IDを生成
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -295,7 +283,9 @@ app.post('/', requireAuth, async (c) => {
       service_name || '施術',
       duration,
       price,
-      scheduled_at
+      scheduled_at,
+      customer_address || null,
+      postal_code || null
     ];
     
     console.log('📋 Bind values:', bindValues.map((v, i) => `[${i}] ${typeof v}: ${v}`));
@@ -308,8 +298,8 @@ app.post('/', requireAuth, async (c) => {
     let insertBookingQuery = `
       INSERT INTO bookings (
         id, user_id, therapist_id, therapist_name, office_id, site_id,
-        type, status, service_name, duration, price, scheduled_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, datetime('now'))
+        type, status, service_name, duration, price, scheduled_at, customer_address, postal_code, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
     
     try {
@@ -371,7 +361,16 @@ app.post('/', requireAuth, async (c) => {
     }, 201);
   } catch (error: unknown) {
     console.error('❌ Error creating booking:', error);
-    return c.json({ error: '予約の作成に失敗しました' }, 500);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
+    return c.json({ 
+      error: '予約の作成に失敗しました',
+      details: (error as Error).message || 'Unknown error',
+      errorType: (error as Error).constructor.name
+    }, 500);
   }
 });
 
@@ -393,19 +392,12 @@ app.get('/', requireAuth, async (c) => {
     let whereClause = '';
     let params: (string | number)[] = [];
 
-    // ロールに応じてクエリを変更
+        // ロールに応じてクエリを変更
     if (userRole === 'THERAPIST') {
       // セラピストの場合：自分が担当する予約を取得
-      const therapistProfile = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<Record<string, unknown>>();
-
-      if (!therapistProfile) {
-        return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
-      }
-
+      // bookings.therapist_id = users.id（user_id）で保存されているので直接マッチ
       whereClause = 'b.therapist_id = ?';
-      params.push(therapistProfile.id);
+      params.push(userId);
     } else if (userRole === 'USER') {
       // ユーザーの場合：自分の予約を取得
       whereClause = 'b.user_id = ?';
@@ -438,11 +430,15 @@ app.get('/', requireAuth, async (c) => {
         u.name as therapist_name,
         u.avatar_url as therapist_avatar,
         s.name as site_name,
-        s.address as site_address
+        s.address as site_address,
+        cu.name as user_name,
+        cu.email as user_email,
+        cu.phone as user_phone
       FROM bookings b
-      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
-      LEFT JOIN users u ON tp.user_id = u.id
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
+      LEFT JOIN users u ON b.therapist_id = u.id
       LEFT JOIN sites s ON b.site_id = s.id
+      LEFT JOIN users cu ON b.user_id = cu.id
       WHERE ${whereClause}
       ORDER BY b.scheduled_at DESC
       LIMIT ? OFFSET ?
@@ -486,8 +482,8 @@ app.get('/:id', requireAuth, async (c) => {
         s.name as site_name,
         s.address as site_address
       FROM bookings b
-      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
-      LEFT JOIN users t_user ON tp.user_id = t_user.id
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
+      LEFT JOIN users t_user ON b.therapist_id = t_user.id
       LEFT JOIN users c_user ON b.user_id = c_user.id
       LEFT JOIN sites s ON b.site_id = s.id
       WHERE b.id = ?
@@ -504,12 +500,9 @@ app.get('/:id', requireAuth, async (c) => {
       return c.json({ error: '他のユーザーの予約は閲覧できません' }, 403);
     }
 
-    if (userRole === 'THERAPIST') {
-      const therapistProfile = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<Record<string, unknown>>();
-
-      if (!therapistProfile || booking.therapist_id !== therapistProfile.id) {
+        if (userRole === 'THERAPIST') {
+      // bookings.therapist_id = user_idで保存されているので直接比較
+      if (booking.therapist_id !== userId) {
         return c.json({ error: '他のセラピストの予約は閲覧できません' }, 403);
       }
     }
@@ -559,7 +552,7 @@ app.delete('/:id', async (c) => {
     
     // ステータスを CANCELLED に更新
     await DB.prepare(
-      "UPDATE bookings SET status = 'CANCELLED', updated_at = datetime('now') WHERE id = ?"
+      "UPDATE bookings SET status = 'CANCELLED' WHERE id = ?"
     ).bind(bookingId).run();
     
     return c.json({ 
@@ -598,7 +591,7 @@ app.patch('/:id/approve', async (c) => {
 
     // ステータスを CONFIRMED に更新
     await DB.prepare(
-      "UPDATE bookings SET status = 'CONFIRMED', updated_at = datetime('now') WHERE id = ?"
+      "UPDATE bookings SET status = 'CONFIRMED' WHERE id = ?"
     ).bind(bookingId).run();
     
     return c.json({ 
@@ -640,7 +633,7 @@ app.patch('/:id/reject', async (c) => {
 
     // ステータスを REJECTED に更新
     await DB.prepare(
-      "UPDATE bookings SET status = 'REJECTED', updated_at = datetime('now') WHERE id = ?"
+      "UPDATE bookings SET status = 'REJECTED' WHERE id = ?"
     ).bind(bookingId).run();
     
     // 拒否理由をログに記録（オプション）
@@ -705,25 +698,19 @@ app.patch('/:id/status', requireAuth, async (c) => {
       }
     }
 
-    // セラピストの場合は自分の予約のみ変更可能
+        // セラピストの場合は自分の予約のみ変更可能
     if (userRole === 'THERAPIST') {
-      // therapist_idがセラピストプロフィールIDと一致するか確認
-      const therapistProfile = await DB.prepare(
-        'SELECT id FROM therapist_profiles WHERE user_id = ?'
-      ).bind(userId).first<Record<string, unknown>>();
-
-      if (!therapistProfile || booking.therapist_id !== therapistProfile.id) {
+      // bookings.therapist_id = user_idで保存されているので直接比較
+      if (booking.therapist_id !== userId) {
         return c.json({ error: '他のセラピストの予約は変更できません' }, 403);
       }
     }
 
     // ステータスに応じてタイムスタンプを更新
-    let updateQuery = "UPDATE bookings SET status = ?, updated_at = datetime('now')";
+    let updateQuery = "UPDATE bookings SET status = ?";
     const bindParams: any[] = [status];
 
-    if (status === 'IN_PROGRESS') {
-      updateQuery += ", started_at = datetime('now')";
-    } else if (status === 'COMPLETED') {
+    if (status === 'COMPLETED') {
       updateQuery += ", completed_at = datetime('now')";
     }
 
@@ -752,7 +739,10 @@ app.patch('/:id/status', requireAuth, async (c) => {
     });
   } catch (error: unknown) {
     console.error('❌ Error updating booking status:', error);
-    return c.json({ error: 'ステータスの更新に失敗しました' }, 500);
+    return c.json({ 
+      error: 'ステータスの更新に失敗しました',
+      details: (error as Error).message 
+    }, 500);
   }
 });
 

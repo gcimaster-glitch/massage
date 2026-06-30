@@ -489,9 +489,9 @@ app.get('/therapist/earnings', async (c) => {
         total_bookings: earnings.length,
       }
     });
-  } catch (e) {
-    console.error('Therapist earnings fetch error:', e);
-    return c.json({ error: 'Failed to fetch earnings' }, 500);
+  } catch (e: any) {
+    console.error('Therapist earnings fetch error:', e?.message || e);
+    return c.json({ error: 'Failed to fetch earnings', details: e?.message || String(e) }, 500);
   }
 });
 

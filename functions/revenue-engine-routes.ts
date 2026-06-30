@@ -78,7 +78,7 @@ export async function processPaymentSplit(
         b.price,
         tp.user_id as therapist_user_id
       FROM bookings b
-      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.id
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
       WHERE b.id = ?
     `).bind(bookingId).first<{
       id: string;

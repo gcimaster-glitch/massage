@@ -273,7 +273,7 @@ app.post('/create-earning-from-booking', requireAuth, async (c) => {
         b.*,
         tp.id as therapist_profile_id
       FROM bookings b
-      JOIN therapist_profiles tp ON b.therapist_id = tp.id
+      JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
       WHERE b.id = ?
     `).bind(booking_id).first();
 

@@ -175,7 +175,7 @@ email.post('/booking-confirmation', async (c) => {
     });
   } catch (error: any) {
     console.error('❌ Email sending failed:', error);
-    return c.json({ error: 'メール送信に失敗しました' }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
@@ -260,7 +260,7 @@ email.post('/payment-success', async (c) => {
     return c.json({ success: true, emailId: result.id });
   } catch (error: any) {
     console.error('❌ Email sending failed:', error);
-    return c.json({ error: 'メール送信に失敗しました' }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
@@ -344,7 +344,7 @@ email.post('/payment-failed', async (c) => {
     return c.json({ success: true, emailId: result.id });
   } catch (error: any) {
     console.error('❌ Email sending failed:', error);
-    return c.json({ error: 'メール送信に失敗しました' }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 

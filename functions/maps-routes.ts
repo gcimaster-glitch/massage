@@ -56,7 +56,7 @@ mapsApp.post('/search', async (c) => {
     
     return c.json(data)
   } catch (error) {
-    return c.json({ error: 'Failed to search places' }, 500)
+    return c.json({ error: 'Failed to search places', details: String(error) }, 500)
   }
 })
 
@@ -79,7 +79,7 @@ mapsApp.get('/place/:placeId', async (c) => {
     
     return c.json(data)
   } catch (error) {
-    return c.json({ error: 'Failed to get place details' }, 500)
+    return c.json({ error: 'Failed to get place details', details: String(error) }, 500)
   }
 })
 
@@ -109,7 +109,7 @@ mapsApp.post('/geocode', async (c) => {
     
     return c.json(data)
   } catch (error) {
-    return c.json({ error: 'Failed to geocode' }, 500)
+    return c.json({ error: 'Failed to geocode', details: String(error) }, 500)
   }
 })
 
@@ -145,7 +145,7 @@ mapsApp.post('/nearby', async (c) => {
     
     return c.json(data)
   } catch (error) {
-    return c.json({ error: 'Failed to search nearby places' }, 500)
+    return c.json({ error: 'Failed to search nearby places', details: String(error) }, 500)
   }
 })
 

@@ -60,6 +60,14 @@ app.get('/profile', requireAuth, async (c) => {
         approved_areas: user.approved_areas ? JSON.parse(user.approved_areas) : [],
         status: user.status || 'PENDING',
         commission_rate: user.commission_rate || 70,
+        outcall_available: user.outcall_available ?? 1,
+        incall_available: user.incall_available ?? 1,
+        base_location: user.base_location || null,
+        base_lat: user.base_lat || null,
+        base_lng: user.base_lng || null,
+        travel_methods: user.travel_methods ? JSON.parse(user.travel_methods) : [],
+        outcall_hours: user.outcall_hours ? JSON.parse(user.outcall_hours) : {},
+        incall_hours: user.incall_hours ? JSON.parse(user.incall_hours) : {},
       }
     });
   } catch (error) {
@@ -74,26 +82,57 @@ app.put('/profile', requireAuth, async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json();
 
-    // ユーザー情報を更新
-    await c.env.DB.prepare(`
-      UPDATE users 
-      SET name = ?, email = ?, phone = ?
-      WHERE id = ?
-    `).bind(body.name, body.email, body.phone, userId).run();
+    // 出張設定の更新（TravelSettingsからのリクエスト）
+    if (body.outcall_available !== undefined || body.incall_available !== undefined || body.base_location !== undefined) {
+      await c.env.DB.prepare(`
+        UPDATE therapist_profiles 
+        SET outcall_available = ?,
+            incall_available = ?,
+            base_location = ?,
+            base_lat = ?,
+            base_lng = ?,
+            travel_methods = ?,
+            outcall_hours = ?,
+            incall_hours = ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+      `).bind(
+        body.outcall_available ? 1 : 0,
+        body.incall_available ? 1 : 0,
+        body.base_location || null,
+        body.base_lat || null,
+        body.base_lng || null,
+        typeof body.travel_methods === 'string' ? body.travel_methods : JSON.stringify(body.travel_methods || []),
+        typeof body.outcall_hours === 'string' ? body.outcall_hours : JSON.stringify(body.outcall_hours || {}),
+        typeof body.incall_hours === 'string' ? body.incall_hours : JSON.stringify(body.incall_hours || {}),
+        userId
+      ).run();
+      return c.json({ success: true, message: '出張設定を更新しました' });
+    }
+
+    // ユーザー情報を更新（名前・メール・電話がある場合）
+    if (body.name || body.email) {
+      await c.env.DB.prepare(`
+        UPDATE users 
+        SET name = COALESCE(?, name), email = COALESCE(?, email), phone = COALESCE(?, phone)
+        WHERE id = ?
+      `).bind(body.name || null, body.email || null, body.phone || null, userId).run();
+    }
 
     // セラピストプロフィールを更新
     await c.env.DB.prepare(`
       UPDATE therapist_profiles 
-      SET bio = ?, 
-          specialties = ?, 
-          experience_years = ?,
-          certifications = ?
+      SET bio = COALESCE(?, bio), 
+          specialties = COALESCE(?, specialties), 
+          experience_years = COALESCE(?, experience_years),
+          certifications = COALESCE(?, certifications),
+          updated_at = datetime('now')
       WHERE user_id = ?
     `).bind(
-      body.bio,
-      JSON.stringify(body.specialties || []),
-      body.experience_years || 0,
-      JSON.stringify(body.certifications || []),
+      body.bio || null,
+      body.specialties ? JSON.stringify(body.specialties) : null,
+      body.experience_years !== undefined ? body.experience_years : null,
+      body.certifications ? JSON.stringify(body.certifications) : null,
       userId
     ).run();
 
@@ -172,12 +211,13 @@ app.put('/menu/courses', requireAuth, async (c) => {
     // 新しいコースを挿入
     for (let i = 0; i < courses.length; i++) {
       const course = courses[i];
+      const courseId = course.id || `course_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${i}`;
       await c.env.DB.prepare(`
         INSERT INTO therapist_menu_courses (
           id, therapist_profile_id, name, duration, price, description, display_order, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
       `).bind(
-        course.id,
+        courseId,
         therapistProfile.id,
         course.name,
         course.duration,
@@ -220,12 +260,13 @@ app.put('/menu/options', requireAuth, async (c) => {
     // 新しいオプションを挿入
     for (let i = 0; i < options.length; i++) {
       const option = options[i];
+      const optionId = option.id || `option_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${i}`;
       await c.env.DB.prepare(`
         INSERT INTO therapist_menu_options (
           id, therapist_profile_id, name, price, description, display_order, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, 1)
       `).bind(
-        option.id,
+        optionId,
         therapistProfile.id,
         option.name,
         option.price,
@@ -398,121 +439,183 @@ app.post('/bookings/:bookingId/cancel', requireAuth, async (c) => {
 });
 
 // ============================================
-// 振込先設定
+// 受付状態管理（受付開始/一時停止）
 // ============================================
-
-app.get('/bank-settings', requireAuth, async (c) => {
+app.get('/availability', requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
-    const profile = await c.env.DB.prepare(`
-      SELECT bank_name, bank_branch, bank_branch_code, bank_account_type, bank_account_number, bank_account_holder
-      FROM therapist_profiles WHERE user_id = ?
-    `).bind(userId).first() as Record<string, unknown> | null;
-
-    if (!profile) {
-      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
-    }
-
-    return c.json({ bankSettings: profile });
-  } catch (error: unknown) {
-    console.error('振込先設定取得エラー:', error);
-    return c.json({ error: '振込先設定の取得に失敗しました' }, 500);
-  }
-});
-
-app.put('/bank-settings', requireAuth, async (c) => {
-  try {
-    const userId = c.get('userId');
-    const { bankName, branchName, branchCode, accountType, accountNumber, accountHolderName } = await c.req.json();
-
-    if (!bankName || !branchName || !accountNumber || !accountHolderName) {
-      return c.json({ error: '銀行名・支店名・口座番号・口座名義は必須です' }, 400);
-    }
-
-    if (!/^\d{1,4}$/.test(branchCode || '')) {
-      return c.json({ error: '支店コードは数字4桁以内で入力してください' }, 400);
-    }
-
-    if (!/^\d{1,7}$/.test(accountNumber)) {
-      return c.json({ error: '口座番号は数字7桁以内で入力してください' }, 400);
-    }
-
-    const profile = await c.env.DB.prepare(
-      'SELECT id FROM therapist_profiles WHERE user_id = ?'
+    const tp = await c.env.DB.prepare(
+      'SELECT status, approved_areas FROM therapist_profiles WHERE user_id = ?'
     ).bind(userId).first();
+    if (!tp) return c.json({ error: 'プロフィールが見つかりません' }, 404);
+    return c.json({
+      is_accepting: tp.status === 'APPROVED',
+      status: tp.status,
+      approved_areas: tp.approved_areas ? JSON.parse(tp.approved_areas as string) : []
+    });
+  } catch (error) {
+    console.error('受付状態取得エラー:', error);
+    return c.json({ error: '受付状態の取得に失敗しました' }, 500);
+  }
+});
 
-    if (!profile) {
-      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
-    }
-
-    await c.env.DB.prepare(`
-      UPDATE therapist_profiles
-      SET bank_name = ?, bank_branch = ?, bank_branch_code = ?,
-          bank_account_type = ?, bank_account_number = ?, bank_account_holder = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = ?
-    `).bind(bankName, branchName, branchCode || null, accountType || 'NORMAL', accountNumber, accountHolderName, userId).run();
-
-    return c.json({ success: true, message: '振込先情報を保存しました' });
-  } catch (error: unknown) {
-    console.error('振込先設定更新エラー:', error);
-    return c.json({ error: '振込先設定の保存に失敗しました' }, 500);
+app.put('/availability', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const body = await c.req.json();
+    const { is_accepting } = body;
+    const newStatus = is_accepting ? 'APPROVED' : 'SUSPENDED';
+    await c.env.DB.prepare(
+      "UPDATE therapist_profiles SET status = ?, updated_at = datetime('now') WHERE user_id = ?"
+    ).bind(newStatus, userId).run();
+    return c.json({ success: true, status: newStatus, message: is_accepting ? '受付を開始しました' : '受付を一時停止しました' });
+  } catch (error) {
+    console.error('受付状態更新エラー:', error);
+    return c.json({ error: '受付状態の更新に失敗しました' }, 500);
   }
 });
 
 // ============================================
-// サービス設定（対応可能メニュー）
+// 予約可能エリア管理
 // ============================================
-
-app.get('/service-settings', requireAuth, async (c) => {
+app.get('/areas', requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
-    const profile = await c.env.DB.prepare(
-      'SELECT specialties FROM therapist_profiles WHERE user_id = ?'
-    ).bind(userId).first() as Record<string, unknown> | null;
-
-    if (!profile) {
-      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
-    }
-
-    const services: string[] = profile.specialties
-      ? JSON.parse(profile.specialties as string)
-      : [];
-
-    return c.json({ services });
-  } catch (error: unknown) {
-    console.error('サービス設定取得エラー:', error);
-    return c.json({ error: 'サービス設定の取得に失敗しました' }, 500);
-  }
-});
-
-app.put('/service-settings', requireAuth, async (c) => {
-  try {
-    const userId = c.get('userId');
-    const { services } = await c.req.json();
-
-    if (!Array.isArray(services) || services.length === 0) {
-      return c.json({ error: '1つ以上のサービスを選択してください' }, 400);
-    }
-
-    const profile = await c.env.DB.prepare(
-      'SELECT id FROM therapist_profiles WHERE user_id = ?'
+    const tp = await c.env.DB.prepare(
+      'SELECT approved_areas FROM therapist_profiles WHERE user_id = ?'
     ).bind(userId).first();
+    if (!tp) return c.json({ error: 'プロフィールが見つかりません' }, 404);
+    return c.json({ areas: tp.approved_areas ? JSON.parse(tp.approved_areas as string) : [] });
+  } catch (error) {
+    console.error('エリア取得エラー:', error);
+    return c.json({ error: 'エリアの取得に失敗しました' }, 500);
+  }
+});
 
-    if (!profile) {
-      return c.json({ error: 'セラピストプロフィールが見つかりません' }, 404);
+app.put('/areas', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const body = await c.req.json();
+    const { areas } = body;
+    if (!Array.isArray(areas)) return c.json({ error: 'areasは配列で指定してください' }, 400);
+    await c.env.DB.prepare(
+      "UPDATE therapist_profiles SET approved_areas = ?, updated_at = datetime('now') WHERE user_id = ?"
+    ).bind(JSON.stringify(areas), userId).run();
+    return c.json({ success: true, areas, message: '対応エリアを更新しました' });
+  } catch (error) {
+    console.error('エリア更新エラー:', error);
+    return c.json({ error: 'エリアの更新に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// スケジュール管理（週間定型 + 日別調整）
+// ============================================
+app.get('/schedules', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const result = await c.env.DB.prepare(
+      'SELECT * FROM therapist_schedules WHERE therapist_id = ? ORDER BY day_of_week, start_time'
+    ).bind(userId).all();
+    return c.json({ schedules: result.results || [] });
+  } catch (error) {
+    console.error('スケジュール取得エラー:', error);
+    return c.json({ error: 'スケジュールの取得に失敗しました' }, 500);
+  }
+});
+
+app.post('/schedules', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const body = await c.req.json();
+    const { day_of_week, start_time, end_time, is_available = true } = body;
+    if (day_of_week === undefined || !start_time || !end_time) {
+      return c.json({ error: '曜日・開始時間・終了時間は必須です' }, 400);
     }
+    const scheduleId = `schedule_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    await c.env.DB.prepare(
+      `INSERT INTO therapist_schedules (id, therapist_id, day_of_week, start_time, end_time, is_available, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(scheduleId, userId, day_of_week, start_time, end_time, is_available ? 1 : 0).run();
+    return c.json({ success: true, schedule_id: scheduleId, message: 'スケジュールを追加しました' }, 201);
+  } catch (error) {
+    console.error('スケジュール作成エラー:', error);
+    return c.json({ error: 'スケジュールの作成に失敗しました' }, 500);
+  }
+});
 
-    await c.env.DB.prepare(`
-      UPDATE therapist_profiles
-      SET specialties = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = ?
-    `).bind(JSON.stringify(services), userId).run();
+app.put('/schedules/bulk', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const body = await c.req.json();
+    const { schedules } = body;
+    if (!Array.isArray(schedules)) return c.json({ error: 'schedulesは配列で指定してください' }, 400);
+    // 既存スケジュールを全削除して再作成
+    await c.env.DB.prepare('DELETE FROM therapist_schedules WHERE therapist_id = ?').bind(userId).run();
+    for (const s of schedules) {
+      const scheduleId = `schedule_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      await c.env.DB.prepare(
+        `INSERT INTO therapist_schedules (id, therapist_id, day_of_week, start_time, end_time, is_available, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(scheduleId, userId, s.day_of_week, s.start_time, s.end_time, s.is_available !== false ? 1 : 0).run();
+    }
+    return c.json({ success: true, message: `${schedules.length}件のスケジュールを保存しました` });
+  } catch (error) {
+    console.error('スケジュール一括更新エラー:', error);
+    return c.json({ error: 'スケジュールの一括更新に失敗しました' }, 500);
+  }
+});
 
-    return c.json({ success: true, message: '対応可能メニューを保存しました' });
-  } catch (error: unknown) {
-    console.error('サービス設定更新エラー:', error);
-    return c.json({ error: 'サービス設定の保存に失敗しました' }, 500);
+app.delete('/schedules/:id', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const scheduleId = c.req.param('id');
+    await c.env.DB.prepare(
+      'DELETE FROM therapist_schedules WHERE id = ? AND therapist_id = ?'
+    ).bind(scheduleId, userId).run();
+    return c.json({ success: true, message: 'スケジュールを削除しました' });
+  } catch (error) {
+    console.error('スケジュール削除エラー:', error);
+    return c.json({ error: 'スケジュールの削除に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 予約承認・拒否（セラピスト用）
+// ============================================
+app.patch('/bookings/:bookingId/approve', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const bookingId = c.req.param('bookingId');
+    const booking = await c.env.DB.prepare(
+      'SELECT * FROM bookings WHERE id = ? AND therapist_id = ?'
+    ).bind(bookingId, userId).first();
+    if (!booking) return c.json({ error: '予約が見つかりません、または権限がありません' }, 404);
+    await c.env.DB.prepare(
+      "UPDATE bookings SET status = 'CONFIRMED', updated_at = datetime('now') WHERE id = ?"
+    ).bind(bookingId).run();
+    return c.json({ success: true, message: '予約を承認しました' });
+  } catch (error) {
+    console.error('予約承認エラー:', error);
+    return c.json({ error: '予約の承認に失敗しました' }, 500);
+  }
+});
+
+app.patch('/bookings/:bookingId/reject', requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const bookingId = c.req.param('bookingId');
+    const body = await c.req.json();
+    const { reason } = body;
+    const booking = await c.env.DB.prepare(
+      'SELECT * FROM bookings WHERE id = ? AND therapist_id = ?'
+    ).bind(bookingId, userId).first();
+    if (!booking) return c.json({ error: '予約が見つかりません、または権限がありません' }, 404);
+    await c.env.DB.prepare(
+      "UPDATE bookings SET status = 'REJECTED', updated_at = datetime('now') WHERE id = ?"
+    ).bind(bookingId).run();
+    return c.json({ success: true, message: '予約を拒否しました' });
+  } catch (error) {
+    console.error('予約拒否エラー:', error);
+    return c.json({ error: '予約の拒否に失敗しました' }, 500);
   }
 });
 
