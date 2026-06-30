@@ -141,7 +141,7 @@ authApp.get('/oauth/:provider', async (c) => {
       await c.env.DB.prepare(
         'INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+10 minutes"))'
       )
-        .bind(state, providerName, redirect, role)
+        .bind(state, providerName.toLowerCase(), redirect, role)
         .run()
     } catch (e) {
       console.error('Failed to store OAuth state:', e)
@@ -225,7 +225,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       const { results: socialAccounts } = await c.env.DB.prepare(
         'SELECT user_id FROM social_accounts WHERE provider = ? AND provider_user_id = ?'
       )
-        .bind(providerName, providerUser.id)
+        .bind(providerName.toLowerCase(), providerUser.id)
         .all()
 
       if (socialAccounts.length > 0) {
@@ -243,7 +243,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
         await c.env.DB.prepare(
           'UPDATE social_accounts SET last_used_at = datetime("now") WHERE provider = ? AND provider_user_id = ?'
         )
-          .bind(providerName, providerUser.id)
+          .bind(providerName.toLowerCase(), providerUser.id)
           .run()
       } else {
         // New user - create account
@@ -253,9 +253,9 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
         // Create user
         await c.env.DB.prepare(
-          'INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, TRUE, datetime("now"), datetime("now"))'
+          'INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, 1, datetime("now"), datetime("now"))'
         )
-          .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url)
+          .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url || null)
           .run()
 
          // Create social account link
@@ -273,11 +273,11 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           .bind(
             socialAccountId,
             userId,
-            providerName,
+            providerName.toLowerCase(),
             providerUser.id,
-            providerUser.email,
-            providerUser.name,
-            providerUser.avatar_url,
+            providerUser.email || null,
+            providerUser.name || null,
+            providerUser.avatar_url || null,
             encryptedAccessToken,
             encryptedRefreshToken,
             expiresAt
@@ -435,10 +435,9 @@ authApp.post('/register', async (c) => {
           
           // Insert new verification
           await c.env.DB.prepare(
-            `INSERT INTO email_verifications (id, user_id, token, expires_at, created_at)
-             VALUES (?, ?, ?, datetime('now', '+24 hours'), datetime('now'))`
+            `INSERT INTO email_verifications (user_id, token, expires_at, created_at)
+             VALUES (?, ?, datetime('now', '+24 hours'), datetime('now'))`
           ).bind(
-            `ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             existingUserId,
             verificationToken
           ).run()
@@ -968,7 +967,7 @@ authApp.get('/link/:provider', async (c) => {
       `INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at, user_id, action)
        VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'), ?, ?)`
     )
-      .bind(state, provider, redirectPath, 'USER', decoded.userId, 'link')
+      .bind(state, provider.toLowerCase(), redirectPath, 'USER', decoded.userId, 'link')
       .run()
 
     // Get OAuth provider config
@@ -1014,7 +1013,7 @@ authApp.delete('/link/:provider', async (c) => {
     await c.env.DB.prepare(
       'DELETE FROM social_accounts WHERE user_id = ? AND provider = ?'
     )
-      .bind(decoded.userId, provider)
+      .bind(decoded.userId, provider.toLowerCase())
       .run()
 
     return c.json({ success: true, message: '連携を解除しました' })
