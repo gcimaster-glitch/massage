@@ -321,24 +321,24 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       redirectUrl.searchParams.set('token', jwt)
       redirectUrl.searchParams.set('isNewUser', isNewUser.toString())
       return c.redirect(redirectUrl.toString())
-      } catch (dbError) {
-        console.error('Database error, falling back to mock mode:', dbError)
-        // Fall through to development mode below
+            } catch (dbError) {
+        const errMsg = dbError instanceof Error ? dbError.message : String(dbError)
+        console.error('Database error in OAuth callback:', errMsg)
+        return c.redirect(`/?error=auth_failed&detail=${encodeURIComponent(errMsg.substring(0, 100))}`)
       }
     }
-    
        // HOG-SEC-004: JWT_SECRETが設定されていない場合は認証を拒否する
-    // 「dev-secret」フォールバックは除去。未設定のまま本番デプロイされた場合に漏洩したトークンが発行されるリスクを排除する
     if (!c.env.JWT_SECRET) {
       console.error('[SEC] JWT_SECRET is not configured. Refusing to issue token.')
-      return c.redirect(`/?error=auth_failed`)
+      return c.redirect(`/?error=auth_failed&detail=no_jwt_secret`)
     }
-    // DBエラー時のフォールバック（開発モードは廃止）— DB接続失敗としてエラーを返す
-    console.error('[SEC] Database connection failed during OAuth callback. Cannot create user session.')
-    return c.redirect(`/?error=auth_failed`)
+    // DBが利用不可の場合
+    console.error('[SEC] Database connection failed during OAuth callback.')
+    return c.redirect(`/?error=auth_failed&detail=db_unavailable`)
   } catch (e) {
-    console.error('OAuth callback error:', e)
-    return c.redirect(`/?error=auth_failed`)
+    const errMsg = e instanceof Error ? e.message : String(e)
+    console.error('OAuth callback error:', errMsg)
+    return c.redirect(`/?error=auth_failed&detail=${encodeURIComponent(errMsg.substring(0, 100))}`)
   }
 })
 
