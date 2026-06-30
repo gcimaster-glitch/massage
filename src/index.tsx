@@ -256,9 +256,18 @@ app.post('/api/admin/run-migration', async (c) => {
   } else if (action === 'seed_data') {
     // 全データクリア＋デモデータ投入
     statements = [
-      // クリア（FK依存順）
+      // FK制約を一時無効化
+      `PRAGMA foreign_keys = OFF`,
+      // クリア（全テーブル）
       `DELETE FROM booking_items`,
       `DELETE FROM booking_timelocks`,
+      `DELETE FROM payments`,
+      `DELETE FROM incidents`,
+      `DELETE FROM affiliate_referrals`,
+      `DELETE FROM therapist_earnings`,
+      `DELETE FROM payment_splits`,
+      `DELETE FROM transactions`,
+      `DELETE FROM receipts`,
       `DELETE FROM bookings`,
       `DELETE FROM reviews`,
       `DELETE FROM therapist_menu_courses`,
@@ -348,6 +357,23 @@ app.post('/api/admin/run-migration', async (c) => {
       `INSERT INTO reviews (id, booking_id, therapist_id, user_id, rating, comment, customer_age_range, customer_gender, customer_occupation, body_concerns, is_public, created_at, updated_at) VALUES ('review-003', 'booking-002', 'therapist-2', 'customer-2', 5, 'アロマの香りに癒されました。施術後は体全体がポカポカしてぐっすり眠れました。', '30代', '男性', '会社員', '["ストレス","不眠"]', 1, 1719300000, 1719300000)`,
       `INSERT INTO reviews (id, booking_id, therapist_id, user_id, rating, comment, customer_age_range, customer_gender, customer_occupation, body_concerns, is_public, created_at, updated_at) VALUES ('review-004', 'booking-003', 'therapist-1', 'customer-1', 5, '出張で自宅まで来ていただけて助かりました。鍼灸の腕は確かです。', '30代', '女性', '会社員', '["筋肉痛","疲労"]', 1, 1719400000, 1719400000)`,
       `INSERT INTO reviews (id, booking_id, therapist_id, user_id, rating, comment, customer_age_range, customer_gender, customer_occupation, body_concerns, is_public, created_at, updated_at) VALUES ('review-005', 'booking-001', 'therapist-1', 'customer-2', 4, '予約が取りやすく施術も丁寧。肩こりが楽になりました。', '20代', '男性', '学生', '["肩こり"]', 1, 1719500000, 1719500000)`,
+      // ===== bookings_old参照テーブルの再構築 =====
+      `DROP TABLE IF EXISTS payments`,
+      `CREATE TABLE payments (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, user_id TEXT NOT NULL, amount INTEGER NOT NULL, stripe_payment_intent_id TEXT, status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','PROCESSING','COMPLETED','FAILED','REFUNDED')), payment_method TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+      `DROP TABLE IF EXISTS incidents`,
+      `CREATE TABLE incidents (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, reporter_id TEXT NOT NULL, reporter_role TEXT NOT NULL, severity TEXT NOT NULL CHECK(severity IN ('LOW','MEDIUM','HIGH','CRITICAL')), category TEXT NOT NULL, description TEXT NOT NULL, status TEXT DEFAULT 'OPEN' CHECK(status IN ('OPEN','INVESTIGATING','RESOLVED','CLOSED')), resolution TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE, FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE)`,
+      `DROP TABLE IF EXISTS affiliate_referrals`,
+      `CREATE TABLE affiliate_referrals (id TEXT PRIMARY KEY, affiliate_id TEXT NOT NULL, referred_user_id TEXT NOT NULL, booking_id TEXT, commission_amount INTEGER DEFAULT 0, status TEXT DEFAULT 'PENDING', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (affiliate_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (referred_user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL)`,
+      `DROP TABLE IF EXISTS therapist_earnings`,
+      `CREATE TABLE therapist_earnings (id TEXT PRIMARY KEY, therapist_profile_id TEXT NOT NULL, booking_id TEXT NOT NULL, office_id TEXT, booking_price INTEGER NOT NULL, therapist_amount INTEGER NOT NULL, office_amount INTEGER DEFAULT 0, platform_fee INTEGER NOT NULL, status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING','CONFIRMED','PAID','CANCELLED')), paid_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (therapist_profile_id) REFERENCES therapist_profiles(id) ON DELETE CASCADE, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE)`,
+      `DROP TABLE IF EXISTS payment_splits`,
+      `CREATE TABLE payment_splits (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, payment_intent_id TEXT NOT NULL, total_amount INTEGER NOT NULL, platform_fee INTEGER NOT NULL, office_amount INTEGER DEFAULT 0, therapist_amount INTEGER NOT NULL, status TEXT DEFAULT 'PENDING', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id))`,
+      `DROP TABLE IF EXISTS transactions`,
+      `CREATE TABLE transactions (id TEXT PRIMARY KEY, booking_id TEXT, type TEXT NOT NULL CHECK(type IN ('BOOKING_PAYMENT','REFUND','PAYOUT','PLATFORM_FEE','ADJUSTMENT')), status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','PROCESSING','COMPLETED','FAILED','REFUNDED')), gross_amount INTEGER NOT NULL, net_amount INTEGER NOT NULL, fee_amount INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'jpy', stripe_payment_intent_id TEXT UNIQUE, stripe_charge_id TEXT UNIQUE, stripe_refund_id TEXT UNIQUE, stripe_transfer_id TEXT UNIQUE, description TEXT, metadata TEXT, processed_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL)`,
+      `DROP TABLE IF EXISTS receipts`,
+      `CREATE TABLE receipts (id TEXT PRIMARY KEY, booking_id TEXT, user_id TEXT NOT NULL, transaction_id TEXT, receipt_number TEXT NOT NULL UNIQUE, amount INTEGER NOT NULL, tax_amount INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'jpy', payment_method TEXT, stripe_payment_intent_id TEXT, pdf_url TEXT, issued_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL)`,
+      // FK制約を再有効化
+      `PRAGMA foreign_keys = ON`,
     ]
 
   } else {
