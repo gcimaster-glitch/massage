@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { sign, verify } from 'hono/jwt'
+import { verifyJWT } from './auth-helpers'
 
 // ============================================
 // Type Definitions
@@ -47,7 +47,7 @@ async function verifyJwt(authHeader: string | undefined, secret: string): Promis
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null
   const token = authHeader.slice(7)
   try {
-    const payload = await verify(token, secret) as JwtPayload
+    const payload = await verifyJWT(token, secret) as unknown as JwtPayload
     return payload
   } catch {
     return null

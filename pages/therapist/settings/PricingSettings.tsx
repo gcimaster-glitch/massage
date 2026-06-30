@@ -1,26 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, DollarSign } from 'lucide-react';
+import { ArrowLeft, Save, DollarSign, Loader2 } from 'lucide-react';
 import SimpleLayout from '../../../components/SimpleLayout';
+
+interface Course {
+  id: string;
+  name: string;
+  duration: number;
+  price: number;
+  description: string;
+}
 
 const PricingSettings: React.FC = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [pricing, setPricing] = useState({
-    basePrice60min: 8000,
-    onsitePrice60min: 8000,
-    outcallPrice60min: 10000,
-    overtimePrice30min: 4000,
-  });
+  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch('/api/therapists/menu', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json();
+        if (data.courses) {
+          setCourses(data.courses);
+        }
+      } catch (err) {
+        console.error('コース取得エラー:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  const handlePriceChange = (id: string, newPrice: number) => {
+    setCourses(courses.map(c => c.id === id ? { ...c, price: newPrice } : c));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
+    setMessage('');
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch('/api/therapists/menu/courses', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ courses }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage('料金設定を保存しました');
+      } else {
+        setMessage(`エラー: ${data.error || '保存に失敗しました'}`);
+      }
+    } catch (err) {
+      setMessage('通信エラーが発生しました');
+    } finally {
       setSaving(false);
-      alert('料金設定を保存しました');
-    }, 1000);
+    }
   };
+
+  if (loading) {
+    return (
+      <SimpleLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="animate-spin text-teal-600" size={32} />
+        </div>
+      </SimpleLayout>
+    );
+  }
 
   return (
     <SimpleLayout>
@@ -32,54 +89,39 @@ const PricingSettings: React.FC = () => {
           </button>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <DollarSign className="text-teal-600" />
-            60分単価設定
+            コース料金設定
           </h1>
-          <p className="text-sm text-gray-600 mt-1">基本料金を設定してください</p>
+          <p className="text-sm text-gray-600 mt-1">各コースの料金を設定してください</p>
         </div>
-
+        {message && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('エラー') || message.includes('通信') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+            {message}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">施設内施術（60分）</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">¥</span>
-              <input
-                type="number"
-                value={pricing.onsitePrice60min}
-                onChange={(e) => setPricing({ ...pricing, onsitePrice60min: parseInt(e.target.value) })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">出張施術（60分）</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">¥</span>
-              <input
-                type="number"
-                value={pricing.outcallPrice60min}
-                onChange={(e) => setPricing({ ...pricing, outcallPrice60min: parseInt(e.target.value) })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">延長料金（30分）</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">¥</span>
-              <input
-                type="number"
-                value={pricing.overtimePrice30min}
-                onChange={(e) => setPricing({ ...pricing, overtimePrice30min: parseInt(e.target.value) })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                required
-              />
-            </div>
-          </div>
-
+          {courses.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">コースが登録されていません。メニュー設定から追加してください。</p>
+          ) : (
+            courses.map((course) => (
+              <div key={course.id}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {course.name}（{course.duration}分）
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">¥</span>
+                  <input
+                    type="number"
+                    value={course.price}
+                    onChange={(e) => handlePriceChange(course.id, parseInt(e.target.value) || 0)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    required
+                    min={0}
+                    step={100}
+                  />
+                </div>
+              </div>
+            ))
+          )}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h4 className="font-semibold text-blue-900 mb-2">料金設定の目安</h4>
             <ul className="text-sm text-blue-800 space-y-1">
@@ -88,10 +130,9 @@ const PricingSettings: React.FC = () => {
               <li>• 延長料金: 通常料金の50%程度</li>
             </ul>
           </div>
-
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || courses.length === 0}
             className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <Save size={20} />

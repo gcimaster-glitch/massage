@@ -1,19 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Award, Plus, X } from 'lucide-react';
+import { ArrowLeft, Save, Award, Plus, X, Loader2 } from 'lucide-react';
 import SimpleLayout from '../../../components/SimpleLayout';
+
+interface Qualification {
+  id: number;
+  name: string;
+  year: number;
+  number: string;
+}
 
 const QualificationSettings: React.FC = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [qualifications, setQualifications] = useState([
-    { id: 1, name: 'あん摩マッサージ指圧師', year: 2015, number: '第123456号' },
-    { id: 2, name: 'アロマセラピスト認定資格', year: 2018, number: 'AT-12345' },
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
+  const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [newQual, setNewQual] = useState({ name: '', year: new Date().getFullYear(), number: '' });
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch('/api/therapists/profile', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json();
+        if (data.certifications && Array.isArray(data.certifications)) {
+          setQualifications(data.certifications.map((cert: any, idx: number) => ({
+            id: idx + 1,
+            name: cert.name || cert,
+            year: cert.year || 2020,
+            number: cert.number || '',
+          })));
+        }
+      } catch (err) {
+        console.error('プロフィール取得エラー:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   const addQualification = () => {
-    if (newQual.name && newQual.number) {
+    if (newQual.name.trim()) {
       setQualifications([...qualifications, { ...newQual, id: Date.now() }]);
       setNewQual({ name: '', year: new Date().getFullYear(), number: '' });
     }
@@ -26,11 +57,58 @@ const QualificationSettings: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
+    setMessage('');
+    try {
+      const token = localStorage.getItem('auth_token');
+      // まず現在のプロフィールを取得
+      const profileRes = await fetch('/api/therapists/profile', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const profileData = await profileRes.json();
+
+      // certificationsを更新してプロフィール全体を保存
+      const res = await fetch('/api/therapists/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone || '',
+          bio: profileData.bio || '',
+          specialties: profileData.specialties || [],
+          experience_years: profileData.experience_years || 0,
+          certifications: qualifications.map(q => ({
+            name: q.name,
+            year: q.year,
+            number: q.number,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage('資格情報を保存しました');
+      } else {
+        setMessage(`エラー: ${data.error || '保存に失敗しました'}`);
+      }
+    } catch (err) {
+      setMessage('通信エラーが発生しました');
+    } finally {
       setSaving(false);
-      alert('資格情報を保存しました');
-    }, 1000);
+    }
   };
+
+  if (loading) {
+    return (
+      <SimpleLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="animate-spin text-teal-600" size={32} />
+        </div>
+      </SimpleLayout>
+    );
+  }
 
   return (
     <SimpleLayout>
@@ -46,9 +124,12 @@ const QualificationSettings: React.FC = () => {
           </h1>
           <p className="text-sm text-gray-600 mt-1">保有資格、スキル、専門分野を登録してください</p>
         </div>
-
+        {message && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('エラー') || message.includes('通信') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+            {message}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 登録済み資格一覧 */}
           <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
             <h3 className="font-semibold text-gray-900">登録済み資格</h3>
             {qualifications.length > 0 ? (
@@ -57,13 +138,9 @@ const QualificationSettings: React.FC = () => {
                   <div key={qual.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
                       <h4 className="font-semibold text-gray-900">{qual.name}</h4>
-                      <p className="text-sm text-gray-600">取得年: {qual.year}年 / 登録番号: {qual.number}</p>
+                      <p className="text-sm text-gray-600">取得年: {qual.year}年{qual.number ? ` / 登録番号: ${qual.number}` : ''}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeQualification(qual.id)}
-                      className="text-red-600 hover:text-red-700 p-2"
-                    >
+                    <button type="button" onClick={() => removeQualification(qual.id)} className="text-red-600 hover:text-red-700 p-2">
                       <X size={20} />
                     </button>
                   </div>
@@ -73,8 +150,6 @@ const QualificationSettings: React.FC = () => {
               <p className="text-gray-500 text-center py-4">資格が登録されていません</p>
             )}
           </div>
-
-          {/* 新規資格追加 */}
           <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
             <h3 className="font-semibold text-gray-900">新しい資格を追加</h3>
             <div>
@@ -119,8 +194,6 @@ const QualificationSettings: React.FC = () => {
               追加する
             </button>
           </div>
-
-          {/* 保存ボタン */}
           <button
             type="submit"
             disabled={saving}

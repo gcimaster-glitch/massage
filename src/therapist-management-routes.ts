@@ -74,26 +74,57 @@ app.put('/profile', requireAuth, async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json();
 
-    // ユーザー情報を更新
-    await c.env.DB.prepare(`
-      UPDATE users 
-      SET name = ?, email = ?, phone = ?
-      WHERE id = ?
-    `).bind(body.name, body.email, body.phone, userId).run();
+    // 出張設定の更新（TravelSettingsからのリクエスト）
+    if (body.outcall_available !== undefined || body.incall_available !== undefined || body.base_location !== undefined) {
+      await c.env.DB.prepare(`
+        UPDATE therapist_profiles 
+        SET outcall_available = ?,
+            incall_available = ?,
+            base_location = ?,
+            base_lat = ?,
+            base_lng = ?,
+            travel_methods = ?,
+            outcall_hours = ?,
+            incall_hours = ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+      `).bind(
+        body.outcall_available ? 1 : 0,
+        body.incall_available ? 1 : 0,
+        body.base_location || null,
+        body.base_lat || null,
+        body.base_lng || null,
+        typeof body.travel_methods === 'string' ? body.travel_methods : JSON.stringify(body.travel_methods || []),
+        typeof body.outcall_hours === 'string' ? body.outcall_hours : JSON.stringify(body.outcall_hours || {}),
+        typeof body.incall_hours === 'string' ? body.incall_hours : JSON.stringify(body.incall_hours || {}),
+        userId
+      ).run();
+      return c.json({ success: true, message: '出張設定を更新しました' });
+    }
+
+    // ユーザー情報を更新（名前・メール・電話がある場合）
+    if (body.name || body.email) {
+      await c.env.DB.prepare(`
+        UPDATE users 
+        SET name = COALESCE(?, name), email = COALESCE(?, email), phone = COALESCE(?, phone)
+        WHERE id = ?
+      `).bind(body.name || null, body.email || null, body.phone || null, userId).run();
+    }
 
     // セラピストプロフィールを更新
     await c.env.DB.prepare(`
       UPDATE therapist_profiles 
-      SET bio = ?, 
-          specialties = ?, 
-          experience_years = ?,
-          certifications = ?
+      SET bio = COALESCE(?, bio), 
+          specialties = COALESCE(?, specialties), 
+          experience_years = COALESCE(?, experience_years),
+          certifications = COALESCE(?, certifications),
+          updated_at = datetime('now')
       WHERE user_id = ?
     `).bind(
-      body.bio,
-      JSON.stringify(body.specialties || []),
-      body.experience_years || 0,
-      JSON.stringify(body.certifications || []),
+      body.bio || null,
+      body.specialties ? JSON.stringify(body.specialties) : null,
+      body.experience_years !== undefined ? body.experience_years : null,
+      body.certifications ? JSON.stringify(body.certifications) : null,
       userId
     ).run();
 

@@ -208,6 +208,18 @@ app.post('/api/admin/run-migration', async (c) => {
     statements = [
       `INSERT OR IGNORE INTO bookings (id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at) SELECT id, user_id, therapist_id, therapist_name, site_id, office_id, type, status, service_name, duration, scheduled_at, price, payment_intent_id, payment_status, guest_name, guest_email, guest_phone, timelock_id, created_at, completed_at FROM bookings_old`,
     ]
+  } else if (action === 'add_travel_settings') {
+    // セラピストプロフィールに出張設定カラムを追加
+    statements = [
+      `ALTER TABLE therapist_profiles ADD COLUMN outcall_available INTEGER DEFAULT 1`,
+      `ALTER TABLE therapist_profiles ADD COLUMN incall_available INTEGER DEFAULT 1`,
+      `ALTER TABLE therapist_profiles ADD COLUMN base_location TEXT`,
+      `ALTER TABLE therapist_profiles ADD COLUMN base_lat REAL`,
+      `ALTER TABLE therapist_profiles ADD COLUMN base_lng REAL`,
+      `ALTER TABLE therapist_profiles ADD COLUMN travel_methods TEXT`,
+      `ALTER TABLE therapist_profiles ADD COLUMN outcall_hours TEXT`,
+      `ALTER TABLE therapist_profiles ADD COLUMN incall_hours TEXT`,
+    ]
   } else if (action === 'add_booking_address') {
     // 出張予約（MOBILE）の住所保存用カラム追加
     statements = [

@@ -1,24 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Settings as SettingsIcon, Check } from 'lucide-react';
+import { ArrowLeft, Save, Settings as SettingsIcon, Check, Loader2 } from 'lucide-react';
 import SimpleLayout from '../../../components/SimpleLayout';
+
+interface OptionItem {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+}
 
 const OptionSettings: React.FC = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [availableOptions, setAvailableOptions] = useState<OptionItem[]>([]);
+  const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
+  const [message, setMessage] = useState('');
 
-  const availableOptions = [
-    { id: 'hot_stone', name: 'ホットストーン', price: 2000 },
-    { id: 'aromaoil', name: 'アロマオイル', price: 1500 },
-    { id: 'stretching', name: 'ストレッチング', price: 1000 },
-    { id: 'cupping', name: 'カッピング', price: 2500 },
-    { id: 'head_spa', name: 'ヘッドスパ', price: 2000 },
-    { id: 'foot_bath', name: 'フットバス', price: 1000 },
-  ];
+  const getToken = () => localStorage.getItem('auth_token') || '';
 
-  const [selectedOptions, setSelectedOptions] = useState<Set<string>>(
-    new Set(['hot_stone', 'aromaoil'])
-  );
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch('/api/therapists/menu', {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // master_optionsから全オプション一覧を取得
+          const allOptions = data.options || data.masterOptions || [];
+          setAvailableOptions(allOptions.length > 0 ? allOptions : [
+            { id: 'hot_stone', name: 'ホットストーン', price: 2000 },
+            { id: 'aromaoil', name: 'アロマオイル', price: 1500 },
+            { id: 'stretching', name: 'ストレッチング', price: 1000 },
+            { id: 'cupping', name: 'カッピング', price: 2500 },
+            { id: 'head_spa', name: 'ヘッドスパ', price: 2000 },
+            { id: 'foot_bath', name: 'フットバス', price: 1000 },
+          ]);
+          // 既に選択済みのオプションを設定
+          const selected = (data.options || []).filter((o: any) => o.is_active || o.is_available).map((o: any) => o.id);
+          setSelectedOptions(new Set(selected));
+        }
+      } catch (e) {
+        console.error('オプション取得エラー:', e);
+        setAvailableOptions([
+          { id: 'hot_stone', name: 'ホットストーン', price: 2000 },
+          { id: 'aromaoil', name: 'アロマオイル', price: 1500 },
+          { id: 'stretching', name: 'ストレッチング', price: 1000 },
+          { id: 'cupping', name: 'カッピング', price: 2500 },
+          { id: 'head_spa', name: 'ヘッドスパ', price: 2000 },
+          { id: 'foot_bath', name: 'フットバス', price: 1000 },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const toggleOption = (optionId: string) => {
     const newSelected = new Set(selectedOptions);
@@ -33,11 +72,37 @@ const OptionSettings: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
+    try {
+      const optionsToSave = availableOptions
+        .filter(o => selectedOptions.has(o.id))
+        .map(o => ({ id: o.id, name: o.name, price: o.price, description: o.description || '' }));
+      const res = await fetch('/api/therapists/menu/options', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ options: optionsToSave })
+      });
+      if (res.ok) {
+        setMessage('対応可能オプションを保存しました');
+      } else {
+        setMessage('保存に失敗しました');
+      }
+    } catch (e) {
+      setMessage('エラーが発生しました');
+    } finally {
       setSaving(false);
-      alert('対応可能オプションを保存しました');
-    }, 1000);
+      setTimeout(() => setMessage(''), 3000);
+    }
   };
+
+  if (loading) {
+    return (
+      <SimpleLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-teal-600" size={32} />
+        </div>
+      </SimpleLayout>
+    );
+  }
 
   return (
     <SimpleLayout>
@@ -53,7 +118,11 @@ const OptionSettings: React.FC = () => {
           </h1>
           <p className="text-sm text-gray-600 mt-1">提供できる追加オプションを選択してください</p>
         </div>
-
+        {message && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-green-800 font-medium">
+            {message}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
           <div className="space-y-3">
             {availableOptions.map((option) => {
@@ -82,13 +151,12 @@ const OptionSettings: React.FC = () => {
               );
             })}
           </div>
-
           <button
             type="submit"
             disabled={saving}
             className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            <Save size={20} />
+            {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
             {saving ? '保存中...' : '保存する'}
           </button>
         </form>
