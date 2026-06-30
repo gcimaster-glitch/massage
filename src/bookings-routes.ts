@@ -548,7 +548,7 @@ app.delete('/:id', async (c) => {
     
     // ステータスを CANCELLED に更新
     await DB.prepare(
-      "UPDATE bookings SET status = 'CANCELLED', updated_at = datetime('now') WHERE id = ?"
+      "UPDATE bookings SET status = 'CANCELLED' WHERE id = ?"
     ).bind(bookingId).run();
     
     return c.json({ 
@@ -587,7 +587,7 @@ app.patch('/:id/approve', async (c) => {
 
     // ステータスを CONFIRMED に更新
     await DB.prepare(
-      "UPDATE bookings SET status = 'CONFIRMED', updated_at = datetime('now') WHERE id = ?"
+      "UPDATE bookings SET status = 'CONFIRMED' WHERE id = ?"
     ).bind(bookingId).run();
     
     return c.json({ 
@@ -629,7 +629,7 @@ app.patch('/:id/reject', async (c) => {
 
     // ステータスを REJECTED に更新
     await DB.prepare(
-      "UPDATE bookings SET status = 'REJECTED', updated_at = datetime('now') WHERE id = ?"
+      "UPDATE bookings SET status = 'REJECTED' WHERE id = ?"
     ).bind(bookingId).run();
     
     // 拒否理由をログに記録（オプション）
@@ -703,12 +703,10 @@ app.patch('/:id/status', requireAuth, async (c) => {
     }
 
     // ステータスに応じてタイムスタンプを更新
-    let updateQuery = "UPDATE bookings SET status = ?, updated_at = datetime('now')";
+    let updateQuery = "UPDATE bookings SET status = ?";
     const bindParams: any[] = [status];
 
-    if (status === 'IN_PROGRESS') {
-      updateQuery += ", started_at = datetime('now')";
-    } else if (status === 'COMPLETED') {
+    if (status === 'COMPLETED') {
       updateQuery += ", completed_at = datetime('now')";
     }
 

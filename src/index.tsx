@@ -391,6 +391,14 @@ app.post('/api/admin/run-migration', async (c) => {
       `CREATE TABLE IF NOT EXISTS receipts (id TEXT PRIMARY KEY, booking_id TEXT, user_id TEXT NOT NULL, transaction_id TEXT, receipt_number TEXT NOT NULL UNIQUE, amount INTEGER NOT NULL, tax_amount INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'jpy', payment_method TEXT, stripe_payment_intent_id TEXT, pdf_url TEXT, issued_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL)`,
     ]
 
+  } else if (action === 'rebuild_timelocks') {
+    statements = [
+      `DROP TABLE IF EXISTS booking_timelocks`,
+      `CREATE TABLE booking_timelocks (id TEXT PRIMARY KEY, therapist_id TEXT NOT NULL, site_id TEXT, scheduled_at DATETIME NOT NULL, duration INTEGER NOT NULL DEFAULT 60, expires_at DATETIME NOT NULL, session_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+      `CREATE INDEX IF NOT EXISTS idx_timelocks_therapist_time ON booking_timelocks(therapist_id, scheduled_at, status)`,
+      `CREATE INDEX IF NOT EXISTS idx_timelocks_expires ON booking_timelocks(expires_at, status)`,
+      `CREATE TABLE IF NOT EXISTS booking_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, booking_id TEXT NOT NULL, action TEXT NOT NULL, notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE)`,
+    ]
   } else {
     // デフォルト: 初期マイグレーション + reviews テーブル
     statements = [
