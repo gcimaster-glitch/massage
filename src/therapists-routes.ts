@@ -251,55 +251,37 @@ app.get('/:id/menu', async (c) => {
   const therapistId = c.req.param('id');
   
   try {
-    // therapist_profiles が存在しない場合に備えて、直接 therapist_id で検索
-    // まず profile_id を取得
-    let profileId = null;
+    // therapist_profiles から profile_id を取得
+    let profileId: string | null = null;
     try {
-      const profileQuery = `SELECT id FROM therapist_profiles WHERE user_id = ?`;
-      const profileResult = await DB.prepare(profileQuery).bind(therapistId).first<{ id: string }>();
+      const profileResult = await DB.prepare(
+        'SELECT id FROM therapist_profiles WHERE user_id = ?'
+      ).bind(therapistId).first<{ id: string }>();
       if (profileResult) {
         profileId = profileResult.id;
       }
     } catch (e) {
-      // therapist_profiles テーブルが存在しない場合は無視
+      // テーブルが存在しない場合は無視
     }
     
     // profile_id が見つからない場合は therapist_id をそのまま使用
     const searchId = profileId || therapistId;
     
-    // コース取得
-    const coursesQuery = `
-      SELECT 
-        mc.id,
-        mc.name,
-        mc.duration,
-        mc.description,
-        tm.price as base_price,
-        tm.is_available
-      FROM therapist_menu tm
-      JOIN master_courses mc ON tm.master_course_id = mc.id
-      WHERE tm.therapist_id = ? AND tm.is_available = 1
-      ORDER BY mc.duration
-    `;
+    // コース取得（therapist_menu_courses テーブルを使用）
+    const coursesResult = await DB.prepare(`
+      SELECT id, name, duration, price as base_price, description
+      FROM therapist_menu_courses
+      WHERE therapist_profile_id = ? AND is_active = 1
+      ORDER BY display_order
+    `).bind(searchId).all();
     
-    const coursesResult = await DB.prepare(coursesQuery).bind(searchId).all();
-    
-    // オプション取得
-    const optionsQuery = `
-      SELECT 
-        mo.id,
-        mo.name,
-        mo.duration,
-        mo.description,
-        topt.price as base_price,
-        topt.is_available
-      FROM therapist_options topt
-      JOIN master_options mo ON topt.master_option_id = mo.id
-      WHERE topt.therapist_id = ? AND topt.is_available = 1
-      ORDER BY mo.name
-    `;
-    
-    const optionsResult = await DB.prepare(optionsQuery).bind(searchId).all();
+    // オプション取得（therapist_menu_options テーブルを使用）
+    const optionsResult = await DB.prepare(`
+      SELECT id, name, duration, price as base_price, description
+      FROM therapist_menu_options
+      WHERE therapist_profile_id = ? AND is_active = 1
+      ORDER BY display_order
+    `).bind(searchId).all();
     
     return c.json({
       courses: coursesResult.results || [],
