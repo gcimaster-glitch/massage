@@ -60,6 +60,14 @@ app.get('/profile', requireAuth, async (c) => {
         approved_areas: user.approved_areas ? JSON.parse(user.approved_areas) : [],
         status: user.status || 'PENDING',
         commission_rate: user.commission_rate || 70,
+        outcall_available: user.outcall_available ?? 1,
+        incall_available: user.incall_available ?? 1,
+        base_location: user.base_location || null,
+        base_lat: user.base_lat || null,
+        base_lng: user.base_lng || null,
+        travel_methods: user.travel_methods ? JSON.parse(user.travel_methods) : [],
+        outcall_hours: user.outcall_hours ? JSON.parse(user.outcall_hours) : {},
+        incall_hours: user.incall_hours ? JSON.parse(user.incall_hours) : {},
       }
     });
   } catch (error) {

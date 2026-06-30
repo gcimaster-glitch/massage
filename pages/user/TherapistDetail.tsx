@@ -28,6 +28,8 @@ const TherapistDetail: React.FC = () => {
   // 空き状況カレンダー用の状態
   // bookedSlots: { [dateStr: string]: string[] } - 予約済み時間スロットのマップ
   const [bookedSlots, setBookedSlots] = useState<Record<string, string[]>>({});
+  // workingHours: 営業時間マップ（日付別）
+  const [workingHours, setWorkingHours] = useState<Record<string, { start: string; end: string; available: boolean }>>({});
   const [scheduleLoading, setScheduleLoading] = useState(false);
 
   // Fetch therapist data from API
@@ -186,6 +188,18 @@ const TherapistDetail: React.FC = () => {
         map[res.date] = booked;
       });
       setBookedSlots(map);
+      // 営業時間をマップに変換
+      const whMap: Record<string, { start: string; end: string; available: boolean }> = {};
+      results.forEach((res: any) => {
+        if (res.working_hours) {
+          whMap[res.date] = {
+            start: res.working_hours.start_time || '10:00',
+            end: res.working_hours.end_time || '21:00',
+            available: res.working_hours.is_available !== false
+          };
+        }
+      });
+      setWorkingHours(whMap);
     } catch (e) {
       console.error('Failed to fetch schedule:', e);
     } finally {
@@ -417,11 +431,14 @@ const TherapistDetail: React.FC = () => {
                                       <td className="py-2 px-2 font-black text-[11px] text-gray-400 bg-gray-50/30 font-mono whitespace-nowrap">{time}</td>
                                       {scheduleData.days.map(({ dateStr }) => {
                                          const isBusy = (bookedSlots[dateStr] || []).includes(time);
-                                         const isAvailable = !isBusy;
+                                         // 営業時間外も非表示
+                                         const wh = workingHours[dateStr];
+                                         const isOutsideHours = wh ? (!wh.available || time < wh.start || time >= wh.end) : false;
+                                         const isAvailable = !isBusy && !isOutsideHours;
                                          return (
                                             <td key={dateStr} className="py-2 px-1">
                                                <button 
-                                                 disabled={isBusy}
+                                                 disabled={!isAvailable}
                                                  onClick={() => navigate(`/app/booking/from-therapist/${displayTherapist.id}?date=${dateStr}&time=${encodeURIComponent(time)}`)}
                                                  className={`w-9 h-9 mx-auto flex items-center justify-center rounded-xl transition-all font-black text-sm ${
                                                  isAvailable
