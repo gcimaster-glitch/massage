@@ -211,12 +211,13 @@ app.put('/menu/courses', requireAuth, async (c) => {
     // 新しいコースを挿入
     for (let i = 0; i < courses.length; i++) {
       const course = courses[i];
+      const courseId = course.id || `course_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${i}`;
       await c.env.DB.prepare(`
         INSERT INTO therapist_menu_courses (
           id, therapist_profile_id, name, duration, price, description, display_order, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
       `).bind(
-        course.id,
+        courseId,
         therapistProfile.id,
         course.name,
         course.duration,
@@ -259,12 +260,13 @@ app.put('/menu/options', requireAuth, async (c) => {
     // 新しいオプションを挿入
     for (let i = 0; i < options.length; i++) {
       const option = options[i];
+      const optionId = option.id || `option_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${i}`;
       await c.env.DB.prepare(`
         INSERT INTO therapist_menu_options (
           id, therapist_profile_id, name, price, description, display_order, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, 1)
       `).bind(
-        option.id,
+        optionId,
         therapistProfile.id,
         option.name,
         option.price,
