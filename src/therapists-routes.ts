@@ -288,8 +288,9 @@ app.get('/:id/menu', async (c) => {
       options: optionsResult.results || []
     });
   } catch (error: unknown) {
-    console.error('Error fetching therapist menu:', error);
-    return c.json({ error: 'メニューの取得に失敗しました' }, 500);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Error fetching therapist menu:', errMsg);
+    return c.json({ error: 'メニューの取得に失敗しました', detail: errMsg }, 500);
   }
 });
 
