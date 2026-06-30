@@ -277,7 +277,7 @@ app.get('/:id/menu', async (c) => {
     
     // オプション取得（therapist_menu_options テーブルを使用）
     const optionsResult = await DB.prepare(`
-      SELECT id, name, duration, price as base_price, description
+      SELECT id, name, price as base_price, description
       FROM therapist_menu_options
       WHERE therapist_profile_id = ? AND is_active = 1
       ORDER BY display_order
