@@ -430,11 +430,15 @@ app.get('/', requireAuth, async (c) => {
         u.name as therapist_name,
         u.avatar_url as therapist_avatar,
         s.name as site_name,
-        s.address as site_address
+        s.address as site_address,
+        cu.name as user_name,
+        cu.email as user_email,
+        cu.phone as user_phone
       FROM bookings b
       LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
       LEFT JOIN users u ON b.therapist_id = u.id
       LEFT JOIN sites s ON b.site_id = s.id
+      LEFT JOIN users cu ON b.user_id = cu.id
       WHERE ${whereClause}
       ORDER BY b.scheduled_at DESC
       LIMIT ? OFFSET ?

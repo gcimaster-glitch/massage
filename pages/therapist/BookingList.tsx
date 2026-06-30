@@ -21,6 +21,7 @@ interface Booking {
   site_address?: string;
   service_name: string;
   scheduled_start: string;
+  scheduled_at: string;
   duration: number;
   price: number;
   status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -119,14 +120,20 @@ const TherapistBookingList: React.FC = () => {
 
   const todayBookings = filteredBookings.filter(b => {
     const today = new Date().toDateString();
-    const bookingDate = new Date(b.scheduled_start).toDateString();
+    const bookingDate = new Date(b.scheduled_at || b.scheduled_start).toDateString();
     return today === bookingDate;
   });
 
   const upcomingBookings = filteredBookings.filter(b => {
     const today = new Date();
-    const bookingDate = new Date(b.scheduled_start);
+    const bookingDate = new Date(b.scheduled_at || b.scheduled_start);
     return bookingDate > today && bookingDate.toDateString() !== today.toDateString();
+  });
+
+  const pastBookings = filteredBookings.filter(b => {
+    const today = new Date();
+    const bookingDate = new Date(b.scheduled_at || b.scheduled_start);
+    return bookingDate < today && bookingDate.toDateString() !== today.toDateString();
   });
 
   return (
@@ -212,6 +219,21 @@ const TherapistBookingList: React.FC = () => {
                 </h2>
                 <div className="space-y-4">
                   {upcomingBookings.map(booking => (
+                    <BookingCard key={booking.id} booking={booking} onUpdate={loadBookings} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Past Bookings */}
+            {pastBookings.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <CheckCircle className="text-gray-400" size={24} />
+                  過去の予約 ({pastBookings.length}件)
+                </h2>
+                <div className="space-y-4 opacity-75">
+                  {pastBookings.map(booking => (
                     <BookingCard key={booking.id} booking={booking} onUpdate={loadBookings} />
                   ))}
                 </div>
@@ -321,11 +343,11 @@ const BookingCard: React.FC<{ booking: Booking; onUpdate: () => void }> = ({ boo
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <span className="flex items-center gap-1">
               <Calendar size={16} />
-              {formatDate(booking.scheduled_start)}
+              {formatDate(booking.scheduled_at || booking.scheduled_start)}
             </span>
             <span className="flex items-center gap-1">
               <Clock size={16} />
-              {formatTime(booking.scheduled_start)} ({booking.duration}分)
+              {formatTime(booking.scheduled_at || booking.scheduled_start)} ({booking.duration}分)
             </span>
             <span className="font-bold text-teal-600">
               ¥{booking.price.toLocaleString()}
