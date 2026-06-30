@@ -10,7 +10,8 @@ interface EarningRecord {
   booking_id: string;
   booking_price: number;
   therapist_amount: number;
-  therapist_rate: number;
+  platform_fee: number;
+  therapist_rate?: number;
   status: 'PENDING' | 'CONFIRMED' | 'PAID' | 'CANCELLED';
   booking_date: string;
   paid_at: string | null;
@@ -247,7 +248,7 @@ const TherapistEarnings: React.FC = () => {
                           ¥{(record.booking_price || 0).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 text-gray-400">
-                          {record.therapist_rate ? `${Math.round(record.therapist_rate * 100)}%` : '-'}
+                          {record.booking_price ? `${Math.round((record.therapist_amount / record.booking_price) * 100)}%` : '-'}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <span className="text-sm font-black text-gray-900 font-mono">

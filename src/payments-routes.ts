@@ -459,16 +459,16 @@ app.get('/therapist/earnings', async (c) => {
         te.booking_id,
         te.booking_price,
         te.therapist_amount,
-        te.therapist_rate,
+        te.platform_fee,
         te.status,
-        te.booking_date,
         te.paid_at,
         te.created_at,
-        b.service_name
+        b.service_name,
+        b.scheduled_at as booking_date
       FROM therapist_earnings te
       LEFT JOIN bookings b ON te.booking_id = b.id
       WHERE te.therapist_profile_id = ?
-      ORDER BY te.booking_date DESC
+      ORDER BY te.created_at DESC
       LIMIT 100
     `).bind(profile.id).all<Record<string, unknown>>();
 
