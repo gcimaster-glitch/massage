@@ -20,15 +20,23 @@ export interface Env {
   API_KEY: string; // Gemini API Key from Worker Secret
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+const ALLOWED_ORIGINS = ['https://ma-x.tech', 'https://www.ma-x.tech'];
+
+function getCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('Origin') ?? '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin',
+  };
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS });
+    const corsHeaders = getCorsHeaders(request);
+    if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
     const url = new URL(request.url);
     const path = url.pathname;
@@ -54,19 +62,20 @@ export default {
           })
         }).then(r => r.json()) as any;
 
-        return new Response(JSON.stringify({ checkoutUrl: session.url }), { headers: CORS_HEADERS });
+        return new Response(JSON.stringify({ checkoutUrl: session.url }), { headers: corsHeaders });
       }
 
       // 2. D1 Bookings
       if (path === '/api/bookings' && request.method === 'GET') {
         const { results } = await env.DB.prepare("SELECT * FROM bookings ORDER BY scheduled_start DESC").all();
-        return new Response(JSON.stringify(results), { headers: CORS_HEADERS });
+        return new Response(JSON.stringify(results), { headers: corsHeaders });
       }
 
-      return new Response('API Endpoint Not Found', { status: 404, headers: CORS_HEADERS });
+      return new Response('API Endpoint Not Found', { status: 404, headers: corsHeaders });
 
     } catch (e: any) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: CORS_HEADERS });
+      console.error('[worker] Unhandled error:', e);
+      return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
     }
   }
 };
