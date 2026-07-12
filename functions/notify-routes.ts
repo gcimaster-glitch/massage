@@ -2,6 +2,7 @@
 // Notification & Storage Routes
 // ============================================
 import { Hono } from 'hono'
+import { verifyJWT } from './auth-middleware'
 
 type Bindings = {
   STORAGE: R2Bucket
@@ -17,6 +18,8 @@ type Variables = {
 const notifyApp = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // 認証ミドルウェア（簡易版）
+// 旧実装は存在しない sessions テーブルを参照しており、
+// アプリが発行するJWTを検証できず常に401を返していた。JWT検証に統一する。
 const requireAuth = async (c: any, next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
@@ -24,17 +27,10 @@ const requireAuth = async (c: any, next: () => Promise<void>) => {
   }
   const token = authHeader.substring(7)
   try {
-    const { DB } = c.env
-    const session = await DB.prepare(
-      'SELECT user_id FROM sessions WHERE token = ? AND expires_at > CURRENT_TIMESTAMP'
-    ).bind(token).first<{ user_id: string }>()
-    if (!session) return c.json({ error: '無効なトークンです' }, 401)
-    const user = await DB.prepare(
-      'SELECT id, role FROM users WHERE id = ?'
-    ).bind(session.user_id).first<{ id: string; role: string }>()
-    if (!user) return c.json({ error: 'ユーザーが見つかりません' }, 401)
-    c.set('userId', user.id)
-    c.set('userRole', user.role)
+    const payload = await verifyJWT(token, c.env.JWT_SECRET)
+    if (!payload) return c.json({ error: '無効なトークンです' }, 401)
+    c.set('userId', payload.userId)
+    c.set('userRole', payload.role)
     await next()
   } catch (e) {
     return c.json({ error: '認証エラー' }, 401)

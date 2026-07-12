@@ -251,63 +251,121 @@ app.get('/:id/menu', async (c) => {
   const therapistId = c.req.param('id');
   
   try {
-    // therapist_profiles が存在しない場合に備えて、直接 therapist_id で検索
-    // まず profile_id を取得
-    let profileId = null;
+    // therapist_profiles から profile_id を取得
+    let profileId: string | null = null;
     try {
-      const profileQuery = `SELECT id FROM therapist_profiles WHERE user_id = ?`;
-      const profileResult = await DB.prepare(profileQuery).bind(therapistId).first<{ id: string }>();
+      const profileResult = await DB.prepare(
+        'SELECT id FROM therapist_profiles WHERE user_id = ?'
+      ).bind(therapistId).first<{ id: string }>();
       if (profileResult) {
         profileId = profileResult.id;
       }
     } catch (e) {
-      // therapist_profiles テーブルが存在しない場合は無視
+      // テーブルが存在しない場合は無視
     }
     
     // profile_id が見つからない場合は therapist_id をそのまま使用
     const searchId = profileId || therapistId;
     
-    // コース取得
-    const coursesQuery = `
-      SELECT 
-        mc.id,
-        mc.name,
-        mc.duration,
-        mc.description,
-        tm.price as base_price,
-        tm.is_available
-      FROM therapist_menu tm
-      JOIN master_courses mc ON tm.master_course_id = mc.id
-      WHERE tm.therapist_id = ? AND tm.is_available = 1
-      ORDER BY mc.duration
-    `;
+    // コース取得（therapist_menu_courses テーブルを使用）
+    const coursesResult = await DB.prepare(`
+      SELECT id, name, duration, price as base_price, description
+      FROM therapist_menu_courses
+      WHERE therapist_profile_id = ? AND is_active = 1
+      ORDER BY display_order
+    `).bind(searchId).all();
     
-    const coursesResult = await DB.prepare(coursesQuery).bind(searchId).all();
-    
-    // オプション取得
-    const optionsQuery = `
-      SELECT 
-        mo.id,
-        mo.name,
-        mo.duration,
-        mo.description,
-        topt.price as base_price,
-        topt.is_available
-      FROM therapist_options topt
-      JOIN master_options mo ON topt.master_option_id = mo.id
-      WHERE topt.therapist_id = ? AND topt.is_available = 1
-      ORDER BY mo.name
-    `;
-    
-    const optionsResult = await DB.prepare(optionsQuery).bind(searchId).all();
+    // オプション取得（therapist_menu_options テーブルを使用）
+    const optionsResult = await DB.prepare(`
+      SELECT id, name, price as base_price, description
+      FROM therapist_menu_options
+      WHERE therapist_profile_id = ? AND is_active = 1
+      ORDER BY display_order
+    `).bind(searchId).all();
     
     return c.json({
       courses: coursesResult.results || [],
       options: optionsResult.results || []
     });
   } catch (error: unknown) {
-    console.error('Error fetching therapist menu:', error);
-    return c.json({ error: 'メニューの取得に失敗しました' }, 500);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Error fetching therapist menu:', errMsg);
+    return c.json({ error: 'メニューの取得に失敗しました', detail: errMsg }, 500);
+  }
+});
+
+
+// ============================================
+// 予約済みスロット取得（SimpleBookingのカレンダー用）
+// GET /api/therapists/:id/booked-slots?date=YYYY-MM-DD
+// 指定日の確定済み予約と有効なタイムロックの開始時刻（HH:MM）を返す
+// ============================================
+app.get('/:id/booked-slots', async (c) => {
+  const { DB } = c.env;
+  const therapistId = c.req.param('id');
+  const date = c.req.query('date');
+
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return c.json({ error: 'dateはYYYY-MM-DD形式で指定してください' }, 400);
+  }
+
+  try {
+    // therapist_idはuser_id/therapist_profiles.idのどちらの規約でも保存されている可能性があるため両方を対象にする
+    let altId = therapistId;
+    try {
+      const profile = await DB.prepare(
+        'SELECT id, user_id FROM therapist_profiles WHERE user_id = ? OR id = ?'
+      ).bind(therapistId, therapistId).first<{ id: string; user_id: string }>();
+      if (profile) {
+        altId = profile.id === therapistId ? profile.user_id : profile.id;
+      }
+    } catch {
+      // therapist_profilesが無い環境では無視
+    }
+
+    const booked = new Set<string>();
+
+    // scheduled_at / scheduled_start のどちらのカラム名でも動くようフォールバック
+    const queries = [
+      `SELECT strftime('%H:%M', scheduled_at) AS slot FROM bookings
+       WHERE therapist_id IN (?, ?) AND date(scheduled_at) = ?
+         AND status NOT IN ('CANCELLED', 'NO_SHOW')`,
+      `SELECT strftime('%H:%M', scheduled_start) AS slot FROM bookings
+       WHERE therapist_id IN (?, ?) AND date(scheduled_start) = ?
+         AND status NOT IN ('CANCELLED', 'NO_SHOW')`,
+    ];
+    let bookingRows: { slot: string }[] = [];
+    for (const q of queries) {
+      try {
+        const r = await DB.prepare(q).bind(therapistId, altId, date).all<{ slot: string }>();
+        bookingRows = r.results || [];
+        break;
+      } catch {
+        // カラムが存在しない場合は次のクエリで再試行
+      }
+    }
+    for (const row of bookingRows) {
+      if (row.slot) booked.add(row.slot);
+    }
+
+    // 有効な仮予約（タイムロック）も予約済み扱いにする
+    try {
+      const locks = await DB.prepare(
+        `SELECT strftime('%H:%M', scheduled_at) AS slot FROM booking_timelocks
+         WHERE therapist_id IN (?, ?) AND date(scheduled_at) = ?
+           AND status = 'ACTIVE' AND expires_at > datetime('now')`
+      ).bind(therapistId, altId, date).all<{ slot: string }>();
+      for (const row of (locks.results || [])) {
+        if (row.slot) booked.add(row.slot);
+      }
+    } catch {
+      // booking_timelocksが無い環境では無視
+    }
+
+    return c.json({ booked: Array.from(booked).sort() });
+  } catch (error: unknown) {
+    console.error('booked-slots error:', error);
+    return c.json({ error: '予約済みスロットの取得に失敗しました' }, 500);
   }
 });
 

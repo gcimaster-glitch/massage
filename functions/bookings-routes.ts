@@ -12,6 +12,7 @@ import { checkRateLimit, RATE_LIMITS } from './rate-limit';
 import { validateText, validateDate } from './validation';
 
 import type { Bindings, Booking, User } from './types';
+import { processPaymentSplit } from './revenue-engine-routes';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -190,7 +191,115 @@ app.get('/guest/:bookingId', async (c) => {
   }
 });
 
-// すべてのルートに認証必須（ただし /guest は除外済み）
+// ============================================
+// 決済確定前の予約破棄（SimpleBooking決済フロー用）
+// DELETE /api/bookings/:id/cancel-payment
+// 決済準備失敗・カード情報なし・決済失敗時に仮予約を削除する
+// ============================================
+app.delete('/:id/cancel-payment', async (c) => {
+  const { DB } = c.env;
+  const bookingId = c.req.param('id');
+
+  try {
+    const booking = await DB.prepare(
+      'SELECT id, status, payment_status, timelock_id FROM bookings WHERE id = ?'
+    ).bind(bookingId).first<{ id: string; status: string; payment_status: string | null; timelock_id: string | null }>();
+
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404);
+    }
+
+    // 決済済み・確定済みの予約はこのエンドポイントでは破棄できない
+    if (booking.payment_status === 'PAID' || booking.status !== 'PENDING') {
+      return c.json({ error: 'この予約は破棄できません' }, 400);
+    }
+
+    // タイムロックを解放
+    if (booking.timelock_id) {
+      try {
+        await DB.prepare(
+          "UPDATE booking_timelocks SET status = 'RELEASED' WHERE id = ?"
+        ).bind(booking.timelock_id).run();
+      } catch (e) {
+        console.warn('タイムロック解放に失敗（続行）:', e);
+      }
+    }
+
+    await DB.prepare('DELETE FROM booking_items WHERE booking_id = ?').bind(bookingId).run().catch(() => {});
+    await DB.prepare('DELETE FROM bookings WHERE id = ?').bind(bookingId).run();
+
+    return c.json({ success: true, message: '予約を破棄しました' });
+  } catch (error: unknown) {
+    console.error('cancel-payment error:', error);
+    return c.json({ error: '予約の破棄に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 決済成功後の予約確定（SimpleBooking決済フロー用）
+// POST /api/bookings/:id/confirm-payment {paymentIntentId}
+// ============================================
+app.post('/:id/confirm-payment', async (c) => {
+  const { DB } = c.env;
+  const bookingId = c.req.param('id');
+
+  try {
+    const { paymentIntentId } = await c.req.json() as { paymentIntentId?: string };
+    if (!paymentIntentId) {
+      return c.json({ error: 'paymentIntentIdが必要です' }, 400);
+    }
+
+    const booking = await DB.prepare(
+      'SELECT id, user_id, price, status, timelock_id FROM bookings WHERE id = ?'
+    ).bind(bookingId).first<{ id: string; user_id: string | null; price: number; status: string; timelock_id: string | null }>();
+
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404);
+    }
+
+    // 収益分配エンジンで確定処理（transactions/transaction_splits記録 + 予約CONFIRMED化）
+    const splitResult = await processPaymentSplit(DB, bookingId, paymentIntentId, booking.price);
+
+    if (!splitResult.success) {
+      // 分配記録に失敗しても決済自体は成功しているため、予約確定だけは必ず行う
+      console.error('収益分配記録に失敗（予約確定は継続）:', splitResult.error);
+      await DB.prepare(
+        "UPDATE bookings SET status = 'CONFIRMED', payment_status = 'PAID', payment_intent_id = ? WHERE id = ?"
+      ).bind(paymentIntentId, bookingId).run();
+    }
+
+    // タイムロックを確定済みに
+    if (booking.timelock_id) {
+      try {
+        await DB.prepare(
+          "UPDATE booking_timelocks SET status = 'CONFIRMED' WHERE id = ?"
+        ).bind(booking.timelock_id).run();
+      } catch (e) {
+        console.warn('タイムロック確定に失敗（続行）:', e);
+      }
+    }
+
+    // 会員予約の場合はpaymentsテーブルにも記録（user_id NOT NULL制約のためゲストはスキップ）
+    if (booking.user_id) {
+      try {
+        const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        await DB.prepare(
+          `INSERT INTO payments (id, booking_id, user_id, amount, stripe_payment_intent_id, status, payment_method)
+           VALUES (?, ?, ?, ?, ?, 'COMPLETED', 'card')`
+        ).bind(paymentId, bookingId, booking.user_id, booking.price, paymentIntentId).run();
+      } catch (e) {
+        console.warn('paymentsテーブルへの記録に失敗（続行）:', e);
+      }
+    }
+
+    return c.json({ success: true, message: '予約を確定しました' });
+  } catch (error: unknown) {
+    console.error('confirm-payment error:', error);
+    return c.json({ error: '予約の確定に失敗しました' }, 500);
+  }
+});
+
+// すべてのルートに認証必須（ただし /guest・/timelock・決済フロー用ルートは除外済み）
 app.use('/*', requireAuth);
 
 // ============================================

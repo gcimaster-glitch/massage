@@ -113,7 +113,13 @@ CREATE INDEX IF NOT EXISTS idx_contracts_stripe_sub ON contracts(stripe_subscrip
 -- 5. Revenue Share Rules（報酬分配ルール）
 --    予約の種別・オフィス・エリアごとに異なる分配率を定義する
 --    既存の revenue_config（月単位の固定率）を置き換える
+--    注意: 001_integration_update.sql が旧定義（rule_name/platform_fee_rate/
+--    marketing_rate・小数率）で同名テーブルを作成しているため、
+--    CREATE IF NOT EXISTS では旧定義が残り続け、直後の office_id インデックス作成で
+--    チェーン全体が停止していた。旧定義をDROPして本定義で再構築する。
+--    （デフォルトルールは 0052_reconcile_schema.sql で再投入される）
 -- ============================================================
+DROP TABLE IF EXISTS revenue_share_rules;
 CREATE TABLE IF NOT EXISTS revenue_share_rules (
   id TEXT PRIMARY KEY,
   -- ルールの適用範囲（NULLはデフォルト/全体適用）
@@ -383,7 +389,9 @@ ALTER TABLE bookings ADD COLUMN host_user_id TEXT REFERENCES users(id) ON DELETE
 ALTER TABLE bookings ADD COLUMN revenue_share_rule_id TEXT REFERENCES revenue_share_rules(id) ON DELETE SET NULL;
 
 -- usersテーブルにstripe_customer_idを追加（顧客のStripe Customer ID）
-ALTER TABLE users ADD COLUMN stripe_customer_id TEXT UNIQUE;
+-- SQLiteはALTERでのUNIQUEカラム追加を許可しないため、通常カラム+一意インデックスで代替
+ALTER TABLE users ADD COLUMN stripe_customer_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer_id ON users(stripe_customer_id);
 
 -- ============================================================
 -- 14. デフォルトの報酬分配ルールを挿入

@@ -737,6 +737,89 @@ authApp.get('/verify-email', async (c) => {
 })
 
 // ============================================
+// 認証メール再送信
+// POST /api/auth/resend-verification {email}
+// UnifiedLogin.tsxの「認証メールを再送」ボタンが使用
+// ============================================
+authApp.post('/resend-verification', async (c) => {
+  try {
+    const { email } = await c.req.json() as { email?: string }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return c.json({ error: '有効なメールアドレスを入力してください' }, 400)
+    }
+
+    // レート制限（同一IPからの連投防止）
+    const clientIp = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
+    try {
+      const rl = await checkRateLimit(c.env.DB, `resend_${clientIp}`, 'resend_verification', { limit: 5, windowMs: 60 * 60 * 1000, message: '送信回数が多すぎます' })
+      if (!rl.allowed) {
+        return c.json({ error: `送信回数が多すぎます。${rl.retryAfter}秒後に再試行してください。` }, 429)
+      }
+    } catch { /* レート制限テーブルが無い環境では続行 */ }
+
+    const user = await c.env.DB.prepare(
+      'SELECT id, email, name, email_verified FROM users WHERE email = ?'
+    ).bind(email).first<{ id: string; email: string; name: string; email_verified: number }>()
+
+    // ユーザー列挙攻撃を防ぐため、存在有無に関わらず同じレスポンスを返す
+    const genericResponse = { success: true, message: '認証メールを送信しました。受信トレイをご確認ください。' }
+
+    if (!user) {
+      return c.json(genericResponse)
+    }
+    if (user.email_verified) {
+      return c.json({ error: 'このメールアドレスは既に認証済みです。ログインしてください。' }, 400)
+    }
+
+    // 古いトークンを削除して新規発行
+    await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?').bind(user.id).run()
+    const verificationToken = generateState()
+    await c.env.DB.prepare(
+      `INSERT INTO email_verifications (user_id, token, expires_at, created_at)
+       VALUES (?, ?, datetime('now', '+24 hours'), datetime('now'))`
+    ).bind(user.id, verificationToken).run()
+
+    if (c.env.RESEND_API_KEY) {
+      const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'HOGUSY <noreply@hogusy.com>',
+            to: [user.email],
+            subject: '【HOGUSY】メールアドレスの認証をお願いします',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>メールアドレスの認証</h2>
+                <p>${user.name} 様</p>
+                <p>以下のボタンをクリックしてメールアドレスの認証を完了してください。（有効期限: 24時間）</p>
+                <p style="margin: 24px 0;">
+                  <a href="${verificationUrl}" style="background: #0d9488; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">メールアドレスを認証する</a>
+                </p>
+                <p style="color: #666; font-size: 12px;">このメールに心当たりがない場合は破棄してください。</p>
+              </div>
+            `
+          })
+        })
+      } catch (e) {
+        console.error('認証メール再送信エラー:', e)
+        return c.json({ error: 'メール送信に失敗しました。時間をおいて再試行してください。' }, 500)
+      }
+    }
+
+    return c.json(genericResponse)
+  } catch (e) {
+    console.error('resend-verification error:', e)
+    return c.json({ error: 'メール送信に失敗しました' }, 500)
+  }
+})
+
+// ============================================
 // Email/Password Login（セキュリティ強化版）
 // ============================================
 authApp.post('/login', async (c) => {

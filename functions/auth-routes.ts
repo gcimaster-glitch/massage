@@ -141,7 +141,7 @@ authApp.get('/oauth/:provider', async (c) => {
       await c.env.DB.prepare(
         'INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+10 minutes"))'
       )
-        .bind(state, providerName, redirect, role)
+        .bind(state, providerName.toLowerCase(), redirect, role)
         .run()
     } catch (e) {
       console.error('Failed to store OAuth state:', e)
@@ -225,7 +225,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       const { results: socialAccounts } = await c.env.DB.prepare(
         'SELECT user_id FROM social_accounts WHERE provider = ? AND provider_user_id = ?'
       )
-        .bind(providerName, providerUser.id)
+        .bind(providerName.toLowerCase(), providerUser.id)
         .all()
 
       if (socialAccounts.length > 0) {
@@ -243,7 +243,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
         await c.env.DB.prepare(
           'UPDATE social_accounts SET last_used_at = datetime("now") WHERE provider = ? AND provider_user_id = ?'
         )
-          .bind(providerName, providerUser.id)
+          .bind(providerName.toLowerCase(), providerUser.id)
           .run()
       } else {
         // New user - create account
@@ -253,9 +253,9 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
         // Create user
         await c.env.DB.prepare(
-          'INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, TRUE, datetime("now"), datetime("now"))'
+          'INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, 1, datetime("now"), datetime("now"))'
         )
-          .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url)
+          .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url || null)
           .run()
 
          // Create social account link
@@ -273,11 +273,11 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           .bind(
             socialAccountId,
             userId,
-            providerName,
+            providerName.toLowerCase(),
             providerUser.id,
-            providerUser.email,
-            providerUser.name,
-            providerUser.avatar_url,
+            providerUser.email || null,
+            providerUser.name || null,
+            providerUser.avatar_url || null,
             encryptedAccessToken,
             encryptedRefreshToken,
             expiresAt
@@ -321,24 +321,24 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       redirectUrl.searchParams.set('token', jwt)
       redirectUrl.searchParams.set('isNewUser', isNewUser.toString())
       return c.redirect(redirectUrl.toString())
-      } catch (dbError) {
-        console.error('Database error, falling back to mock mode:', dbError)
-        // Fall through to development mode below
+            } catch (dbError) {
+        const errMsg = dbError instanceof Error ? dbError.message : String(dbError)
+        console.error('Database error in OAuth callback:', errMsg)
+        return c.redirect(`/?error=auth_failed&detail=${encodeURIComponent(errMsg.substring(0, 100))}`)
       }
     }
-    
        // HOG-SEC-004: JWT_SECRETが設定されていない場合は認証を拒否する
-    // 「dev-secret」フォールバックは除去。未設定のまま本番デプロイされた場合に漏洩したトークンが発行されるリスクを排除する
     if (!c.env.JWT_SECRET) {
       console.error('[SEC] JWT_SECRET is not configured. Refusing to issue token.')
-      return c.redirect(`/?error=auth_failed`)
+      return c.redirect(`/?error=auth_failed&detail=no_jwt_secret`)
     }
-    // DBエラー時のフォールバック（開発モードは廃止）— DB接続失敗としてエラーを返す
-    console.error('[SEC] Database connection failed during OAuth callback. Cannot create user session.')
-    return c.redirect(`/?error=auth_failed`)
+    // DBが利用不可の場合
+    console.error('[SEC] Database connection failed during OAuth callback.')
+    return c.redirect(`/?error=auth_failed&detail=db_unavailable`)
   } catch (e) {
-    console.error('OAuth callback error:', e)
-    return c.redirect(`/?error=auth_failed`)
+    const errMsg = e instanceof Error ? e.message : String(e)
+    console.error('OAuth callback error:', errMsg)
+    return c.redirect(`/?error=auth_failed&detail=${encodeURIComponent(errMsg.substring(0, 100))}`)
   }
 })
 
@@ -435,10 +435,9 @@ authApp.post('/register', async (c) => {
           
           // Insert new verification
           await c.env.DB.prepare(
-            `INSERT INTO email_verifications (id, user_id, token, expires_at, created_at)
-             VALUES (?, ?, ?, datetime('now', '+24 hours'), datetime('now'))`
+            `INSERT INTO email_verifications (user_id, token, expires_at, created_at)
+             VALUES (?, ?, datetime('now', '+24 hours'), datetime('now'))`
           ).bind(
-            `ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             existingUserId,
             verificationToken
           ).run()
@@ -738,6 +737,89 @@ authApp.get('/verify-email', async (c) => {
 })
 
 // ============================================
+// 認証メール再送信
+// POST /api/auth/resend-verification {email}
+// UnifiedLogin.tsxの「認証メールを再送」ボタンが使用
+// ============================================
+authApp.post('/resend-verification', async (c) => {
+  try {
+    const { email } = await c.req.json() as { email?: string }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return c.json({ error: '有効なメールアドレスを入力してください' }, 400)
+    }
+
+    // レート制限（同一IPからの連投防止）
+    const clientIp = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
+    try {
+      const rl = await checkRateLimit(c.env.DB, `resend_${clientIp}`, 'resend_verification', { limit: 5, windowMs: 60 * 60 * 1000, message: '送信回数が多すぎます' })
+      if (!rl.allowed) {
+        return c.json({ error: `送信回数が多すぎます。${rl.retryAfter}秒後に再試行してください。` }, 429)
+      }
+    } catch { /* レート制限テーブルが無い環境では続行 */ }
+
+    const user = await c.env.DB.prepare(
+      'SELECT id, email, name, email_verified FROM users WHERE email = ?'
+    ).bind(email).first<{ id: string; email: string; name: string; email_verified: number }>()
+
+    // ユーザー列挙攻撃を防ぐため、存在有無に関わらず同じレスポンスを返す
+    const genericResponse = { success: true, message: '認証メールを送信しました。受信トレイをご確認ください。' }
+
+    if (!user) {
+      return c.json(genericResponse)
+    }
+    if (user.email_verified) {
+      return c.json({ error: 'このメールアドレスは既に認証済みです。ログインしてください。' }, 400)
+    }
+
+    // 古いトークンを削除して新規発行
+    await c.env.DB.prepare('DELETE FROM email_verifications WHERE user_id = ?').bind(user.id).run()
+    const verificationToken = generateState()
+    await c.env.DB.prepare(
+      `INSERT INTO email_verifications (user_id, token, expires_at, created_at)
+       VALUES (?, ?, datetime('now', '+24 hours'), datetime('now'))`
+    ).bind(user.id, verificationToken).run()
+
+    if (c.env.RESEND_API_KEY) {
+      const verificationUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verificationToken}`
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'HOGUSY <noreply@hogusy.com>',
+            to: [user.email],
+            subject: '【HOGUSY】メールアドレスの認証をお願いします',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>メールアドレスの認証</h2>
+                <p>${user.name} 様</p>
+                <p>以下のボタンをクリックしてメールアドレスの認証を完了してください。（有効期限: 24時間）</p>
+                <p style="margin: 24px 0;">
+                  <a href="${verificationUrl}" style="background: #0d9488; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">メールアドレスを認証する</a>
+                </p>
+                <p style="color: #666; font-size: 12px;">このメールに心当たりがない場合は破棄してください。</p>
+              </div>
+            `
+          })
+        })
+      } catch (e) {
+        console.error('認証メール再送信エラー:', e)
+        return c.json({ error: 'メール送信に失敗しました。時間をおいて再試行してください。' }, 500)
+      }
+    }
+
+    return c.json(genericResponse)
+  } catch (e) {
+    console.error('resend-verification error:', e)
+    return c.json({ error: 'メール送信に失敗しました' }, 500)
+  }
+})
+
+// ============================================
 // Email/Password Login（セキュリティ強化版）
 // ============================================
 authApp.post('/login', async (c) => {
@@ -968,7 +1050,7 @@ authApp.get('/link/:provider', async (c) => {
       `INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at, user_id, action)
        VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'), ?, ?)`
     )
-      .bind(state, provider, redirectPath, 'USER', decoded.userId, 'link')
+      .bind(state, provider.toLowerCase(), redirectPath, 'USER', decoded.userId, 'link')
       .run()
 
     // Get OAuth provider config
@@ -1014,7 +1096,7 @@ authApp.delete('/link/:provider', async (c) => {
     await c.env.DB.prepare(
       'DELETE FROM social_accounts WHERE user_id = ? AND provider = ?'
     )
-      .bind(decoded.userId, provider)
+      .bind(decoded.userId, provider.toLowerCase())
       .run()
 
     return c.json({ success: true, message: '連携を解除しました' })

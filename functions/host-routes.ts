@@ -22,30 +22,9 @@ const requireHostAuth = async (
 ) => {
   const authHeader = c.req.header('Authorization');
 
-  // 開発用モックトークン対応（Base64エンコードされたJSONペイロード）
-  // dev-login.html が生成するトークン形式: btoa(JSON.stringify({userId, role, exp}))
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    try {
-      const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-      if (
-        decoded &&
-        decoded.userId &&
-        decoded.role &&
-        (decoded.role === 'HOST' || decoded.role === 'ADMIN') &&
-        decoded.exp > Date.now()
-      ) {
-        c.set('userId', decoded.userId);
-        c.set('userRole', decoded.role);
-        await next();
-        return;
-      }
-    } catch {
-      // Base64デコード失敗 → 通常のJWT検証へ
-    }
-  }
-
-  // 通常のJWT検証
+  // 署名なしBase64モックトークンの受け入れは認証バイパス脆弱性のため削除。
+  // （任意のユーザーが btoa(JSON) でHOST/ADMIN権限を偽装できてしまっていた）
+  // JWT検証のみを行う。
   const authResult = await requireAuthentication(
     authHeader,
     c.env.JWT_SECRET,
@@ -77,7 +56,7 @@ app.get('/dashboard', requireHostAuth, async (c) => {
       ).all();
     } else {
       sitesQuery = await c.env.DB.prepare(
-        `SELECT id, name, type, status, room_count FROM sites WHERE host_user_id = ? ORDER BY created_at DESC`
+        `SELECT id, name, type, status, room_count FROM sites WHERE host_id = ? ORDER BY created_at DESC`
       ).bind(userId).all();
     }
 
@@ -96,7 +75,7 @@ app.get('/dashboard', requireHostAuth, async (c) => {
       const placeholders = siteIds.map(() => '?').join(',');
 
       const bookingStats = await c.env.DB.prepare(
-        `SELECT COUNT(*) as count, COALESCE(SUM(total_price), 0) as revenue
+        `SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
          FROM bookings
          WHERE site_id IN (${placeholders})
            AND scheduled_at >= ?
@@ -110,14 +89,12 @@ app.get('/dashboard', requireHostAuth, async (c) => {
         `SELECT
            b.id,
            b.scheduled_at,
-           b.total_price,
+           b.price as total_price,
            b.status,
-           COALESCE(s.name, '') as service_name,
-           COALESCE(u.name, '') as therapist_name,
+           COALESCE(b.service_name, '') as service_name,
+           COALESCE(b.therapist_name, '') as therapist_name,
            COALESCE(si.name, '') as site_name
          FROM bookings b
-         LEFT JOIN services s ON b.service_id = s.id
-         LEFT JOIN users u ON b.therapist_id = u.id
          LEFT JOIN sites si ON b.site_id = si.id
          WHERE b.site_id IN (${placeholders})
            AND b.scheduled_at >= datetime('now')
@@ -196,7 +173,7 @@ app.get('/earnings', requireHostAuth, async (c) => {
       ).all();
     } else {
       sitesResult = await c.env.DB.prepare(
-        `SELECT id FROM sites WHERE host_user_id = ?`
+        `SELECT id FROM sites WHERE host_id = ?`
       ).bind(userId).all();
     }
 
@@ -211,15 +188,19 @@ app.get('/earnings', requireHostAuth, async (c) => {
       `SELECT
          b.id as booking_id,
          b.scheduled_at,
-         b.total_price,
+         b.price as total_price,
          b.status,
-         COALESCE(s.name, '') as service_name,
+         COALESCE(b.service_name, '') as service_name,
          COALESCE(si.name, '') as site_name,
-         COALESCE(rs.host_amount, ROUND(b.total_price * 0.2), 0) as host_amount
+         COALESCE(rs.host_amount, ROUND(b.price * 0.2), 0) as host_amount
        FROM bookings b
-       LEFT JOIN services s ON b.service_id = s.id
        LEFT JOIN sites si ON b.site_id = si.id
-       LEFT JOIN revenue_splits rs ON rs.booking_id = b.id
+       LEFT JOIN (
+         SELECT t.booking_id, SUM(ts.amount) as host_amount
+         FROM transactions t
+         JOIN transaction_splits ts ON ts.transaction_id = t.id AND ts.role = 'HOST'
+         GROUP BY t.booking_id
+       ) rs ON rs.booking_id = b.id
        WHERE b.site_id IN (${placeholders})
          AND b.scheduled_at BETWEEN ? AND ?
          AND b.status NOT IN ('CANCELLED', 'REFUNDED')
@@ -263,7 +244,7 @@ app.get('/sites', requireHostAuth, async (c) => {
       ).all();
     } else {
       sitesResult = await c.env.DB.prepare(
-        `SELECT id, name, type, status, room_count, address, created_at FROM sites WHERE host_user_id = ? ORDER BY created_at DESC`
+        `SELECT id, name, type, status, room_count, address, created_at FROM sites WHERE host_id = ? ORDER BY created_at DESC`
       ).bind(userId).all();
     }
 

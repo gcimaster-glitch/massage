@@ -809,4 +809,496 @@ app.get('/financial-statements/:id', requireAdmin, async (c) => {
   }
 })
 
+
+// ============================================
+// 拠点ホスト管理（HostManagement.tsx用）
+// approval_statusはusersテーブルに存在しないため、保有サイトの承認状況から導出する
+// ============================================
+
+/** GET /api/admin/hosts - 拠点ホスト一覧 */
+app.get('/hosts', requireAdmin, async (c) => {
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT
+        u.id, u.email, u.name, u.phone, u.role, u.avatar_url,
+        u.email_verified, u.phone_verified, u.created_at, u.updated_at,
+        COUNT(s.id) AS site_count,
+        CASE
+          WHEN SUM(CASE WHEN s.status = 'PENDING' THEN 1 ELSE 0 END) > 0 THEN 'PENDING'
+          WHEN SUM(CASE WHEN s.status = 'APPROVED' THEN 1 ELSE 0 END) > 0 THEN 'APPROVED'
+          WHEN SUM(CASE WHEN s.status = 'REJECTED' THEN 1 ELSE 0 END) > 0 THEN 'REJECTED'
+          ELSE 'PENDING'
+        END AS approval_status
+      FROM users u
+      LEFT JOIN sites s ON s.host_id = u.id
+      WHERE u.role = 'HOST' AND COALESCE(u.is_archived, 0) = 0
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+    `).all()
+    return c.json({ hosts: result.results || [] })
+  } catch (e) {
+    console.error('admin hosts list error:', e)
+    return c.json({ error: '拠点ホスト一覧の取得に失敗しました' }, 500)
+  }
+})
+
+/** GET /api/admin/hosts/:hostId - 拠点ホスト詳細 */
+app.get('/hosts/:hostId', requireAdmin, async (c) => {
+  const hostId = c.req.param('hostId')
+  try {
+    const host = await c.env.DB.prepare(
+      `SELECT id, email, name, phone, role, avatar_url, email_verified, phone_verified, created_at, updated_at
+       FROM users WHERE id = ? AND role = 'HOST'`
+    ).bind(hostId).first()
+    if (!host) return c.json({ error: '拠点ホストが見つかりません' }, 404)
+
+    const sites = await c.env.DB.prepare(
+      'SELECT * FROM sites WHERE host_id = ? ORDER BY created_at DESC'
+    ).bind(hostId).all()
+
+    return c.json({ host, sites: sites.results || [] })
+  } catch (e) {
+    console.error('admin host detail error:', e)
+    return c.json({ error: '拠点ホスト詳細の取得に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/hosts/:hostId/approve - 拠点ホスト承認（保留中サイトを承認） */
+app.post('/hosts/:hostId/approve', requireAdmin, async (c) => {
+  const hostId = c.req.param('hostId')
+  try {
+    const result = await c.env.DB.prepare(
+      "UPDATE sites SET status = 'APPROVED' WHERE host_id = ? AND status = 'PENDING'"
+    ).bind(hostId).run()
+    return c.json({ success: true, approved_sites: result.meta?.changes ?? 0 })
+  } catch (e) {
+    console.error('admin host approve error:', e)
+    return c.json({ error: '承認処理に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/hosts/:hostId/reject - 拠点ホスト却下（保留中サイトを却下） */
+app.post('/hosts/:hostId/reject', requireAdmin, async (c) => {
+  const hostId = c.req.param('hostId')
+  try {
+    const result = await c.env.DB.prepare(
+      "UPDATE sites SET status = 'REJECTED' WHERE host_id = ? AND status = 'PENDING'"
+    ).bind(hostId).run()
+    return c.json({ success: true, rejected_sites: result.meta?.changes ?? 0 })
+  } catch (e) {
+    console.error('admin host reject error:', e)
+    return c.json({ error: '却下処理に失敗しました' }, 500)
+  }
+})
+
+/** DELETE /api/admin/hosts/:hostId - 拠点ホスト削除（アーカイブ） */
+app.delete('/hosts/:hostId', requireAdmin, async (c) => {
+  const hostId = c.req.param('hostId')
+  try {
+    const host = await c.env.DB.prepare(
+      "SELECT id FROM users WHERE id = ? AND role = 'HOST'"
+    ).bind(hostId).first()
+    if (!host) return c.json({ error: '拠点ホストが見つかりません' }, 404)
+
+    // 物理削除ではなくアーカイブ（予約・収益履歴との整合性を保つ）
+    await c.env.DB.prepare(
+      "UPDATE users SET is_archived = 1, archived_at = datetime('now') WHERE id = ?"
+    ).bind(hostId).run()
+    await c.env.DB.prepare(
+      "UPDATE sites SET status = 'SUSPENDED' WHERE host_id = ?"
+    ).bind(hostId).run()
+
+    return c.json({ success: true, message: '拠点ホストをアーカイブしました' })
+  } catch (e) {
+    console.error('admin host delete error:', e)
+    return c.json({ error: '削除処理に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// 事務所管理（OfficeManagement.tsx / OfficeDetail.tsx用）
+// フロントエンドの representative_name / email / phone / address / description は
+// offices.manager_name / contact_email と office_details の各カラムにマッピングする
+// ============================================
+
+/** GET /api/admin/offices - 事務所一覧 */
+app.get('/offices', requireAdmin, async (c) => {
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT
+        o.id, o.name, o.status, o.commission_rate, o.created_at,
+        o.contact_email AS email,
+        COALESCE(od.representative_name, o.manager_name) AS representative_name,
+        od.phone, od.address, od.description,
+        COALESCE(od.total_therapists, o.therapist_count, 0) AS total_therapists,
+        COALESCE(od.monthly_revenue, 0) AS monthly_revenue
+      FROM offices o
+      LEFT JOIN office_details od ON od.office_id = o.id
+      ORDER BY o.created_at DESC
+    `).all()
+    return c.json({ offices: result.results || [] })
+  } catch (e) {
+    console.error('admin offices list error:', e)
+    return c.json({ error: '事務所一覧の取得に失敗しました' }, 500)
+  }
+})
+
+/** GET /api/admin/offices/:officeId - 事務所詳細 */
+app.get('/offices/:officeId', requireAdmin, async (c) => {
+  const officeId = c.req.param('officeId')
+  try {
+    const office = await c.env.DB.prepare(`
+      SELECT
+        o.*, o.contact_email AS email,
+        COALESCE(od.representative_name, o.manager_name) AS representative_name,
+        od.phone, od.address, od.description,
+        COALESCE(od.total_therapists, o.therapist_count, 0) AS total_therapists,
+        COALESCE(od.monthly_revenue, 0) AS monthly_revenue
+      FROM offices o
+      LEFT JOIN office_details od ON od.office_id = o.id
+      WHERE o.id = ?
+    `).bind(officeId).first()
+    if (!office) return c.json({ error: '事務所が見つかりません' }, 404)
+    return c.json({ office })
+  } catch (e) {
+    console.error('admin office detail error:', e)
+    return c.json({ error: '事務所詳細の取得に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/offices - 事務所新規作成 */
+app.post('/offices', requireAdmin, async (c) => {
+  try {
+    const body = await c.req.json() as {
+      name?: string; representative_name?: string; email?: string;
+      phone?: string; address?: string; description?: string;
+      commission_rate?: number; area_code?: string;
+    }
+    if (!body.name || !body.email) {
+      return c.json({ error: 'name と email は必須です' }, 400)
+    }
+
+    // offices.user_id は NOT NULL UNIQUE のため、事務所用ユーザーを用意する
+    let officeUserId: string
+    const existingUser = await c.env.DB.prepare(
+      'SELECT id, role FROM users WHERE email = ?'
+    ).bind(body.email).first<{ id: string; role: string }>()
+    if (existingUser) {
+      const linked = await c.env.DB.prepare(
+        'SELECT id FROM offices WHERE user_id = ?'
+      ).bind(existingUser.id).first()
+      if (linked) {
+        return c.json({ error: 'このメールアドレスには既に事務所が登録されています' }, 409)
+      }
+      officeUserId = existingUser.id
+    } else {
+      officeUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      await c.env.DB.prepare(
+        `INSERT INTO users (id, email, name, role, created_at)
+         VALUES (?, ?, ?, 'THERAPIST_OFFICE', datetime('now'))`
+      ).bind(officeUserId, body.email, body.representative_name || body.name).run()
+    }
+
+    const officeId = `office_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    await c.env.DB.prepare(
+      `INSERT INTO offices (id, user_id, name, area_code, manager_name, contact_email, commission_rate, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'APPROVED')`
+    ).bind(
+      officeId, officeUserId, body.name,
+      body.area_code || 'TOKYO',
+      body.representative_name || body.name,
+      body.email,
+      body.commission_rate ?? 15.0
+    ).run()
+
+    const detailId = `odetail_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    await c.env.DB.prepare(
+      `INSERT INTO office_details (id, office_id, representative_name, phone, address, description)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(
+      detailId, officeId,
+      body.representative_name || null,
+      body.phone || null,
+      body.address || null,
+      body.description || null
+    ).run()
+
+    return c.json({ success: true, id: officeId }, 201)
+  } catch (e) {
+    console.error('admin office create error:', e)
+    return c.json({ error: '事務所の作成に失敗しました' }, 500)
+  }
+})
+
+/** PUT /api/admin/offices/:officeId - 事務所更新（ステータスのみの更新にも対応） */
+app.put('/offices/:officeId', requireAdmin, async (c) => {
+  const officeId = c.req.param('officeId')
+  try {
+    const body = await c.req.json() as {
+      name?: string; representative_name?: string; email?: string;
+      phone?: string; address?: string; description?: string;
+      commission_rate?: number; status?: string;
+    }
+
+    const office = await c.env.DB.prepare('SELECT id FROM offices WHERE id = ?').bind(officeId).first()
+    if (!office) return c.json({ error: '事務所が見つかりません' }, 404)
+
+    if (body.status !== undefined) {
+      const validStatuses = ['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED']
+      if (!validStatuses.includes(body.status)) {
+        return c.json({ error: '無効なステータスです' }, 400)
+      }
+    }
+
+    await c.env.DB.prepare(`
+      UPDATE offices SET
+        name = COALESCE(?, name),
+        manager_name = COALESCE(?, manager_name),
+        contact_email = COALESCE(?, contact_email),
+        commission_rate = COALESCE(?, commission_rate),
+        status = COALESCE(?, status),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+      body.name ?? null,
+      body.representative_name ?? null,
+      body.email ?? null,
+      body.commission_rate ?? null,
+      body.status ?? null,
+      officeId
+    ).run()
+
+    // 連絡先詳細はoffice_detailsにUPSERT
+    if (body.representative_name !== undefined || body.phone !== undefined ||
+        body.address !== undefined || body.description !== undefined) {
+      const detail = await c.env.DB.prepare(
+        'SELECT id FROM office_details WHERE office_id = ?'
+      ).bind(officeId).first<{ id: string }>()
+      if (detail) {
+        await c.env.DB.prepare(`
+          UPDATE office_details SET
+            representative_name = COALESCE(?, representative_name),
+            phone = COALESCE(?, phone),
+            address = COALESCE(?, address),
+            description = COALESCE(?, description),
+            updated_at = datetime('now')
+          WHERE office_id = ?
+        `).bind(
+          body.representative_name ?? null,
+          body.phone ?? null,
+          body.address ?? null,
+          body.description ?? null,
+          officeId
+        ).run()
+      } else {
+        const detailId = `odetail_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+        await c.env.DB.prepare(
+          `INSERT INTO office_details (id, office_id, representative_name, phone, address, description)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          detailId, officeId,
+          body.representative_name ?? null,
+          body.phone ?? null,
+          body.address ?? null,
+          body.description ?? null
+        ).run()
+      }
+    }
+
+    return c.json({ success: true })
+  } catch (e) {
+    console.error('admin office update error:', e)
+    return c.json({ error: '事務所の更新に失敗しました' }, 500)
+  }
+})
+
+/** DELETE /api/admin/offices/:officeId - 事務所削除 */
+app.delete('/offices/:officeId', requireAdmin, async (c) => {
+  const officeId = c.req.param('officeId')
+  try {
+    const office = await c.env.DB.prepare('SELECT id FROM offices WHERE id = ?').bind(officeId).first()
+    if (!office) return c.json({ error: '事務所が見つかりません' }, 404)
+
+    await c.env.DB.prepare('DELETE FROM office_details WHERE office_id = ?').bind(officeId).run().catch(() => {})
+    await c.env.DB.prepare('DELETE FROM offices WHERE id = ?').bind(officeId).run()
+
+    return c.json({ success: true, message: '事務所を削除しました' })
+  } catch (e) {
+    console.error('admin office delete error:', e)
+    return c.json({ error: '事務所の削除に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// 決済オペレーション（Payments.tsx用）
+// ============================================
+
+/** POST /api/admin/payments/refund - 返金実行 {payment_id, amount?} */
+app.post('/payments/refund', requireAdmin, async (c) => {
+  try {
+    const { payment_id, amount } = await c.req.json() as { payment_id?: string; amount?: number }
+    if (!payment_id) return c.json({ error: 'payment_idが必要です' }, 400)
+
+    const payment = await c.env.DB.prepare(
+      'SELECT id, booking_id, amount, stripe_payment_intent_id, status FROM payments WHERE id = ?'
+    ).bind(payment_id).first<{
+      id: string; booking_id: string; amount: number;
+      stripe_payment_intent_id: string | null; status: string;
+    }>()
+    if (!payment) return c.json({ error: '決済が見つかりません' }, 404)
+    if (payment.status === 'REFUNDED') return c.json({ error: 'この決済は既に返金済みです' }, 400)
+    if (!payment.stripe_payment_intent_id) {
+      return c.json({ error: 'Stripe決済IDが記録されていないため返金できません' }, 400)
+    }
+    if (!c.env.STRIPE_SECRET) {
+      return c.json({ error: 'Stripeが設定されていません' }, 500)
+    }
+
+    // Stripe返金API呼び出し
+    const params = new URLSearchParams({ payment_intent: payment.stripe_payment_intent_id })
+    if (amount && amount > 0 && amount <= payment.amount) {
+      params.set('amount', String(amount))
+    }
+    const stripeRes = await fetch('https://api.stripe.com/v1/refunds', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${c.env.STRIPE_SECRET}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    })
+    const refund = await stripeRes.json() as { id?: string; status?: string; error?: { message?: string } }
+    if (!stripeRes.ok) {
+      return c.json({ error: `Stripe返金エラー: ${refund.error?.message || '不明なエラー'}` }, 502)
+    }
+
+    await c.env.DB.prepare(
+      "UPDATE payments SET status = 'REFUNDED', updated_at = datetime('now') WHERE id = ?"
+    ).bind(payment_id).run()
+    if (payment.booking_id) {
+      await c.env.DB.prepare(
+        "UPDATE bookings SET payment_status = 'REFUNDED' WHERE id = ?"
+      ).bind(payment.booking_id).run().catch(() => {})
+    }
+
+    return c.json({ success: true, refund_id: refund.id, message: '返金処理が完了しました' })
+  } catch (e) {
+    console.error('admin refund error:', e)
+    return c.json({ error: '返金処理に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/payments/retry - 決済状態の再確認・再同期 {payment_id} */
+app.post('/payments/retry', requireAdmin, async (c) => {
+  try {
+    const { payment_id } = await c.req.json() as { payment_id?: string }
+    if (!payment_id) return c.json({ error: 'payment_idが必要です' }, 400)
+
+    const payment = await c.env.DB.prepare(
+      'SELECT id, booking_id, stripe_payment_intent_id, status FROM payments WHERE id = ?'
+    ).bind(payment_id).first<{
+      id: string; booking_id: string;
+      stripe_payment_intent_id: string | null; status: string;
+    }>()
+    if (!payment) return c.json({ error: '決済が見つかりません' }, 404)
+    if (!payment.stripe_payment_intent_id) {
+      return c.json({ error: 'Stripe決済IDが記録されていないため再確認できません' }, 400)
+    }
+    if (!c.env.STRIPE_SECRET) {
+      return c.json({ error: 'Stripeが設定されていません' }, 500)
+    }
+
+    // Stripeから最新の決済状態を取得してDBに反映
+    const stripeRes = await fetch(
+      `https://api.stripe.com/v1/payment_intents/${payment.stripe_payment_intent_id}`,
+      { headers: { 'Authorization': `Bearer ${c.env.STRIPE_SECRET}` } }
+    )
+    const intent = await stripeRes.json() as { status?: string; error?: { message?: string } }
+    if (!stripeRes.ok) {
+      return c.json({ error: `Stripe照会エラー: ${intent.error?.message || '不明なエラー'}` }, 502)
+    }
+
+    let newStatus = payment.status
+    if (intent.status === 'succeeded') newStatus = 'COMPLETED'
+    else if (intent.status === 'canceled') newStatus = 'FAILED'
+
+    if (newStatus !== payment.status) {
+      await c.env.DB.prepare(
+        "UPDATE payments SET status = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(newStatus, payment_id).run()
+      if (newStatus === 'COMPLETED' && payment.booking_id) {
+        await c.env.DB.prepare(
+          "UPDATE bookings SET payment_status = 'PAID', status = 'CONFIRMED' WHERE id = ?"
+        ).bind(payment.booking_id).run().catch(() => {})
+      }
+    }
+
+    return c.json({
+      success: true,
+      stripe_status: intent.status,
+      payment_status: newStatus,
+      message: newStatus !== payment.status ? '決済状態を更新しました' : '決済状態に変更はありません',
+    })
+  } catch (e) {
+    console.error('admin payment retry error:', e)
+    return c.json({ error: '決済の再確認に失敗しました' }, 500)
+  }
+})
+
+// ============================================
+// 予約オペレーション（BookingLogs.tsx用）
+// ============================================
+
+/** POST /api/admin/bookings/:bookingId/confirm - 予約を確定 */
+app.post('/bookings/:bookingId/confirm', requireAdmin, async (c) => {
+  const bookingId = c.req.param('bookingId')
+  try {
+    const booking = await c.env.DB.prepare(
+      'SELECT id, status FROM bookings WHERE id = ?'
+    ).bind(bookingId).first<{ id: string; status: string }>()
+    if (!booking) return c.json({ error: '予約が見つかりません' }, 404)
+    if (booking.status !== 'PENDING') {
+      return c.json({ error: `PENDING状態の予約のみ確定できます（現在: ${booking.status}）` }, 400)
+    }
+
+    await c.env.DB.prepare(
+      "UPDATE bookings SET status = 'CONFIRMED' WHERE id = ?"
+    ).bind(bookingId).run()
+
+    return c.json({ success: true, message: '予約を確定しました' })
+  } catch (e) {
+    console.error('admin booking confirm error:', e)
+    return c.json({ error: '予約の確定に失敗しました' }, 500)
+  }
+})
+
+/** POST /api/admin/bookings/:bookingId/cancel - 予約をキャンセル */
+app.post('/bookings/:bookingId/cancel', requireAdmin, async (c) => {
+  const bookingId = c.req.param('bookingId')
+  try {
+    const booking = await c.env.DB.prepare(
+      'SELECT id, status, timelock_id FROM bookings WHERE id = ?'
+    ).bind(bookingId).first<{ id: string; status: string; timelock_id: string | null }>()
+    if (!booking) return c.json({ error: '予約が見つかりません' }, 404)
+    if (booking.status === 'COMPLETED' || booking.status === 'CANCELLED') {
+      return c.json({ error: 'この予約はキャンセルできません' }, 400)
+    }
+
+    await c.env.DB.prepare(
+      "UPDATE bookings SET status = 'CANCELLED' WHERE id = ?"
+    ).bind(bookingId).run()
+
+    if (booking.timelock_id) {
+      await c.env.DB.prepare(
+        "UPDATE booking_timelocks SET status = 'RELEASED' WHERE id = ?"
+      ).bind(booking.timelock_id).run().catch(() => {})
+    }
+
+    return c.json({ success: true, message: '予約をキャンセルしました' })
+  } catch (e) {
+    console.error('admin booking cancel error:', e)
+    return c.json({ error: '予約のキャンセルに失敗しました' }, 500)
+  }
+})
+
 export default app

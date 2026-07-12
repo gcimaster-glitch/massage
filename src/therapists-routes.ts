@@ -294,4 +294,79 @@ app.get('/:id/menu', async (c) => {
   }
 });
 
+
+// ============================================
+// 予約済みスロット取得（SimpleBookingのカレンダー用）
+// GET /api/therapists/:id/booked-slots?date=YYYY-MM-DD
+// 指定日の確定済み予約と有効なタイムロックの開始時刻（HH:MM）を返す
+// ============================================
+app.get('/:id/booked-slots', async (c) => {
+  const { DB } = c.env;
+  const therapistId = c.req.param('id');
+  const date = c.req.query('date');
+
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return c.json({ error: 'dateはYYYY-MM-DD形式で指定してください' }, 400);
+  }
+
+  try {
+    // therapist_idはuser_id/therapist_profiles.idのどちらの規約でも保存されている可能性があるため両方を対象にする
+    let altId = therapistId;
+    try {
+      const profile = await DB.prepare(
+        'SELECT id, user_id FROM therapist_profiles WHERE user_id = ? OR id = ?'
+      ).bind(therapistId, therapistId).first<{ id: string; user_id: string }>();
+      if (profile) {
+        altId = profile.id === therapistId ? profile.user_id : profile.id;
+      }
+    } catch {
+      // therapist_profilesが無い環境では無視
+    }
+
+    const booked = new Set<string>();
+
+    // scheduled_at / scheduled_start のどちらのカラム名でも動くようフォールバック
+    const queries = [
+      `SELECT strftime('%H:%M', scheduled_at) AS slot FROM bookings
+       WHERE therapist_id IN (?, ?) AND date(scheduled_at) = ?
+         AND status NOT IN ('CANCELLED', 'NO_SHOW')`,
+      `SELECT strftime('%H:%M', scheduled_start) AS slot FROM bookings
+       WHERE therapist_id IN (?, ?) AND date(scheduled_start) = ?
+         AND status NOT IN ('CANCELLED', 'NO_SHOW')`,
+    ];
+    let bookingRows: { slot: string }[] = [];
+    for (const q of queries) {
+      try {
+        const r = await DB.prepare(q).bind(therapistId, altId, date).all<{ slot: string }>();
+        bookingRows = r.results || [];
+        break;
+      } catch {
+        // カラムが存在しない場合は次のクエリで再試行
+      }
+    }
+    for (const row of bookingRows) {
+      if (row.slot) booked.add(row.slot);
+    }
+
+    // 有効な仮予約（タイムロック）も予約済み扱いにする
+    try {
+      const locks = await DB.prepare(
+        `SELECT strftime('%H:%M', scheduled_at) AS slot FROM booking_timelocks
+         WHERE therapist_id IN (?, ?) AND date(scheduled_at) = ?
+           AND status = 'ACTIVE' AND expires_at > datetime('now')`
+      ).bind(therapistId, altId, date).all<{ slot: string }>();
+      for (const row of (locks.results || [])) {
+        if (row.slot) booked.add(row.slot);
+      }
+    } catch {
+      // booking_timelocksが無い環境では無視
+    }
+
+    return c.json({ booked: Array.from(booked).sort() });
+  } catch (error: unknown) {
+    console.error('booked-slots error:', error);
+    return c.json({ error: '予約済みスロットの取得に失敗しました' }, 500);
+  }
+});
+
 export default app;

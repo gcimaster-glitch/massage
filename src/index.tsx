@@ -28,6 +28,11 @@ import publicPagesApp from './ssr/public-pages'
 import hostApp from './host-routes'
 import stripeWebhookApp from './stripe-webhook-routes'
 import reviewsApp from './reviews-routes'
+import favoritesApp from './favorites-routes'
+import userSelfApp from './user-self-routes'
+import adminPlansApp from './admin-plans-routes'
+import aiConfigApp from './ai-config-routes'
+import hostAffiliateApp from './host-affiliate-routes'
 
 // ============================================
 // Type Definitions
@@ -450,8 +455,10 @@ app.route('/api/auth', passwordResetApp)
 
 // ============================================
 // KYC Routes
+// （/api/auth/kyc はSimpleBooking.tsxが使用する互換パス。POST / が /api/auth/kyc に対応）
 // ============================================
 app.route('/api/kyc', kycApp)
+app.route('/api/auth/kyc', kycApp)
 
 // ============================================
 // Google Maps Routes
@@ -460,7 +467,9 @@ app.route('/api/maps', mapsApp)
 
 // ============================================
 // Admin Routes
+// （/api/admin/plans は /api/admin より先にマウントして確実にマッチさせる）
 // ============================================
+app.route('/api/admin/plans', adminPlansApp)
 app.route('/api/admin', adminComprehensiveApp)
 
 // ============================================
@@ -528,11 +537,14 @@ app.route('/api/schedules', schedulesRoutesApp)
 
 // ============================================
 // Payment Routes
+// paymentsAppのルートは '/receipts/:paymentId' や '/user/payments' のように
+// フルパス相当で定義されているため、'/api' 直下にマウントする。
+// （旧: '/api/receipts'・'/api/user' へのマウントは '/api/receipts/receipts/...' の
+//   二重プレフィックスになりフロントエンドから一切到達できなかった）
 // ============================================
 app.route('/api/payment', paymentApp)
 app.route('/api/payments', paymentsApp)
-app.route('/api/receipts', paymentsApp)
-app.route('/api/user', paymentsApp)
+app.route('/api', paymentsApp)
 
 // ============================================
 // Revenue Engine Routes (収益分配エンジン)
@@ -543,6 +555,20 @@ app.route('/api/revenue', revenueEngineApp)
 // Host Routes (拠点ホスト向けAPI)
 // ============================================
 app.route('/api/host', hostApp)
+
+// ============================================
+// Host補完 & Affiliate Routes
+// hostAffiliateAppは '/host/*' と '/affiliate/*' をフルパス相当で定義しているため
+// '/api' 直下にマウント。hostAppと重複するパスは先に登録されたhostAppが優先される。
+// ============================================
+app.route('/api', hostAffiliateApp)
+
+// ============================================
+// お気に入り・ユーザー自身向け・プラン管理・AI設定 Routes
+// ============================================
+app.route('/api/favorites', favoritesApp)
+app.route('/api/users', userSelfApp)
+app.route('/api/ai', aiConfigApp)
 
 // ============================================
 // Stripe Webhook Routes

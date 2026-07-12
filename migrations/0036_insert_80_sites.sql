@@ -1,5 +1,11 @@
 -- モックデータ80件を施設テーブルに挿入
 
+-- sites.host_id の外部キー制約を満たすため、参照先のデフォルトホストユーザーを先に投入する
+-- （このユーザーが存在しないDBでは全INSERTがFOREIGN KEY constraint failedで失敗し、
+--   以降のマイグレーションが全て停止していた）
+INSERT OR IGNORE INTO users (id, email, name, role, email_verified, created_at)
+VALUES ('host-default', 'host-default@hogusy.com', 'HOGUSY運営（デフォルトホスト）', 'HOST', 1, datetime('now'));
+
 -- 既存のMOCK_SITESデータ (58件)
 INSERT OR IGNORE INTO sites (id, name, type, address, area_code, latitude, longitude, room_count, amenities, status, host_id, image_url) VALUES
 ('cube-setagaya-001', 'CARE CUBE 二子玉川', 'CARE_CUBE', '東京都世田谷区玉川3-17-1', '世田谷区', 35.6125, 139.6294, 2, '["Wi-Fi","シャワー","アメニティ"]', 'APPROVED', 'host-default', '/sites/cube-setagaya-001.jpg'),
