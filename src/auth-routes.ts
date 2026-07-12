@@ -139,7 +139,7 @@ authApp.get('/oauth/:provider', async (c) => {
   if (c.env.DB) {
     try {
       await c.env.DB.prepare(
-        'INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+10 minutes"))'
+        `INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at) VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'))`
       )
         .bind(state, providerName.toLowerCase(), redirect, role)
         .run()
@@ -185,7 +185,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
   if (c.env.DB) {
     try {
       const { results } = await c.env.DB.prepare(
-        'SELECT redirect_uri, role FROM oauth_states WHERE state = ? AND expires_at > datetime("now")'
+        `SELECT redirect_uri, role FROM oauth_states WHERE state = ? AND expires_at > datetime('now')`
       )
         .bind(state)
         .all()
@@ -241,7 +241,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
         // Update last_used_at for social account
         await c.env.DB.prepare(
-          'UPDATE social_accounts SET last_used_at = datetime("now") WHERE provider = ? AND provider_user_id = ?'
+          `UPDATE social_accounts SET last_used_at = datetime('now') WHERE provider = ? AND provider_user_id = ?`
         )
           .bind(providerName.toLowerCase(), providerUser.id)
           .run()
@@ -253,7 +253,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
         // Create user
         await c.env.DB.prepare(
-          'INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, 1, datetime("now"), datetime("now"))'
+          `INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
         )
           .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url || null)
           .run()
@@ -268,7 +268,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           ? await encryptToken(tokenData.refresh_token, c.env.JWT_SECRET)
           : null
         await c.env.DB.prepare(
-          'INSERT INTO social_accounts (id, user_id, provider, provider_user_id, provider_email, provider_name, provider_avatar_url, access_token, refresh_token, token_expires_at, last_used_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+          `INSERT INTO social_accounts (id, user_id, provider, provider_user_id, provider_email, provider_name, provider_avatar_url, access_token, refresh_token, token_expires_at, last_used_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         )
           .bind(
             socialAccountId,
@@ -299,7 +299,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
 
       await c.env.DB.prepare(
-        'INSERT INTO auth_sessions (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, datetime("now"))'
+        `INSERT INTO auth_sessions (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, datetime('now'))`
       )
         .bind(sessionId, user.id, sessionToken, expiresAt)
         .run()

@@ -77,7 +77,7 @@ app.get('/dashboard', requireHostAuth, async (c) => {
       ).all();
     } else {
       sitesQuery = await c.env.DB.prepare(
-        `SELECT id, name, type, status, room_count FROM sites WHERE host_user_id = ? ORDER BY created_at DESC`
+        `SELECT id, name, type, status, room_count FROM sites WHERE host_id = ? ORDER BY created_at DESC`
       ).bind(userId).all();
     }
 
@@ -96,11 +96,11 @@ app.get('/dashboard', requireHostAuth, async (c) => {
       const placeholders = siteIds.map(() => '?').join(',');
 
       const bookingStats = await c.env.DB.prepare(
-        `SELECT COUNT(*) as count, COALESCE(SUM(total_price), 0) as revenue
+        `SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
          FROM bookings
          WHERE site_id IN (${placeholders})
            AND scheduled_at >= ?
-           AND status NOT IN ('CANCELLED', 'REFUNDED')`
+           AND status NOT IN ('CANCELLED', 'NO_SHOW')`
       ).bind(...siteIds, monthStart).first<{ count: number; revenue: number }>();
 
       bookingsThisMonth = bookingStats?.count ?? 0;
@@ -110,18 +110,17 @@ app.get('/dashboard', requireHostAuth, async (c) => {
         `SELECT
            b.id,
            b.scheduled_at,
-           b.total_price,
+           b.price as total_price,
            b.status,
-           COALESCE(s.name, '') as service_name,
+           b.service_name,
            COALESCE(u.name, '') as therapist_name,
            COALESCE(si.name, '') as site_name
          FROM bookings b
-         LEFT JOIN services s ON b.service_id = s.id
          LEFT JOIN users u ON b.therapist_id = u.id
          LEFT JOIN sites si ON b.site_id = si.id
          WHERE b.site_id IN (${placeholders})
            AND b.scheduled_at >= datetime('now')
-           AND b.status NOT IN ('CANCELLED', 'REFUNDED')
+           AND b.status NOT IN ('CANCELLED', 'NO_SHOW')
          ORDER BY b.scheduled_at ASC
          LIMIT 10`
       ).bind(...siteIds).all();
@@ -131,7 +130,7 @@ app.get('/dashboard', requireHostAuth, async (c) => {
 
     return c.json({
       total_sites: sites.length,
-      active_sites: sites.filter((s: Record<string, unknown>) => s.status === 'ACTIVE').length,
+      active_sites: sites.filter((s: Record<string, unknown>) => s.status === 'APPROVED').length,
       total_bookings_this_month: bookingsThisMonth,
       total_revenue_this_month: revenueThisMonth,
       upcoming_bookings: upcomingBookings,
@@ -196,7 +195,7 @@ app.get('/earnings', requireHostAuth, async (c) => {
       ).all();
     } else {
       sitesResult = await c.env.DB.prepare(
-        `SELECT id FROM sites WHERE host_user_id = ?`
+        `SELECT id FROM sites WHERE host_id = ?`
       ).bind(userId).all();
     }
 
@@ -211,18 +210,18 @@ app.get('/earnings', requireHostAuth, async (c) => {
       `SELECT
          b.id as booking_id,
          b.scheduled_at,
-         b.total_price,
+         b.price as total_price,
          b.status,
-         COALESCE(s.name, '') as service_name,
+         b.service_name,
          COALESCE(si.name, '') as site_name,
-         COALESCE(rs.host_amount, ROUND(b.total_price * 0.2), 0) as host_amount
+         COALESCE(ts.amount, ROUND(b.price * 0.2), 0) as host_amount
        FROM bookings b
-       LEFT JOIN services s ON b.service_id = s.id
        LEFT JOIN sites si ON b.site_id = si.id
-       LEFT JOIN revenue_splits rs ON rs.booking_id = b.id
+       LEFT JOIN transactions t ON t.booking_id = b.id
+       LEFT JOIN transaction_splits ts ON ts.transaction_id = t.id AND ts.role = 'HOST'
        WHERE b.site_id IN (${placeholders})
          AND b.scheduled_at BETWEEN ? AND ?
-         AND b.status NOT IN ('CANCELLED', 'REFUNDED')
+         AND b.status NOT IN ('CANCELLED', 'NO_SHOW')
        ORDER BY b.scheduled_at DESC`
     ).bind(...siteIds, monthStart, monthEnd).all();
 
@@ -263,7 +262,7 @@ app.get('/sites', requireHostAuth, async (c) => {
       ).all();
     } else {
       sitesResult = await c.env.DB.prepare(
-        `SELECT id, name, type, status, room_count, address, created_at FROM sites WHERE host_user_id = ? ORDER BY created_at DESC`
+        `SELECT id, name, type, status, room_count, address, created_at FROM sites WHERE host_id = ? ORDER BY created_at DESC`
       ).bind(userId).all();
     }
 

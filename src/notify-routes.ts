@@ -2,11 +2,13 @@
 // Notification & Storage Routes
 // ============================================
 import { Hono } from 'hono'
+import { requireAuth as requireAuthentication } from './auth-middleware'
 
 type Bindings = {
   STORAGE: R2Bucket
   RESEND_API_KEY: string
   DB: D1Database
+  JWT_SECRET: string
 }
 
 type Variables = {
@@ -16,29 +18,18 @@ type Variables = {
 
 const notifyApp = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// 認証ミドルウェア（簡易版）
+// 認証ミドルウェア
+// NOTE: 以前は auth_sessions テーブルでトークンを照合していたが、
+// メール/パスワードログインはJWTのみを発行しセッション行を作らないため
+// 常に401になっていた。他ルートと同じJWT検証に統一する。
 const requireAuth = async (c: any, next: () => Promise<void>) => {
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return c.json({ error: '認証が必要です' }, 401)
+  const result = await requireAuthentication(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!result.success || !result.user) {
+    return c.json({ error: result.error || '認証が必要です' }, 401)
   }
-  const token = authHeader.substring(7)
-  try {
-    const { DB } = c.env
-    const session = await DB.prepare(
-      'SELECT user_id FROM sessions WHERE token = ? AND expires_at > CURRENT_TIMESTAMP'
-    ).bind(token).first<{ user_id: string }>()
-    if (!session) return c.json({ error: '無効なトークンです' }, 401)
-    const user = await DB.prepare(
-      'SELECT id, role FROM users WHERE id = ?'
-    ).bind(session.user_id).first<{ id: string; role: string }>()
-    if (!user) return c.json({ error: 'ユーザーが見つかりません' }, 401)
-    c.set('userId', user.id)
-    c.set('userRole', user.role)
-    await next()
-  } catch (e) {
-    return c.json({ error: '認証エラー' }, 401)
-  }
+  c.set('userId', result.user.userId)
+  c.set('userRole', result.user.role)
+  await next()
 }
 
 // ============================================

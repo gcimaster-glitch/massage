@@ -182,7 +182,7 @@ app.get('/:id/therapists', async (c) => {
     `;
     
     // 施設のエリアを取得
-    const site = await DB.prepare('SELECT area FROM sites WHERE id = ?').bind(siteId).first<{ area: string }>();
+    const site = await DB.prepare('SELECT area_code AS area FROM sites WHERE id = ?').bind(siteId).first<{ area: string }>();
     
     if (!site) {
       return c.json({ error: '施設が見つかりません' }, 404);

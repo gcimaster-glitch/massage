@@ -274,7 +274,7 @@ app.get('/:id/menu', async (c) => {
       WHERE therapist_profile_id = ? AND is_active = 1
       ORDER BY display_order
     `).bind(searchId).all();
-    
+
     // オプション取得（therapist_menu_options テーブルを使用）
     const optionsResult = await DB.prepare(`
       SELECT id, name, price as base_price, description
@@ -282,11 +282,35 @@ app.get('/:id/menu', async (c) => {
       WHERE therapist_profile_id = ? AND is_active = 1
       ORDER BY display_order
     `).bind(searchId).all();
-    
-    return c.json({
-      courses: coursesResult.results || [],
-      options: optionsResult.results || []
-    });
+
+    let courses = coursesResult.results || [];
+    let options = optionsResult.results || [];
+
+    // フォールバック: セラピスト個別メニュー未登録の場合はマスター連携テーブル
+    // （therapist_menu / therapist_options + master_courses / master_options）から取得する。
+    // シードデータはこちらに入っているため、空配列のままだと予約フローが進めない。
+    if (courses.length === 0) {
+      const legacyCourses = await DB.prepare(`
+        SELECT mc.id, mc.name, mc.duration, tm.price as base_price, mc.description
+        FROM therapist_menu tm
+        JOIN master_courses mc ON tm.master_course_id = mc.id
+        WHERE tm.therapist_id = ? AND tm.is_available = 1
+        ORDER BY mc.duration
+      `).bind(searchId).all();
+      courses = legacyCourses.results || [];
+    }
+    if (options.length === 0) {
+      const legacyOptions = await DB.prepare(`
+        SELECT mo.id, mo.name, topt.price as base_price, mo.description
+        FROM therapist_options topt
+        JOIN master_options mo ON topt.master_option_id = mo.id
+        WHERE topt.therapist_id = ? AND topt.is_available = 1
+        ORDER BY mo.name
+      `).bind(searchId).all();
+      options = legacyOptions.results || [];
+    }
+
+    return c.json({ courses, options });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Error fetching therapist menu:', errMsg);

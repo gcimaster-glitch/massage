@@ -18,13 +18,14 @@ CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires
 -- ============================================
 
 -- ログイン失敗カウント（ブルートフォース対策）
-ALTER TABLE users ADD COLUMN IF NOT EXISTS login_failed_count INTEGER DEFAULT 0;
+-- NOTE: SQLite/D1 は「ADD COLUMN IF NOT EXISTS」構文をサポートしないため使用禁止
+ALTER TABLE users ADD COLUMN login_failed_count INTEGER DEFAULT 0;
 -- アカウントロック時刻
-ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until INTEGER DEFAULT NULL;
+ALTER TABLE users ADD COLUMN locked_until INTEGER DEFAULT NULL;
 -- 最終ログイン時刻
-ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at INTEGER DEFAULT NULL;
+ALTER TABLE users ADD COLUMN last_login_at INTEGER DEFAULT NULL;
 -- 最終ログインIP
-ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN last_login_ip TEXT DEFAULT NULL;
 
 -- ============================================
 -- OAuth states テーブルのインデックス

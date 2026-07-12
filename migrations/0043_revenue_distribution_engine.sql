@@ -1,38 +1,12 @@
 -- 0043: 収益分配エンジン用テーブル追加
 -- ============================================
 -- 1. 収益分配ルールテーブル
+-- NOTE: revenue_share_rules は 001_integration_update.sql で作成済み。
+-- カラム構成の正規化とデフォルトルール（rule_default_001）の挿入は
+-- 0052_audit_reconciliation.sql で行う。
+-- （旧定義がここにあったが、既存テーブルと競合しマイグレーション全体が
+--   失敗していたため削除した）
 -- ============================================
-CREATE TABLE IF NOT EXISTS revenue_share_rules (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  -- 分配率（合計100%になること）
-  therapist_rate REAL NOT NULL DEFAULT 70.0,
-  host_rate REAL NOT NULL DEFAULT 0.0,
-  office_rate REAL NOT NULL DEFAULT 0.0,
-  platform_rate REAL NOT NULL DEFAULT 30.0,
-  -- 適用条件
-  booking_type TEXT, -- NULL=全タイプ, 'ONSITE', 'HOTEL', 'HOME', 'OFFICE'
-  office_id TEXT,    -- NULL=全オフィス
-  -- 優先度（高い値が優先）
-  priority INTEGER NOT NULL DEFAULT 0,
-  is_active INTEGER NOT NULL DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- デフォルトルール挿入
-INSERT OR IGNORE INTO revenue_share_rules (
-  id, name, description,
-  therapist_rate, host_rate, office_rate, platform_rate,
-  priority, is_active
-) VALUES (
-  'rule_default_001',
-  'デフォルト分配ルール',
-  'セラピスト70%、プラットフォーム30%の標準分配',
-  70.0, 0.0, 0.0, 30.0,
-  0, 1
-);
 
 -- ============================================
 -- 2. トランザクションテーブル（決済記録）
@@ -123,14 +97,10 @@ CREATE INDEX IF NOT EXISTS idx_payout_statements_status ON payout_statements(sta
 
 -- ============================================
 -- 5. bookingsテーブルへのカラム追加
+-- NOTE: host_user_id / revenue_share_rule_id は 0043_core_business_schema.sql で、
+-- stripe_customer_id も同ファイルで追加済みのため、ここでは payment_intent_id のみ追加する。
+-- （重複ALTERによりマイグレーションが失敗していたため整理した）
 -- ============================================
 ALTER TABLE bookings ADD COLUMN payment_intent_id TEXT;
-ALTER TABLE bookings ADD COLUMN host_user_id TEXT;
-ALTER TABLE bookings ADD COLUMN revenue_share_rule_id TEXT DEFAULT 'rule_default_001';
 
 CREATE INDEX IF NOT EXISTS idx_bookings_payment_intent ON bookings(payment_intent_id);
-
--- ============================================
--- 6. usersテーブルへのカラム追加
--- ============================================
-ALTER TABLE users ADD COLUMN stripe_customer_id TEXT;
