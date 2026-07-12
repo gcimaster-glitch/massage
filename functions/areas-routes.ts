@@ -13,15 +13,12 @@ app.get('/', async (c) => {
   try {
     const { DB } = c.env as Bindings
 
-    // DBからエリア一覧を取得
+    // マスタからエリア一覧を取得（sitesにはprefecture/cityカラムが無いため、
+    // master_areas を正とし、施設が存在するエリアを優先的に返す）
     const result = await DB.prepare(`
-      SELECT DISTINCT 
-        prefecture,
-        city,
-        area
-      FROM sites
-      WHERE status = 'ACTIVE'
-      ORDER BY prefecture, city, area
+      SELECT ma.code, ma.name, ma.prefecture, ma.city
+      FROM master_areas ma
+      ORDER BY ma.prefecture, ma.city, ma.name
     `).all()
 
     // エリアをグループ化
@@ -30,13 +27,13 @@ app.get('/', async (c) => {
 
     if (result.results) {
       result.results.forEach((row: any) => {
-        const key = `${row.prefecture}-${row.city}`
+        const key = `${row.prefecture}-${row.city || row.name}`
         if (!areaMap.has(key)) {
           const area = {
-            id: key.toLowerCase().replace(/\s+/g, '-'),
-            name: `${row.prefecture} ${row.city}`,
+            id: row.code,
+            name: `${row.prefecture} ${row.city || row.name}`,
             prefecture: row.prefecture,
-            city: row.city
+            city: row.city || row.name
           }
           areaMap.set(key, area)
           areas.push(area)

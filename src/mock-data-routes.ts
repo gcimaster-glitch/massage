@@ -99,10 +99,10 @@ mockDataApp.post('/seed', async (c) => {
 
     for (const profile of profiles) {
       await c.env.DB.prepare(`
-        INSERT OR IGNORE INTO therapist_profiles 
-        (user_id, bio, specialties, experience_years, rating, review_count, approved_areas, is_active) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
-      `).bind(...profile).run()
+        INSERT OR IGNORE INTO therapist_profiles
+        (id, user_id, bio, specialties, experience_years, rating, review_count, approved_areas, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'APPROVED')
+      `).bind(`tp-${profile[0]}`, ...profile).run()
     }
 
     // 3. セラピストメニューを挿入（全セラピストに全コースを割り当て）
@@ -111,10 +111,11 @@ mockDataApp.post('/seed', async (c) => {
 
     for (const therapistId of therapistIds) {
       for (const course of courses) {
+        // therapist_menu.therapist_id は therapist_profiles(id) へのFK（プロファイルID）
         await c.env.DB.prepare(`
           INSERT OR IGNORE INTO therapist_menu (id, therapist_id, master_course_id, price, is_available, created_at)
           VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-        `).bind(`tm-${therapistId}-${course.id}`, therapistId, course.id, course.base_price).run()
+        `).bind(`tm-${therapistId}-${course.id}`, `tp-${therapistId}`, course.id, course.base_price).run()
       }
     }
 
@@ -126,7 +127,7 @@ mockDataApp.post('/seed', async (c) => {
         await c.env.DB.prepare(`
           INSERT OR IGNORE INTO therapist_options (id, therapist_id, master_option_id, price, is_available, created_at)
           VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-        `).bind(`to-${therapistId}-${option.id}`, therapistId, option.id, option.base_price).run()
+        `).bind(`to-${therapistId}-${option.id}`, `tp-${therapistId}`, option.id, option.base_price).run()
       }
     }
 

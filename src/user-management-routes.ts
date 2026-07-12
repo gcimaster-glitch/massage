@@ -206,7 +206,7 @@ userManagementApp.put('/:id', async (c) => {
       return c.json({ error: '更新するフィールドがありません' }, 400)
     }
 
-    updates.push('updated_at = datetime("now")')
+    updates.push(`updated_at = datetime('now')`)
     params.push(userId)
 
     await c.env.DB.prepare(`

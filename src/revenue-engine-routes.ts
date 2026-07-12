@@ -691,28 +691,31 @@ app.post('/statements/generate', requireAdmin, async (c) => {
       if (existing) {
         await c.env.DB.prepare(`
           UPDATE payout_statements
-          SET total_amount = ?, updated_at = datetime('now')
+          SET total_amount = ?, gross_amount = ?, net_amount = ?, updated_at = datetime('now')
           WHERE id = ?
-        `).bind(row.total_amount, existing.id).run();
+        `).bind(row.total_amount, row.total_amount, row.total_amount, existing.id).run();
         updated++;
       } else {
         await c.env.DB.prepare(`
           INSERT INTO payout_statements (
-            id, user_id,
+            id, user_id, role,
             period_start, period_end,
-            total_amount,
+            total_amount, gross_amount, net_amount,
             status, created_at, updated_at
           ) VALUES (
+            ?, ?, ?,
             ?, ?,
-            ?, ?,
-            ?,
+            ?, ?, ?,
             'DRAFT', datetime('now'), datetime('now')
           )
         `).bind(
           statementId,
           row.user_id,
+          row.role,
           periodStart,
           periodEnd,
+          row.total_amount,
+          row.total_amount,
           row.total_amount
         ).run();
         inserted++;

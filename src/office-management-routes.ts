@@ -83,8 +83,7 @@ app.get('/my-offices', requireAuth, async (c) => {
       try {
         const ownedOffices = await c.env.DB.prepare(`
           SELECT o.* FROM offices o
-          JOIN users u ON o.owner_user_id = u.id
-          WHERE u.id = ?
+          WHERE o.user_id = ?
           ORDER BY o.created_at DESC
         `).bind(userId).all();
         if (ownedOffices.results && ownedOffices.results.length > 0) {
@@ -185,18 +184,25 @@ app.post('/', requireAuth, async (c) => {
     const detailsId = `od-${nanoid(10)}`;
 
     // 事務所基本情報を作成
+    // NOTE: offices は user_id / area_code / manager_name / contact_email が NOT NULL
+    const ownerUserId = body.user_id || c.get('userId');
     await c.env.DB.prepare(`
       INSERT INTO offices (
-        id, name, address, phone, email, description, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        id, user_id, name, area_code, manager_name, contact_email,
+        address, phone, email, description, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       officeId,
+      ownerUserId,
       body.name,
+      body.area_code || '',
+      body.manager_name || body.representative_name || body.name,
+      body.contact_email || body.email || '',
       body.address || '',
       body.phone || '',
       body.email || '',
       body.description || '',
-      body.status || 'ACTIVE'
+      body.status || 'APPROVED'
     ).run();
 
     // 事務所詳細情報を作成

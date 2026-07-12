@@ -139,9 +139,9 @@ authApp.get('/oauth/:provider', async (c) => {
   if (c.env.DB) {
     try {
       await c.env.DB.prepare(
-        'INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+10 minutes"))'
+        `INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at) VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'))`
       )
-        .bind(state, providerName, redirect, role)
+        .bind(state, providerName.toLowerCase(), redirect, role)
         .run()
     } catch (e) {
       console.error('Failed to store OAuth state:', e)
@@ -185,7 +185,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
   if (c.env.DB) {
     try {
       const { results } = await c.env.DB.prepare(
-        'SELECT redirect_uri, role FROM oauth_states WHERE state = ? AND expires_at > datetime("now")'
+        `SELECT redirect_uri, role FROM oauth_states WHERE state = ? AND expires_at > datetime('now')`
       )
         .bind(state)
         .all()
@@ -225,7 +225,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       const { results: socialAccounts } = await c.env.DB.prepare(
         'SELECT user_id FROM social_accounts WHERE provider = ? AND provider_user_id = ?'
       )
-        .bind(providerName, providerUser.id)
+        .bind(providerName.toLowerCase(), providerUser.id)
         .all()
 
       if (socialAccounts.length > 0) {
@@ -241,9 +241,9 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
         // Update last_used_at for social account
         await c.env.DB.prepare(
-          'UPDATE social_accounts SET last_used_at = datetime("now") WHERE provider = ? AND provider_user_id = ?'
+          `UPDATE social_accounts SET last_used_at = datetime('now') WHERE provider = ? AND provider_user_id = ?`
         )
-          .bind(providerName, providerUser.id)
+          .bind(providerName.toLowerCase(), providerUser.id)
           .run()
       } else {
         // New user - create account
@@ -253,9 +253,9 @@ authApp.get('/oauth/:provider/callback', async (c) => {
 
         // Create user
         await c.env.DB.prepare(
-          'INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, TRUE, datetime("now"), datetime("now"))'
+          `INSERT INTO users (id, email, name, role, avatar_url, email_verified, email_verified_at, created_at) VALUES (?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
         )
-          .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url)
+          .bind(userId, providerUser.email, providerUser.name, userRole, providerUser.avatar_url || null)
           .run()
 
          // Create social account link
@@ -268,16 +268,16 @@ authApp.get('/oauth/:provider/callback', async (c) => {
           ? await encryptToken(tokenData.refresh_token, c.env.JWT_SECRET)
           : null
         await c.env.DB.prepare(
-          'INSERT INTO social_accounts (id, user_id, provider, provider_user_id, provider_email, provider_name, provider_avatar_url, access_token, refresh_token, token_expires_at, last_used_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+          `INSERT INTO social_accounts (id, user_id, provider, provider_user_id, provider_email, provider_name, provider_avatar_url, access_token, refresh_token, token_expires_at, last_used_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         )
           .bind(
             socialAccountId,
             userId,
-            providerName,
+            providerName.toLowerCase(),
             providerUser.id,
-            providerUser.email,
-            providerUser.name,
-            providerUser.avatar_url,
+            providerUser.email || null,
+            providerUser.name || null,
+            providerUser.avatar_url || null,
             encryptedAccessToken,
             encryptedRefreshToken,
             expiresAt
@@ -299,7 +299,7 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
 
       await c.env.DB.prepare(
-        'INSERT INTO auth_sessions (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, datetime("now"))'
+        `INSERT INTO auth_sessions (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, datetime('now'))`
       )
         .bind(sessionId, user.id, sessionToken, expiresAt)
         .run()
@@ -321,24 +321,24 @@ authApp.get('/oauth/:provider/callback', async (c) => {
       redirectUrl.searchParams.set('token', jwt)
       redirectUrl.searchParams.set('isNewUser', isNewUser.toString())
       return c.redirect(redirectUrl.toString())
-      } catch (dbError) {
-        console.error('Database error, falling back to mock mode:', dbError)
-        // Fall through to development mode below
+            } catch (dbError) {
+        const errMsg = dbError instanceof Error ? dbError.message : String(dbError)
+        console.error('Database error in OAuth callback:', errMsg)
+        return c.redirect(`/?error=auth_failed&detail=${encodeURIComponent(errMsg.substring(0, 100))}`)
       }
     }
-    
        // HOG-SEC-004: JWT_SECRETが設定されていない場合は認証を拒否する
-    // 「dev-secret」フォールバックは除去。未設定のまま本番デプロイされた場合に漏洩したトークンが発行されるリスクを排除する
     if (!c.env.JWT_SECRET) {
       console.error('[SEC] JWT_SECRET is not configured. Refusing to issue token.')
-      return c.redirect(`/?error=auth_failed`)
+      return c.redirect(`/?error=auth_failed&detail=no_jwt_secret`)
     }
-    // DBエラー時のフォールバック（開発モードは廃止）— DB接続失敗としてエラーを返す
-    console.error('[SEC] Database connection failed during OAuth callback. Cannot create user session.')
-    return c.redirect(`/?error=auth_failed`)
+    // DBが利用不可の場合
+    console.error('[SEC] Database connection failed during OAuth callback.')
+    return c.redirect(`/?error=auth_failed&detail=db_unavailable`)
   } catch (e) {
-    console.error('OAuth callback error:', e)
-    return c.redirect(`/?error=auth_failed`)
+    const errMsg = e instanceof Error ? e.message : String(e)
+    console.error('OAuth callback error:', errMsg)
+    return c.redirect(`/?error=auth_failed&detail=${encodeURIComponent(errMsg.substring(0, 100))}`)
   }
 })
 
@@ -435,10 +435,9 @@ authApp.post('/register', async (c) => {
           
           // Insert new verification
           await c.env.DB.prepare(
-            `INSERT INTO email_verifications (id, user_id, token, expires_at, created_at)
-             VALUES (?, ?, ?, datetime('now', '+24 hours'), datetime('now'))`
+            `INSERT INTO email_verifications (user_id, token, expires_at, created_at)
+             VALUES (?, ?, datetime('now', '+24 hours'), datetime('now'))`
           ).bind(
-            `ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             existingUserId,
             verificationToken
           ).run()
@@ -968,7 +967,7 @@ authApp.get('/link/:provider', async (c) => {
       `INSERT INTO oauth_states (state, provider, redirect_uri, role, expires_at, user_id, action)
        VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'), ?, ?)`
     )
-      .bind(state, provider, redirectPath, 'USER', decoded.userId, 'link')
+      .bind(state, provider.toLowerCase(), redirectPath, 'USER', decoded.userId, 'link')
       .run()
 
     // Get OAuth provider config
@@ -1014,7 +1013,7 @@ authApp.delete('/link/:provider', async (c) => {
     await c.env.DB.prepare(
       'DELETE FROM social_accounts WHERE user_id = ? AND provider = ?'
     )
-      .bind(decoded.userId, provider)
+      .bind(decoded.userId, provider.toLowerCase())
       .run()
 
     return c.json({ success: true, message: '連携を解除しました' })

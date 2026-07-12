@@ -459,7 +459,7 @@ app.get('/therapist/earnings', async (c) => {
         te.booking_id,
         te.booking_price,
         te.therapist_amount,
-        te.platform_fee,
+        te.platform_amount,
         te.status,
         te.paid_at,
         te.created_at,

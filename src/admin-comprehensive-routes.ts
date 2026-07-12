@@ -35,7 +35,9 @@ const requireAdmin = async (c: Parameters<typeof app.get>[1], next: () => Promis
 app.get('/users', requireAdmin, async (c) => {
   try {
     const users = await c.env.DB.prepare(`
-      SELECT id, email, name, role, phone, kyc_status, is_active, created_at, updated_at
+      SELECT id, email, name, role, phone, kyc_status,
+             CASE WHEN is_archived = 1 THEN 0 ELSE 1 END AS is_active,
+             created_at, updated_at
       FROM users
       ORDER BY created_at DESC
       LIMIT 1000
@@ -57,7 +59,9 @@ app.get('/users/:userId', requireAdmin, async (c) => {
     const userId = c.req.param('userId')
 
     const user = await c.env.DB.prepare(`
-      SELECT id, email, name, role, phone, kyc_status, is_active, created_at, updated_at
+      SELECT id, email, name, role, phone, kyc_status,
+             CASE WHEN is_archived = 1 THEN 0 ELSE 1 END AS is_active,
+             created_at, updated_at
       FROM users WHERE id = ?
     `).bind(userId).first()
 
@@ -608,8 +612,9 @@ app.post('/revenue-config', requireAdmin, async (c) => {
 app.get('/refunds', requireAdmin, async (c) => {
   try {
     const { status } = c.req.query()
-    const where = status ? `WHERE r.status = '${status}'` : ''
-    const result = await c.env.DB.prepare(`
+    // ユーザー入力はプレースホルダで渡す（SQLインジェクション対策）
+    const where = status ? 'WHERE r.status = ?' : ''
+    const stmt = c.env.DB.prepare(`
       SELECT r.*, u.name as user_name, u.email as user_email,
              b.service_name, b.price as booking_price
       FROM refund_requests r
@@ -618,7 +623,8 @@ app.get('/refunds', requireAdmin, async (c) => {
       ${where}
       ORDER BY r.requested_at DESC
       LIMIT 200
-    `).all()
+    `)
+    const result = await (status ? stmt.bind(status) : stmt).all()
     return c.json({ requests: result.results || [] })
   } catch (e) {
     return c.json({ error: '返金申請一覧の取得に失敗しました' }, 500)

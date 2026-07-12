@@ -26,6 +26,11 @@ import paymentsApp from './payments-routes'
 import revenueEngineApp from './revenue-engine-routes'
 import publicPagesApp from './ssr/public-pages'
 import hostApp from './host-routes'
+import favoritesApp from './favorites-routes'
+import adminPlansApp from './admin-plans-routes'
+import aiConfigApp from './ai-config-routes'
+import hostAffiliateApp from './host-affiliate-routes'
+import userSelfApp from './user-self-routes'
 import stripeWebhookApp from './stripe-webhook-routes'
 import reviewsApp from './reviews-routes'
 
@@ -543,6 +548,22 @@ app.route('/api/revenue', revenueEngineApp)
 // Host Routes (拠点ホスト向けAPI)
 // ============================================
 app.route('/api/host', hostApp)
+
+// お気に入り（UserDashboard が /api/favorites/count を使用）
+app.route('/api/favorites', favoritesApp)
+
+// プラン管理（admin/PlanManagement が /api/admin/plans を使用）
+app.route('/api/admin/plans', adminPlansApp)
+
+// AI設定（GeminiLiveSafety が /api/ai/config を使用）
+app.route('/api/ai', aiConfigApp)
+
+// アフィリエイト（affiliate/Earnings が /api/affiliate/* を使用）
+// NOTE: このモジュールの /host/* は上の hostApp が優先されるため実質 /api/affiliate/* 専用
+app.route('/api', hostAffiliateApp)
+
+// ユーザー自身のポイント等
+app.route('/api/user', userSelfApp)
 
 // ============================================
 // Stripe Webhook Routes

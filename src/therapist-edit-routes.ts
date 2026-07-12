@@ -1,5 +1,16 @@
 import { Hono } from 'hono'
 
+// therapist_profiles で編集を許可するカラムの許可リスト。
+// 動的にカラム名をSQLへ埋め込むため、ここに無いフィールドは拒否する（SQLインジェクション対策）
+const EDITABLE_PROFILE_FIELDS = new Set([
+  'bio', 'specialties', 'experience_years', 'certifications', 'approved_areas',
+  'office_id', 'status', 'outcall_available', 'incall_available', 'base_location',
+  'base_lat', 'base_lng', 'travel_methods', 'outcall_hours', 'incall_hours',
+  'bank_name', 'bank_branch', 'bank_branch_code', 'bank_account_type',
+  'bank_account_number', 'bank_account_holder',
+])
+
+
 type Bindings = {
   DB: D1Database
 }
@@ -136,6 +147,9 @@ therapistEditApp.post('/', async (c) => {
       
       // 各フィールドを更新
       for (const [fieldName, newValue] of Object.entries(changes)) {
+        if (!EDITABLE_PROFILE_FIELDS.has(fieldName)) {
+          return c.json({ error: `Field not editable: ${fieldName}` }, 400)
+        }
         const oldValue = profile[fieldName]
         
         // プロファイル更新
@@ -281,8 +295,11 @@ therapistEditApp.post('/:id/approve', async (c) => {
     
     // 各フィールドを更新
     for (const [fieldName, newValue] of Object.entries(changes)) {
+      if (!EDITABLE_PROFILE_FIELDS.has(fieldName)) {
+        continue // 許可リスト外のフィールドはスキップ（SQLインジェクション対策）
+      }
       const oldValue = currentProfile[fieldName]
-      
+
       // プロファイル更新
       await c.env.DB.prepare(`
         UPDATE therapist_profiles SET ${fieldName} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?

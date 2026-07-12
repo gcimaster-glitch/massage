@@ -111,36 +111,11 @@ CREATE INDEX IF NOT EXISTS idx_contracts_stripe_sub ON contracts(stripe_subscrip
 
 -- ============================================================
 -- 5. Revenue Share Rules（報酬分配ルール）
---    予約の種別・オフィス・エリアごとに異なる分配率を定義する
---    既存の revenue_config（月単位の固定率）を置き換える
+--    NOTE: revenue_share_rules は 001_integration_update.sql で作成済みのため
+--    ここでは再定義しない。カラム構成の正規化は 0052_audit_reconciliation.sql で行う。
+--    （旧定義がここにあったが、既存テーブルと競合しマイグレーション全体が
+--      失敗していたため削除した）
 -- ============================================================
-CREATE TABLE IF NOT EXISTS revenue_share_rules (
-  id TEXT PRIMARY KEY,
-  -- ルールの適用範囲（NULLはデフォルト/全体適用）
-  office_id TEXT,          -- 特定オフィスへの適用
-  booking_type TEXT,       -- 特定予約タイプへの適用（ONSITE/HOTEL/HOME/OFFICE）
-  -- 分配率（合計が100になること）
-  therapist_rate INTEGER NOT NULL DEFAULT 70,    -- セラピスト取り分（%）
-  office_rate INTEGER NOT NULL DEFAULT 10,       -- セラピストオフィス取り分（%）
-  host_rate INTEGER NOT NULL DEFAULT 5,          -- 拠点ホスト取り分（%）
-  platform_rate INTEGER NOT NULL DEFAULT 10,     -- HOGUSY本部取り分（%）
-  promotion_rate INTEGER NOT NULL DEFAULT 5,     -- 販促費（%）
-  -- ルールの有効期間
-  valid_from DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  valid_until DATETIME,
-  -- 優先度（数値が高いほど優先）
-  priority INTEGER NOT NULL DEFAULT 0,
-  is_active INTEGER NOT NULL DEFAULT 1,
-  created_by TEXT,  -- 管理者のuser_id
-  notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (office_id) REFERENCES offices(id) ON DELETE CASCADE,
-  -- 分配率の合計が100になることをDBレベルで保証
-  CHECK (therapist_rate + office_rate + host_rate + platform_rate + promotion_rate = 100)
-);
-CREATE INDEX IF NOT EXISTS idx_revenue_rules_office ON revenue_share_rules(office_id);
-CREATE INDEX IF NOT EXISTS idx_revenue_rules_active ON revenue_share_rules(is_active);
 
 -- ============================================================
 -- 6. Transactions（財務台帳 / 不変の取引記録）
@@ -383,20 +358,15 @@ ALTER TABLE bookings ADD COLUMN host_user_id TEXT REFERENCES users(id) ON DELETE
 ALTER TABLE bookings ADD COLUMN revenue_share_rule_id TEXT REFERENCES revenue_share_rules(id) ON DELETE SET NULL;
 
 -- usersテーブルにstripe_customer_idを追加（顧客のStripe Customer ID）
-ALTER TABLE users ADD COLUMN stripe_customer_id TEXT UNIQUE;
+-- NOTE: SQLiteは既存テーブルへのUNIQUEカラム追加を許可しないため、UNIQUE制約は
+-- 付与せずインデックスで代替する
+ALTER TABLE users ADD COLUMN stripe_customer_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer ON users(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
 
 -- ============================================================
--- 14. デフォルトの報酬分配ルールを挿入
+-- 14. デフォルトの報酬分配ルール挿入は 0052_audit_reconciliation.sql に移動
+-- （このファイル時点の revenue_share_rules は 001 の旧スキーマのため）
 -- ============================================================
-INSERT OR IGNORE INTO revenue_share_rules (
-  id, therapist_rate, office_rate, host_rate, platform_rate, promotion_rate,
-  priority, is_active, notes
-) VALUES (
-  'rsr_default_001',
-  70, 10, 5, 10, 5,
-  0, 1,
-  'デフォルト分配ルール: セラピスト70% / オフィス10% / ホスト5% / 本部10% / 販促5%'
-);
 
 -- ============================================================
 -- 15. デフォルト商品マスタを挿入

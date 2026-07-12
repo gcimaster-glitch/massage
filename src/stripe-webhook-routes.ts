@@ -76,17 +76,16 @@ async function triggerRevenueDistribution(
   try {
     // 予約情報を取得
     const booking = await db.prepare(`
-      SELECT b.*, t.stripe_account_id as therapist_stripe_id,
-             t.office_id,
-             b.site_id
+      SELECT b.*, tp.office_id, s.host_id as host_user_id
       FROM bookings b
-      LEFT JOIN therapists t ON b.therapist_id = t.id
+      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
+      LEFT JOIN sites s ON b.site_id = s.id
       WHERE b.id = ?
     `).bind(bookingId).first<{
       therapist_id: string;
-      therapist_stripe_id: string | null;
       office_id: string | null;
       site_id: string | null;
+      host_user_id: string | null;
     }>();
 
     if (!booking) {
@@ -94,33 +93,33 @@ async function triggerRevenueDistribution(
       return;
     }
 
-    // 収益分配ルールを取得（プラン別 → デフォルト順）
+    // 収益分配ルールを取得（優先度順）。率は%表記（0052で正規化済み）
     const rule = await db.prepare(`
       SELECT * FROM revenue_share_rules
       WHERE is_active = 1
-      ORDER BY CASE WHEN plan_id IS NULL THEN 1 ELSE 0 END
+      ORDER BY priority DESC
       LIMIT 1
     `).first<{
       therapist_rate: number;
       office_rate: number;
       host_rate: number;
       platform_rate: number;
-      marketing_rate: number;
+      promotion_rate: number;
     }>();
 
-    // デフォルト分配率（資料準拠）
+    // デフォルト分配率（資料準拠、%表記）
     const rates = rule || {
-      therapist_rate: 0.40,
-      office_rate: 0.25,
-      host_rate: 0.20,
-      platform_rate: 0.10,
-      marketing_rate: 0.05,
+      therapist_rate: 40,
+      office_rate: 25,
+      host_rate: 20,
+      platform_rate: 10,
+      promotion_rate: 5,
     };
 
-    const therapistAmount = Math.floor(totalAmount * rates.therapist_rate);
-    const officeAmount = Math.floor(totalAmount * rates.office_rate);
-    const hostAmount = Math.floor(totalAmount * rates.host_rate);
-    const platformAmount = Math.floor(totalAmount * rates.platform_rate);
+    const therapistAmount = Math.floor(totalAmount * rates.therapist_rate / 100);
+    const officeAmount = Math.floor(totalAmount * rates.office_rate / 100);
+    const hostAmount = Math.floor(totalAmount * rates.host_rate / 100);
+    const platformAmount = Math.floor(totalAmount * rates.platform_rate / 100);
     const marketingAmount = totalAmount - therapistAmount - officeAmount - hostAmount - platformAmount;
 
     // earnings_distributionsテーブルに記録
@@ -142,7 +141,7 @@ async function triggerRevenueDistribution(
       therapistAmount,
       booking.office_id,
       officeAmount,
-      booking.site_id,
+      booking.host_user_id,
       hostAmount,
       platformAmount,
       marketingAmount
@@ -216,7 +215,7 @@ app.post('/stripe', async (c) => {
           UPDATE bookings
           SET payment_status = 'PAID',
               stripe_session_id = ?,
-              stripe_payment_intent_id = ?,
+              payment_intent_id = ?,
               updated_at = datetime('now')
           WHERE id = ?
         `).bind(session.id, session.payment_intent || null, bookingId).run();
@@ -245,7 +244,7 @@ app.post('/stripe', async (c) => {
         await db.prepare(`
           UPDATE bookings
           SET payment_status = 'PAID',
-              stripe_payment_intent_id = ?,
+              payment_intent_id = ?,
               updated_at = datetime('now')
           WHERE id = ? AND payment_status != 'PAID'
         `).bind(pi.id, bookingId).run();
@@ -297,11 +296,11 @@ app.post('/stripe', async (c) => {
         const isActive = ['active', 'trialing'].includes(sub.status);
         const priceId = sub.items?.data?.[0]?.price?.id;
 
-        // subscription_plansからplan_idを逆引き
+        // plansテーブルからplan_idを逆引き
         let planId: string | null = null;
         if (priceId) {
           const plan = await db.prepare(`
-            SELECT id FROM subscription_plans
+            SELECT id FROM plans
             WHERE stripe_price_id_monthly = ? OR stripe_price_id_annual = ?
             LIMIT 1
           `).bind(priceId, priceId).first<{ id: string }>();

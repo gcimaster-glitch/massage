@@ -607,7 +607,7 @@ app.patch('/:id/approve', async (c) => {
 // ============================================
 // 予約拒否（セラピスト専用）
 // ============================================
-app.patch('/:id/reject', async (c) => {
+app.patch('/:id/reject', requireAuth, async (c) => {
   const { DB } = c.env;
   const userId = c.get('userId');
   const userRole = c.get('userRole');
@@ -631,9 +631,11 @@ app.patch('/:id/reject', async (c) => {
       return c.json({ error: '予約が見つかりません' }, 404);
     }
 
-    // ステータスを REJECTED に更新
+    // ステータスを CANCELLED に更新
+    // NOTE: bookings.status のCHECK制約は PENDING/CONFIRMED/IN_PROGRESS/COMPLETED/CANCELLED/NO_SHOW
+    // のみ許可しており 'REJECTED' は書き込めない。拒否は CANCELLED + booking_logs で表現する。
     await DB.prepare(
-      "UPDATE bookings SET status = 'REJECTED' WHERE id = ?"
+      "UPDATE bookings SET status = 'CANCELLED' WHERE id = ?"
     ).bind(bookingId).run();
     
     // 拒否理由をログに記録（オプション）
@@ -775,8 +777,9 @@ app.post('/:id/review', requireAuth, async (c) => {
     if (is_safe === false) {
       const incidentId = crypto.randomUUID()
       await c.env.DB.prepare(
-        'INSERT INTO incidents (id, booking_id, reported_by, description, status, created_at) VALUES (?, ?, ?, ?, \'OPEN\', datetime(\'now\'))'
-      ).bind(incidentId, id, userId, 'ユーザーから安全上の憸念が報告されました').run().catch(() => {})
+        `INSERT INTO incidents (id, booking_id, reporter_id, reporter_role, severity, type, description, status, created_at)
+         VALUES (?, ?, ?, 'USER', 'HIGH', 'SAFETY_CONCERN', ?, 'OPEN', datetime('now'))`
+      ).bind(incidentId, id, userId, 'ユーザーから安全上の懸念が報告されました').run().catch(() => {})
     }
     return c.json({ success: true, reviewId }, 201)
   } catch (error: unknown) {
