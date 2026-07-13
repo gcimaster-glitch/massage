@@ -63,6 +63,11 @@ jobs:
         run: |
           python3 scripts/run_d1_migration.py migrations/0045_add_booking_timelock.sql || echo "⚠️  D1 Migration failed (may already be applied), continuing..."
           python3 scripts/run_d1_migration.py migrations/0051_fix_oauth_schema.sql || echo "⚠️  D1 Migration 0051 failed (may already be applied), continuing..."
+          # 0052/0053: スキーマ整合・未定義テーブル追加（すべて加算的・冪等。run_d1_migration.py が
+          #            "already exists"/"duplicate column" をスキップするため再実行しても安全）
+          # ※ 0036/0038/0043 は初期スキーマ（本番適用済み）かつ 0043 に破壊的DROPを含むため意図的に除外
+          python3 scripts/run_d1_migration.py migrations/0052_reconcile_schema.sql || echo "⚠️  D1 Migration 0052 failed (may already be applied), continuing..."
+          python3 scripts/run_d1_migration.py migrations/0053_add_missing_tables.sql || echo "⚠️  D1 Migration 0053 failed (may already be applied), continuing..."
 
       # ⑥ Cloudflare Pages へデプロイ
       - name: Deploy to Cloudflare Pages
