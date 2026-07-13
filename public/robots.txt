@@ -5,6 +5,10 @@
 User-agent: *
 Allow: /
 
+# Disallow legal/company pages (noindex)
+Disallow: /company
+Disallow: /commercial-transaction
+
 # Disallow admin pages
 Disallow: /admin
 Disallow: /admin/

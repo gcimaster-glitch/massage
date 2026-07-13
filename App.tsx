@@ -24,6 +24,7 @@ import SignupOffice from './pages/auth/SignupOffice';
 // --- Portal (Public) ---
 import PortalHome from './pages/portal/PortalHome';
 import AboutPage from './pages/portal/About';
+import Company from './pages/portal/Company';
 import BusinessStrategy from './pages/portal/BusinessStrategy'; // New
 import BusinessIndex from './pages/business/BusinessIndex';
 import BusinessPartner from './pages/business/BusinessPartner';
@@ -332,6 +333,7 @@ const App: React.FC = () => {
         {/* Public Portal */}
         <Route path="/" element={<PortalHome />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/company" element={<Company />} />
         <Route path="/strategy" element={<BusinessStrategy />} />
         <Route path="/business" element={<BusinessIndex />} />
         <Route path="/business/partner" element={<BusinessPartner />} />

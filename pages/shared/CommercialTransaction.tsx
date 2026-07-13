@@ -1,18 +1,29 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Mail, Phone, CreditCard, Package, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, CreditCard, Package, RefreshCw, AlertCircle, Hash, Calendar, Users } from 'lucide-react';
 
 const CommercialTransaction: React.FC = () => {
   const navigate = useNavigate();
+
+  // noindex設定（検索エンジンにインデックスさせない）
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex, nofollow';
+    document.head.appendChild(meta);
+    return () => {
+      document.head.removeChild(meta);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 font-sans text-gray-900">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between">
-          <button 
-            onClick={() => navigate(-1)} 
+          <button
+            onClick={() => navigate(-1)}
             className="text-gray-500 hover:text-gray-900 flex items-center gap-2 font-black text-xs md:text-sm uppercase tracking-widest transition-colors"
           >
             <ArrowLeft size={18} className="md:w-5 md:h-5" /> 戻る
@@ -42,76 +53,110 @@ const CommercialTransaction: React.FC = () => {
 
         {/* Main Content */}
         <div className="space-y-4 md:space-y-6">
+
           {/* 販売事業者 */}
-          <InfoSection 
+          <InfoSection
             icon={<Building2 className="text-teal-600" />}
             title="販売事業者の名称"
             content={
               <div className="space-y-2">
-                <p className="text-base md:text-lg font-black text-gray-900">株式会社国際資源</p>
-                <p className="text-xs md:text-sm text-gray-500 font-medium">International Natural Resources And Energy</p>
+                <p className="text-base md:text-lg font-black text-gray-900">ホグシー株式会社</p>
+                <p className="text-xs md:text-sm text-gray-500 font-medium">HOGUSY Inc.</p>
               </div>
             }
           />
 
+          {/* 会社法人等番号 */}
+          <InfoSection
+            icon={<Hash className="text-teal-600" />}
+            title="会社法人等番号"
+            content={
+              <p className="text-sm md:text-base font-bold text-gray-900">0100-01-265011</p>
+            }
+          />
+
+          {/* 設立 */}
+          <InfoSection
+            icon={<Calendar className="text-teal-600" />}
+            title="設立"
+            content={
+              <p className="text-sm md:text-base font-bold text-gray-900">令和8年4月23日（2026年4月23日）</p>
+            }
+          />
+
           {/* 運営統括責任者 */}
-          <InfoSection 
-            icon={<Building2 className="text-teal-600" />}
-            title="運営統括責任者"
-            content={<p className="text-sm md:text-base font-bold text-gray-900">代表取締役社長／CEO（最高経営責任者） 岩間 哲士</p>}
+          <InfoSection
+            icon={<Users className="text-teal-600" />}
+            title="代表取締役 / 運営統括責任者"
+            content={
+              <p className="text-sm md:text-base font-bold text-gray-900">岩間 哲士</p>
+            }
           />
 
           {/* 所在地 */}
-          <InfoSection 
+          <InfoSection
             icon={<Building2 className="text-teal-600" />}
             title="所在地"
             content={
               <div className="space-y-2">
-                <p className="text-sm md:text-base font-bold text-gray-900">〒105-0023</p>
-                <p className="text-sm md:text-base font-bold text-gray-900">東京都港区芝浦1-13-10 第3東運ビル</p>
-                <p className="text-xs md:text-sm text-gray-500 font-medium mt-2">※お客様からのお問い合わせは、下記のメールアドレスまたはお問い合わせフォームにて承っております。</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">〒101-0031</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">東京都千代田区東神田一丁目14番13号 カシムラビル</p>
+                <p className="text-xs md:text-sm text-gray-500 font-medium mt-2">
+                  ※お客様からのお問い合わせは、下記のメールアドレスにて承っております。
+                </p>
               </div>
             }
           />
 
           {/* 電話番号 */}
-          <InfoSection 
-            icon={<Phone className="text-teal-600" />}
-            title="電話番号"
+          <InfoSection
+            icon={<Mail className="text-teal-600" />}
+            title="お問い合わせ方法"
             content={
               <div className="space-y-2">
-                <p className="text-sm md:text-base font-bold text-gray-900">03-4595-0191</p>
-                <p className="text-xs md:text-sm text-gray-500 font-medium">受付時間: 平日 10:00〜18:00（土日祝日を除く）</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">
+                  電話でのお問い合わせは現在受け付けておりません。
+                </p>
+                <p className="text-xs md:text-sm text-gray-500 font-medium">
+                  お問い合わせはメールにてお願いいたします。
+                </p>
               </div>
             }
           />
 
           {/* メールアドレス */}
-          <InfoSection 
+          <InfoSection
             icon={<Mail className="text-teal-600" />}
             title="メールアドレス"
             content={
               <div className="space-y-2">
-                <p className="text-sm md:text-base font-bold text-gray-900">info@inre.co.jp</p>
-                <p className="text-xs md:text-sm text-gray-500 font-medium">※お問い合わせへの返信は、営業日2〜3日以内に行います。</p>
+                <a
+                  href="mailto:business@hogusy.com"
+                  className="text-sm md:text-base font-bold text-teal-600 hover:underline"
+                >
+                  business@hogusy.com
+                </a>
+                <p className="text-xs md:text-sm text-gray-500 font-medium">
+                  ※お問い合わせへの返信は、営業日2〜3日以内に行います。
+                </p>
               </div>
             }
           />
 
           {/* サービス内容 */}
-          <InfoSection 
+          <InfoSection
             icon={<Package className="text-teal-600" />}
             title="販売価格・サービス内容"
             content={
               <div className="space-y-3">
-                <p className="text-sm md:text-base font-bold text-gray-900">マッサージ・リラクゼーション施術サービス</p>
+                <p className="text-sm md:text-base font-bold text-gray-900">マッサージ・リラクゼーション施術マッチングプラットフォームサービス</p>
                 <div className="bg-gray-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-gray-100 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-xs md:text-sm font-bold text-gray-600">施術料金</span>
                     <span className="text-sm md:text-base font-black text-gray-900">¥5,000〜¥20,000 / 60分〜</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs md:text-sm font-bold text-gray-600">施設利用料(CARE CUBE利用時)</span>
+                    <span className="text-xs md:text-sm font-bold text-gray-600">施設利用料（CARE CUBE利用時）</span>
                     <span className="text-sm md:text-base font-black text-gray-900">¥2,000〜 / 60分</span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -119,13 +164,15 @@ const CommercialTransaction: React.FC = () => {
                     <span className="text-sm md:text-base font-black text-gray-900">¥1,000〜¥3,000 / エリア別</span>
                   </div>
                 </div>
-                <p className="text-xs md:text-sm text-gray-500 font-medium">※価格はすべて税込表示です。セラピストや施術内容により異なります。</p>
+                <p className="text-xs md:text-sm text-gray-500 font-medium">
+                  ※価格はすべて税込表示です。セラピストや施術内容により異なります。
+                </p>
               </div>
             }
           />
 
           {/* 支払方法 */}
-          <InfoSection 
+          <InfoSection
             icon={<CreditCard className="text-teal-600" />}
             title="代金の支払方法・時期"
             content={
@@ -136,7 +183,6 @@ const CommercialTransaction: React.FC = () => {
                     <li>クレジットカード（VISA、Mastercard、JCB、American Express、Diners Club）</li>
                     <li>デビットカード</li>
                     <li>Apple Pay、Google Pay</li>
-                    <li>銀行振込（事前決済のみ）</li>
                   </ul>
                 </div>
                 <div className="space-y-2 mt-4">
@@ -150,7 +196,7 @@ const CommercialTransaction: React.FC = () => {
           />
 
           {/* キャンセル・返金 */}
-          <InfoSection 
+          <InfoSection
             icon={<RefreshCw className="text-orange-600" />}
             title="キャンセル・返金について"
             content={
@@ -172,6 +218,14 @@ const CommercialTransaction: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                <div className="bg-red-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-red-100">
+                  <p className="text-xs md:text-sm font-black text-red-800 mb-2">返金不可事項</p>
+                  <ul className="list-disc pl-4 space-y-1 text-xs md:text-sm text-red-700 font-medium">
+                    <li>プラン・サブスクリプションの申し込み後の返金は一切承っておりません。</li>
+                    <li>クレジット（ポイント）の購入後の返金は一切承っておりません。</li>
+                    <li>当社の責任を超える損害賠償は、お支払いいただいた金額を上限とします。</li>
+                  </ul>
+                </div>
                 <p className="text-xs md:text-sm text-gray-500 font-medium leading-relaxed">
                   天災やセラピストの都合により施術が提供できない場合は、全額返金いたします。返金は元の決済方法に5〜10営業日以内に処理されます。
                 </p>
@@ -180,7 +234,7 @@ const CommercialTransaction: React.FC = () => {
           />
 
           {/* 注意事項 */}
-          <InfoSection 
+          <InfoSection
             icon={<AlertCircle className="text-red-600" />}
             title="その他の重要事項"
             content={
@@ -190,7 +244,8 @@ const CommercialTransaction: React.FC = () => {
                   <li>医療行為・治療を目的とした施術は行っておりません。</li>
                   <li>妊娠中の方、持病をお持ちの方は事前にセラピストへご相談ください。</li>
                   <li>セラピストの指示に従わない場合、施術を中断する場合があります。</li>
-                  <li>施術中の事故・怪我について、当社は責任を負いかねます。</li>
+                  <li>セラピストとの直接取引・連絡先交換は規約違反となります。</li>
+                  <li>施術中の事故・怪我について、当社は法令の範囲内においてのみ責任を負います。</li>
                 </ul>
               </div>
             }
@@ -199,9 +254,9 @@ const CommercialTransaction: React.FC = () => {
 
         {/* Footer */}
         <div className="mt-12 md:mt-16 text-center">
-          <p className="text-xs md:text-sm text-gray-400 font-bold">最終更新日: 2026年3月10日</p>
+          <p className="text-xs md:text-sm text-gray-400 font-bold">最終更新日: 2026年6月30日</p>
           <p className="text-[10px] md:text-xs text-gray-300 font-black uppercase tracking-widest mt-2 md:mt-4">
-            © 2026 HOGUSY / 株式会社国際資源. All Rights Reserved.
+            © 2026 ホグシー株式会社 / HOGUSY Inc. All Rights Reserved.
           </p>
         </div>
       </div>
@@ -210,10 +265,10 @@ const CommercialTransaction: React.FC = () => {
 };
 
 // Info Section Component
-const InfoSection: React.FC<{ icon: React.ReactNode; title: string; content: React.ReactNode }> = ({ 
-  icon, 
-  title, 
-  content 
+const InfoSection: React.FC<{ icon: React.ReactNode; title: string; content: React.ReactNode }> = ({
+  icon,
+  title,
+  content,
 }) => (
   <div className="bg-white p-4 md:p-8 rounded-2xl md:rounded-[48px] shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
     <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
