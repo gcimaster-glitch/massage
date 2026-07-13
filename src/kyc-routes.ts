@@ -18,7 +18,8 @@ const kycApp = new Hono<{ Bindings: Bindings }>()
 // POST /api/kyc - KYC書類提出（ユーザー用）
 // Base64エンコードされた画像データを受け取りR2に保存
 // ============================================
-kycApp.post('/', async (c) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const kycSubmitHandler = async (c: any) => {
   const authHeader = c.req.header('Authorization')
 
   if (!authHeader) {
@@ -132,7 +133,11 @@ kycApp.post('/', async (c) => {
     console.error('KYC submission error:', e)
     return c.json({ error: 'KYC提出に失敗しました' }, 500)
   }
-})
+}
+
+// KYC書類提出（/api/kyc と /api/kyc/submit の両パスで受け付ける）
+kycApp.post('/', kycSubmitHandler)
+kycApp.post('/submit', kycSubmitHandler)
 
 // ============================================
 // GET /api/kyc/status - KYC審査状況確認（ユーザー用）

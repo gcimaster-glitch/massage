@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import { processPaymentSplit } from './revenue-engine-routes';
 import { Bindings } from './types';
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -67,90 +68,23 @@ async function verifyStripeSignature(
 
 // ============================================
 // 収益分配エンジン呼び出し
+// 旧実装は存在しないテーブル（earnings_distributions）と
+// 存在しないカラム（revenue_share_rules.plan_id）を参照しており常に失敗していたため、
+// スキーマ整合済みの収益分配エンジン（processPaymentSplit）へ委譲する。
 // ============================================
 async function triggerRevenueDistribution(
   db: D1Database,
   bookingId: string,
+  paymentIntentId: string,
   totalAmount: number
 ): Promise<void> {
   try {
-    // 予約情報を取得
-    const booking = await db.prepare(`
-      SELECT b.*, t.stripe_account_id as therapist_stripe_id,
-             t.office_id,
-             b.site_id
-      FROM bookings b
-      LEFT JOIN therapists t ON b.therapist_id = t.id
-      WHERE b.id = ?
-    `).bind(bookingId).first<{
-      therapist_id: string;
-      therapist_stripe_id: string | null;
-      office_id: string | null;
-      site_id: string | null;
-    }>();
-
-    if (!booking) {
-      console.error('Booking not found for revenue distribution:', bookingId);
-      return;
+    const result = await processPaymentSplit(db, bookingId, paymentIntentId, totalAmount);
+    if (!result.success) {
+      console.error('Revenue distribution failed:', result.error);
+    } else {
+      console.log(`Revenue distribution done: booking ${bookingId}, tx ${result.transactionId}`);
     }
-
-    // 収益分配ルールを取得（プラン別 → デフォルト順）
-    const rule = await db.prepare(`
-      SELECT * FROM revenue_share_rules
-      WHERE is_active = 1
-      ORDER BY CASE WHEN plan_id IS NULL THEN 1 ELSE 0 END
-      LIMIT 1
-    `).first<{
-      therapist_rate: number;
-      office_rate: number;
-      host_rate: number;
-      platform_rate: number;
-      marketing_rate: number;
-    }>();
-
-    // デフォルト分配率（資料準拠）
-    const rates = rule || {
-      therapist_rate: 0.40,
-      office_rate: 0.25,
-      host_rate: 0.20,
-      platform_rate: 0.10,
-      marketing_rate: 0.05,
-    };
-
-    const therapistAmount = Math.floor(totalAmount * rates.therapist_rate);
-    const officeAmount = Math.floor(totalAmount * rates.office_rate);
-    const hostAmount = Math.floor(totalAmount * rates.host_rate);
-    const platformAmount = Math.floor(totalAmount * rates.platform_rate);
-    const marketingAmount = totalAmount - therapistAmount - officeAmount - hostAmount - platformAmount;
-
-    // earnings_distributionsテーブルに記録
-    const distributionId = crypto.randomUUID();
-    await db.prepare(`
-      INSERT INTO earnings_distributions (
-        id, booking_id, total_amount,
-        therapist_id, therapist_amount,
-        office_id, office_amount,
-        host_id, host_amount,
-        platform_amount, marketing_amount,
-        status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', datetime('now'))
-    `).bind(
-      distributionId,
-      bookingId,
-      totalAmount,
-      booking.therapist_id,
-      therapistAmount,
-      booking.office_id,
-      officeAmount,
-      booking.site_id,
-      hostAmount,
-      platformAmount,
-      marketingAmount
-    ).run();
-
-    console.log(`Revenue distribution created: ${distributionId} for booking ${bookingId}`);
-    console.log(`  Total: ¥${totalAmount} | Therapist: ¥${therapistAmount} | Office: ¥${officeAmount} | Host: ¥${hostAmount} | Platform: ¥${platformAmount} | Marketing: ¥${marketingAmount}`);
-
   } catch (e) {
     console.error('Revenue distribution error:', e);
   }
@@ -212,18 +146,22 @@ app.post('/stripe', async (c) => {
         }
 
         // bookingのpayment_statusをPAIDに更新
+        // （bookingsの実カラム名は payment_intent_id。stripe_payment_intent_id は存在しない）
         await db.prepare(`
           UPDATE bookings
           SET payment_status = 'PAID',
               stripe_session_id = ?,
-              stripe_payment_intent_id = ?,
-              updated_at = datetime('now')
+              payment_intent_id = ?
           WHERE id = ?
         `).bind(session.id, session.payment_intent || null, bookingId).run();
 
         // 収益分配エンジン起動
-        const totalAmount = Math.floor((session.amount_total || 0) / 100); // 円換算
-        await triggerRevenueDistribution(db, bookingId, totalAmount);
+        // JPYはゼロ小数通貨のためamount_totalがそのまま円（÷100すると1/100に化けるバグを修正）
+        const sessionCurrency = (session as { currency?: string }).currency || 'jpy';
+        const totalAmount = sessionCurrency === 'jpy'
+          ? (session.amount_total || 0)
+          : Math.floor((session.amount_total || 0) / 100);
+        await triggerRevenueDistribution(db, bookingId, session.payment_intent || `cs_${session.id}`, totalAmount);
 
         console.log(`checkout.session.completed: booking ${bookingId} paid ¥${totalAmount}`);
         break;
@@ -245,10 +183,15 @@ app.post('/stripe', async (c) => {
         await db.prepare(`
           UPDATE bookings
           SET payment_status = 'PAID',
-              stripe_payment_intent_id = ?,
-              updated_at = datetime('now')
+              payment_intent_id = ?
           WHERE id = ? AND payment_status != 'PAID'
         `).bind(pi.id, bookingId).run();
+
+        // 収益分配（processPaymentSplitは同一PaymentIntentの重複処理を防止する）
+        // JPYはゼロ小数通貨のためamountがそのまま円
+        const piCurrency = (pi as { currency?: string }).currency || 'jpy';
+        const piAmount = piCurrency === 'jpy' ? pi.amount : Math.floor(pi.amount / 100);
+        await triggerRevenueDistribution(db, bookingId, pi.id, piAmount);
 
         console.log(`payment_intent.succeeded: booking ${bookingId}`);
         break;
@@ -269,8 +212,7 @@ app.post('/stripe', async (c) => {
 
         await db.prepare(`
           UPDATE bookings
-          SET payment_status = 'FAILED',
-              updated_at = datetime('now')
+          SET payment_status = 'FAILED'
           WHERE id = ?
         `).bind(bookingId).run();
 
@@ -300,8 +242,9 @@ app.post('/stripe', async (c) => {
         // subscription_plansからplan_idを逆引き
         let planId: string | null = null;
         if (priceId) {
+          // 実テーブル名は plans（subscription_plans は存在しない）
           const plan = await db.prepare(`
-            SELECT id FROM subscription_plans
+            SELECT id FROM plans
             WHERE stripe_price_id_monthly = ? OR stripe_price_id_annual = ?
             LIMIT 1
           `).bind(priceId, priceId).first<{ id: string }>();

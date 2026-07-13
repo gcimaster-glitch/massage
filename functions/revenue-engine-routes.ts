@@ -78,7 +78,7 @@ export async function processPaymentSplit(
         b.price,
         tp.user_id as therapist_user_id
       FROM bookings b
-      LEFT JOIN therapist_profiles tp ON b.therapist_id = tp.user_id
+      LEFT JOIN therapist_profiles tp ON (b.therapist_id = tp.user_id OR b.therapist_id = tp.id)
       WHERE b.id = ?
     `).bind(bookingId).first<{
       id: string;
@@ -106,16 +106,19 @@ export async function processPaymentSplit(
     }
 
     // 適用する収益分配ルールを取得
-    const ruleId = booking.revenue_share_rule_id || 'rule_default_001';
-    let rule = await db.prepare(`
-      SELECT * FROM revenue_share_rules WHERE id = ? AND is_active = 1
-    `).bind(ruleId).first<{
+    // 実効スキーマ（0043_core_business_schema）: therapist/office/host/platform/promotion_rate
+    type RuleRow = {
       id: string;
       therapist_rate: number;
       host_rate: number;
       office_rate: number;
       platform_rate: number;
-    }>();
+      promotion_rate: number;
+    };
+    const ruleId = booking.revenue_share_rule_id || 'rule_default_001';
+    let rule = await db.prepare(`
+      SELECT * FROM revenue_share_rules WHERE id = ? AND is_active = 1
+    `).bind(ruleId).first<RuleRow>();
 
     // ルールが見つからない場合はデフォルトを使用
     if (!rule) {
@@ -124,31 +127,25 @@ export async function processPaymentSplit(
         WHERE is_active = 1
         ORDER BY priority DESC
         LIMIT 1
-      `).first<{
-        id: string;
-        therapist_rate: number;
-        host_rate: number;
-        office_rate: number;
-        platform_rate: number;
-      }>();
+      `).first<RuleRow>();
     }
 
     // フォールバック: 事業資料定義の正式分配率
     // セラピスト40% / セラピストオフィス25% / 拠点ホスト20% / HOGUSY本部10% / 販促5%
-    const rates = rule || {
+    const rates: RuleRow = rule || {
       id: 'fallback',
       therapist_rate: 40.0,
       host_rate: 20.0,
       office_rate: 25.0,
       platform_rate: 10.0,
-      marketing_rate: 5.0,
+      promotion_rate: 5.0,
     };
 
     // 金額計算（端数は platform に加算）
     const therapistAmount = Math.floor(grossAmount * rates.therapist_rate / 100);
     const hostAmount = Math.floor(grossAmount * rates.host_rate / 100);
     const officeAmount = Math.floor(grossAmount * rates.office_rate / 100);
-    const marketingRate = (rates as { marketing_rate?: number }).marketing_rate || 5.0;
+    const marketingRate = rates.promotion_rate ?? 5.0;
     const marketingAmount = Math.floor(grossAmount * marketingRate / 100);
     const platformAmount = grossAmount - therapistAmount - hostAmount - officeAmount - marketingAmount;
 
@@ -156,22 +153,23 @@ export async function processPaymentSplit(
     const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     // トランザクションレコードを作成
+    // 実効スキーマ: transactions(type, amount, status: PENDING/PROCESSING/COMPLETED/FAILED/CANCELLED, processed_at)
     await db.prepare(`
       INSERT INTO transactions (
-        id, booking_id, stripe_payment_intent_id,
-        gross_amount, net_amount, currency,
-        status, paid_at, created_at, updated_at
+        id, type, amount, currency,
+        booking_id, stripe_payment_intent_id,
+        status, description, processed_at, created_at
       ) VALUES (
-        ?, ?, ?,
-        ?, ?, 'jpy',
-        'SUCCEEDED', datetime('now'), datetime('now'), datetime('now')
+        ?, 'CHARGE', ?, 'jpy',
+        ?, ?,
+        'COMPLETED', ?, datetime('now'), datetime('now')
       )
     `).bind(
       transactionId,
+      grossAmount,
       bookingId,
       stripePaymentIntentId,
-      grossAmount,
-      grossAmount // net_amount（将来的にStripe手数料を控除）
+      `予約 ${bookingId} の決済`
     ).run();
 
     // セラピストのuser_idを決定
@@ -204,6 +202,7 @@ export async function processPaymentSplit(
     }
 
     // オフィスのuser_idを取得
+    // 実効スキーマの role CHECK は 'OFFICE'（'THERAPIST_OFFICE' は制約違反になる）
     if (booking.office_id && officeAmount > 0) {
       const office = await db.prepare(`
         SELECT user_id FROM offices WHERE id = ?
@@ -211,46 +210,60 @@ export async function processPaymentSplit(
       if (office?.user_id) {
         splits.push({
           userId: office.user_id,
-          role: 'THERAPIST_OFFICE',
+          role: 'OFFICE',
           amount: officeAmount,
           rate: rates.office_rate,
         });
       }
     }
 
-    // プラットフォーム分（管理者アカウントに紐付け）
-    if (platformAmount > 0) {
+    // プラットフォーム分・販促費（管理者アカウントに紐付け）
+    if (platformAmount > 0 || marketingAmount > 0) {
       const platformUser = await db.prepare(`
         SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1
       `).first<{ id: string }>();
       if (platformUser) {
-        splits.push({
-          userId: platformUser.id,
-          role: 'PLATFORM',
-          amount: platformAmount,
-          rate: rates.platform_rate,
-        });
+        if (platformAmount > 0) {
+          splits.push({
+            userId: platformUser.id,
+            role: 'PLATFORM',
+            amount: platformAmount,
+            rate: rates.platform_rate,
+          });
+        }
+        // 販促費も記録する（従来は行が作られず金額の行き先が消えていた）
+        if (marketingAmount > 0) {
+          splits.push({
+            userId: platformUser.id,
+            role: 'PROMOTION',
+            amount: marketingAmount,
+            rate: marketingRate,
+          });
+        }
       }
     }
 
-    // 分割レコードを一括挿入
+    // 分割レコードを一括挿入（実効スキーマに updated_at は存在しない）
     for (const split of splits) {
       const splitId = `split_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       await db.prepare(`
         INSERT INTO transaction_splits (
           id, transaction_id, user_id, role,
+          revenue_share_rule_id,
           amount, rate, payout_status,
-          created_at, updated_at
+          created_at
         ) VALUES (
           ?, ?, ?, ?,
+          ?,
           ?, ?, 'PENDING',
-          datetime('now'), datetime('now')
+          datetime('now')
         )
       `).bind(
         splitId,
         transactionId,
         split.userId,
         split.role,
+        rates.id === 'fallback' ? null : rates.id,
         split.amount,
         split.rate
       ).run();
@@ -300,12 +313,12 @@ export async function processPaymentSplit(
     }
 
     // 予約ステータスをCONFIRMEDに更新
+    // （本番bookingsテーブルにupdated_atが無い環境があるため参照しない）
     await db.prepare(`
       UPDATE bookings
       SET status = 'CONFIRMED',
           payment_status = 'PAID',
-          payment_intent_id = ?,
-          updated_at = datetime('now')
+          payment_intent_id = ?
       WHERE id = ?
     `).bind(stripePaymentIntentId, bookingId).run();
 
@@ -413,7 +426,7 @@ app.post('/webhook/stripe', async (c) => {
         if (bookingId) {
           await c.env.DB.prepare(`
             UPDATE bookings
-            SET payment_status = 'FAILED', updated_at = datetime('now')
+            SET payment_status = 'FAILED'
             WHERE id = ?
           `).bind(bookingId).run();
           console.log(`[Webhook] Payment failed for booking: ${bookingId}`);
@@ -428,16 +441,18 @@ app.post('/webhook/stripe', async (c) => {
           : charge.payment_intent?.id;
 
         if (paymentIntentId) {
+          // 実効スキーマのstatus CHECKに'REFUNDED'は無いため'CANCELLED'を使用
+          // （refunded_at/updated_atカラムも存在しない）
           await c.env.DB.prepare(`
             UPDATE transactions
-            SET status = 'REFUNDED', refunded_at = datetime('now'), updated_at = datetime('now')
+            SET status = 'CANCELLED', description = COALESCE(description, '') || ' [返金済み]'
             WHERE stripe_payment_intent_id = ?
           `).bind(paymentIntentId).run();
 
           // 分割レコードもキャンセル
           await c.env.DB.prepare(`
             UPDATE transaction_splits
-            SET payout_status = 'CANCELLED', updated_at = datetime('now')
+            SET payout_status = 'CANCELLED'
             WHERE transaction_id IN (
               SELECT id FROM transactions WHERE stripe_payment_intent_id = ?
             ) AND payout_status = 'PENDING'
@@ -501,6 +516,159 @@ app.post('/process/:bookingId', requireAdmin, async (c) => {
 });
 
 // ============================================
+// 期間フィルタ（this_month / last_month / this_year）をSQL条件に変換
+// ============================================
+function periodToRange(period: string | undefined): { start: string; end: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-11
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const lastDayOf = (year: number, month1: number) => new Date(year, month1, 0).getDate();
+
+  if (period === 'last_month') {
+    const ly = m === 0 ? y - 1 : y;
+    const lm = m === 0 ? 12 : m; // 1-12
+    return {
+      start: `${ly}-${pad(lm)}-01`,
+      end: `${ly}-${pad(lm)}-${pad(lastDayOf(ly, lm))}`,
+    };
+  }
+  if (period === 'this_year') {
+    return { start: `${y}-01-01`, end: `${y}-12-31` };
+  }
+  // デフォルト: this_month
+  return {
+    start: `${y}-${pad(m + 1)}-01`,
+    end: `${y}-${pad(m + 1)}-${pad(lastDayOf(y, m + 1))}`,
+  };
+}
+
+// ============================================
+// 分配一覧取得（管理者用・FinanceDashboard）
+// GET /api/revenue/splits?period=this_month&limit=50
+// ============================================
+app.get('/splits', requireAdmin, async (c) => {
+  const { period, limit } = c.req.query();
+  const range = periodToRange(period);
+  const limitNum = Math.min(parseInt(limit || '50', 10) || 50, 200);
+
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT
+        ts.id,
+        t.booking_id,
+        ts.user_id AS recipient_user_id,
+        CASE WHEN ts.role = 'OFFICE' THEN 'THERAPIST_OFFICE' ELSE ts.role END AS recipient_role,
+        t.amount AS gross_amount,
+        ts.rate,
+        ts.amount AS net_amount,
+        ts.payout_status AS status,
+        ts.created_at,
+        u.name AS recipient_name,
+        b.scheduled_at AS booking_date,
+        b.service_name
+      FROM transaction_splits ts
+      JOIN transactions t ON ts.transaction_id = t.id
+      LEFT JOIN users u ON ts.user_id = u.id
+      LEFT JOIN bookings b ON t.booking_id = b.id
+      WHERE t.type = 'CHARGE'
+        AND date(COALESCE(t.processed_at, t.created_at)) BETWEEN ? AND ?
+      ORDER BY ts.created_at DESC
+      LIMIT ?
+    `).bind(range.start, range.end, limitNum).all<Record<string, unknown>>();
+
+    const summaryRow = await c.env.DB.prepare(`
+      SELECT
+        COUNT(DISTINCT t.id) AS total_transactions,
+        SUM(CASE WHEN ts.role = 'PLATFORM' THEN ts.amount ELSE 0 END) AS platform_earnings,
+        SUM(CASE WHEN ts.role = 'THERAPIST' THEN ts.amount ELSE 0 END) AS therapist_payouts,
+        SUM(CASE WHEN ts.role = 'OFFICE' THEN ts.amount ELSE 0 END) AS office_payouts,
+        SUM(CASE WHEN ts.role = 'HOST' THEN ts.amount ELSE 0 END) AS host_payouts,
+        SUM(CASE WHEN ts.payout_status = 'PENDING' THEN ts.amount ELSE 0 END) AS pending_splits
+      FROM transaction_splits ts
+      JOIN transactions t ON ts.transaction_id = t.id
+      WHERE t.type = 'CHARGE'
+        AND date(COALESCE(t.processed_at, t.created_at)) BETWEEN ? AND ?
+    `).bind(range.start, range.end).first<Record<string, number>>();
+
+    const totalRevenue = await c.env.DB.prepare(`
+      SELECT SUM(amount) AS total FROM transactions
+      WHERE type = 'CHARGE' AND status = 'COMPLETED'
+        AND date(COALESCE(processed_at, created_at)) BETWEEN ? AND ?
+    `).bind(range.start, range.end).first<{ total: number | null }>();
+
+    return c.json({
+      splits: result.results || [],
+      summary: {
+        total_revenue: totalRevenue?.total || 0,
+        platform_earnings: summaryRow?.platform_earnings || 0,
+        therapist_payouts: summaryRow?.therapist_payouts || 0,
+        office_payouts: summaryRow?.office_payouts || 0,
+        host_payouts: summaryRow?.host_payouts || 0,
+        pending_splits: summaryRow?.pending_splits || 0,
+        period_label: `${range.start} 〜 ${range.end}`,
+      },
+    });
+  } catch (e: unknown) {
+    console.error('[Revenue] splits list error:', e);
+    return c.json({ error: '分配一覧の取得に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 自分の分配一覧取得（ホスト/セラピスト/オフィス用・HostFinance）
+// GET /api/revenue/splits/my
+// 注意: /splits/:bookingId より先に登録すること（'my' がbookingIdに解釈されるのを防ぐ）
+// ============================================
+app.get('/splits/my', requireAuth, async (c) => {
+  const userId = c.get('userId') as string;
+
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT
+        ts.id,
+        t.booking_id,
+        t.amount AS gross_amount,
+        ts.rate,
+        ts.amount AS net_amount,
+        ts.payout_status,
+        ts.created_at,
+        COALESCE(t.processed_at, t.created_at) AS transaction_date,
+        b.service_name,
+        s.name AS site_name
+      FROM transaction_splits ts
+      JOIN transactions t ON ts.transaction_id = t.id
+      LEFT JOIN bookings b ON t.booking_id = b.id
+      LEFT JOIN sites s ON b.site_id = s.id
+      WHERE ts.user_id = ?
+      ORDER BY ts.created_at DESC
+      LIMIT 100
+    `).bind(userId).all<Record<string, unknown>>();
+
+    const summary = await c.env.DB.prepare(`
+      SELECT
+        SUM(CASE WHEN payout_status = 'PENDING' THEN amount ELSE 0 END) AS pending_amount,
+        SUM(CASE WHEN payout_status = 'PAID' THEN amount ELSE 0 END) AS paid_amount,
+        SUM(CASE WHEN payout_status = 'PENDING' THEN 1 ELSE 0 END) AS pending_count
+      FROM transaction_splits
+      WHERE user_id = ?
+    `).bind(userId).first<Record<string, number>>();
+
+    return c.json({
+      splits: result.results || [],
+      summary: {
+        pending_amount: summary?.pending_amount || 0,
+        paid_amount: summary?.paid_amount || 0,
+        pending_count: summary?.pending_count || 0,
+      },
+    });
+  } catch (e: unknown) {
+    console.error('[Revenue] splits/my error:', e);
+    return c.json({ error: '分配情報の取得に失敗しました' }, 500);
+  }
+});
+
+// ============================================
 // 予約の分配情報取得
 // ============================================
 app.get('/splits/:bookingId', requireAuth, async (c) => {
@@ -531,8 +699,16 @@ app.get('/splits/:bookingId', requireAuth, async (c) => {
       }
     }
 
+    // 実効スキーマ: transactions.amount / processed_at（gross_amount / paid_at は存在しない）
     const transaction = await c.env.DB.prepare(`
-      SELECT t.*, ts_list.splits
+      SELECT
+        t.id,
+        t.booking_id,
+        t.stripe_payment_intent_id,
+        t.amount AS gross_amount,
+        t.status,
+        COALESCE(t.processed_at, t.created_at) AS paid_at,
+        ts_list.splits
       FROM transactions t
       LEFT JOIN (
         SELECT transaction_id,
@@ -548,7 +724,7 @@ app.get('/splits/:bookingId', requireAuth, async (c) => {
         FROM transaction_splits
         GROUP BY transaction_id
       ) ts_list ON t.id = ts_list.transaction_id
-      WHERE t.booking_id = ?
+      WHERE t.booking_id = ? AND t.type = 'CHARGE'
       ORDER BY t.created_at DESC
       LIMIT 1
     `).bind(bookingId).first<{
@@ -641,6 +817,89 @@ app.get('/statements', requireAuth, async (c) => {
 });
 
 // ============================================
+// 精算書生成の共通処理
+// 実効スキーマ: payout_statements(role NOT NULL CHECK('THERAPIST','OFFICE','HOST'),
+//   statement_number NOT NULL UNIQUE, gross_amount, deductions, net_amount)
+// ※ total_amount / fee_amount カラムは存在しない
+// ============================================
+async function generateStatements(
+  db: D1Database,
+  periodStart: string,
+  periodEnd: string
+): Promise<{ inserted: number; updated: number }> {
+  // 対象期間のtransaction_splitsを集計
+  // （PLATFORM/PROMOTIONは自社取り分のため精算書は発行しない。roleのCHECK制約にも含まれない）
+  const splits = await db.prepare(`
+    SELECT
+      ts.user_id,
+      ts.role,
+      SUM(ts.amount) as total_amount
+    FROM transaction_splits ts
+    JOIN transactions t ON ts.transaction_id = t.id
+    WHERE t.status = 'COMPLETED'
+      AND t.type = 'CHARGE'
+      AND COALESCE(t.processed_at, t.created_at) >= ?
+      AND COALESCE(t.processed_at, t.created_at) <= ?
+      AND ts.payout_status = 'PENDING'
+      AND ts.role IN ('THERAPIST', 'OFFICE', 'HOST')
+    GROUP BY ts.user_id, ts.role
+  `).bind(`${periodStart} 00:00:00`, `${periodEnd} 23:59:59`).all<{
+    user_id: string;
+    role: string;
+    total_amount: number;
+  }>();
+
+  let inserted = 0;
+  let updated = 0;
+
+  for (const row of (splits.results || [])) {
+    const existing = await db.prepare(`
+      SELECT id FROM payout_statements
+      WHERE user_id = ? AND period_start = ? AND period_end = ?
+    `).bind(row.user_id, periodStart, periodEnd).first<{ id: string }>();
+
+    if (existing) {
+      await db.prepare(`
+        UPDATE payout_statements
+        SET gross_amount = ?, net_amount = ? - deductions, updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(row.total_amount, row.total_amount, existing.id).run();
+      updated++;
+    } else {
+      const statementId = `stmt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const statementNumber = `PS-${periodStart.replace(/-/g, '').substring(0, 6)}-${statementId.slice(-7).toUpperCase()}`;
+      await db.prepare(`
+        INSERT INTO payout_statements (
+          id, user_id, role,
+          period_start, period_end,
+          statement_number,
+          gross_amount, deductions, net_amount,
+          status, created_at, updated_at
+        ) VALUES (
+          ?, ?, ?,
+          ?, ?,
+          ?,
+          ?, 0, ?,
+          'DRAFT', datetime('now'), datetime('now')
+        )
+      `).bind(
+        statementId,
+        row.user_id,
+        row.role,
+        periodStart,
+        periodEnd,
+        statementNumber,
+        row.total_amount,
+        row.total_amount
+      ).run();
+      inserted++;
+    }
+  }
+
+  return { inserted, updated };
+}
+
+// ============================================
 // 月次精算書生成（管理者用）
 // ============================================
 app.post('/statements/generate', requireAdmin, async (c) => {
@@ -657,67 +916,7 @@ app.post('/statements/generate', requireAdmin, async (c) => {
     const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
     const periodEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-    // 対象期間のtransaction_splitsを集計
-    const splits = await c.env.DB.prepare(`
-      SELECT
-        ts.user_id,
-        ts.role,
-        SUM(ts.amount) as total_amount
-      FROM transaction_splits ts
-      JOIN transactions t ON ts.transaction_id = t.id
-      WHERE t.status = 'SUCCEEDED'
-        AND t.paid_at >= ?
-        AND t.paid_at <= ?
-        AND ts.payout_status = 'PENDING'
-      GROUP BY ts.user_id, ts.role
-    `).bind(`${periodStart} 00:00:00`, `${periodEnd} 23:59:59`).all<{
-      user_id: string;
-      role: string;
-      total_amount: number;
-    }>();
-
-    let inserted = 0;
-    let updated = 0;
-
-    for (const row of (splits.results || [])) {
-      const statementId = `stmt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-      // UPSERT
-      const existing = await c.env.DB.prepare(`
-        SELECT id FROM payout_statements
-        WHERE user_id = ? AND period_start = ? AND period_end = ?
-      `).bind(row.user_id, periodStart, periodEnd).first<{ id: string }>();
-
-      if (existing) {
-        await c.env.DB.prepare(`
-          UPDATE payout_statements
-          SET total_amount = ?, updated_at = datetime('now')
-          WHERE id = ?
-        `).bind(row.total_amount, existing.id).run();
-        updated++;
-      } else {
-        await c.env.DB.prepare(`
-          INSERT INTO payout_statements (
-            id, user_id,
-            period_start, period_end,
-            total_amount,
-            status, created_at, updated_at
-          ) VALUES (
-            ?, ?,
-            ?, ?,
-            ?,
-            'DRAFT', datetime('now'), datetime('now')
-          )
-        `).bind(
-          statementId,
-          row.user_id,
-          periodStart,
-          periodEnd,
-          row.total_amount
-        ).run();
-        inserted++;
-      }
-    }
+    const { inserted, updated } = await generateStatements(c.env.DB, periodStart, periodEnd);
 
     return c.json({
       success: true,
@@ -735,6 +934,88 @@ app.post('/statements/generate', requireAdmin, async (c) => {
 });
 
 // ============================================
+// 月次精算書生成（管理者用・FinanceDashboard互換）
+// POST /api/revenue/payout-statements/generate {period: 'this_month'|'last_month'|'this_year'}
+// ============================================
+app.post('/payout-statements/generate', requireAdmin, async (c) => {
+  try {
+    const { period } = await c.req.json() as { period?: string };
+    const range = periodToRange(period);
+    const { inserted, updated } = await generateStatements(c.env.DB, range.start, range.end);
+    return c.json({
+      success: true,
+      period_start: range.start,
+      period_end: range.end,
+      inserted,
+      updated,
+      total: inserted + updated,
+    });
+  } catch (e: unknown) {
+    console.error('[Revenue] payout-statements generate error:', e);
+    return c.json({ error: '精算書の生成に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 自分の精算書一覧（ホスト/セラピスト/オフィス用・HostFinance）
+// GET /api/revenue/payout-statements/my
+// フロントエンドはtotal_amount/deduction_amountという名前を期待するためエイリアスで返す
+// ============================================
+app.get('/payout-statements/my', requireAuth, async (c) => {
+  const userId = c.get('userId') as string;
+
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT
+        id, period_start, period_end, statement_number,
+        gross_amount AS total_amount,
+        deductions AS deduction_amount,
+        net_amount, status, pdf_url, paid_at, created_at
+      FROM payout_statements
+      WHERE user_id = ?
+      ORDER BY period_start DESC
+      LIMIT 50
+    `).bind(userId).all<Record<string, unknown>>();
+
+    return c.json({ statements: result.results || [] });
+  } catch (e: unknown) {
+    console.error('[Revenue] payout-statements/my error:', e);
+    return c.json({ error: '精算書の取得に失敗しました' }, 500);
+  }
+});
+
+// ============================================
+// 精算処理実行（管理者用・FinanceDashboard）
+// POST /api/revenue/settle {period}
+// 対象期間の精算書を生成し、DRAFT→CONFIRMEDに確定する
+// ============================================
+app.post('/settle', requireAdmin, async (c) => {
+  try {
+    const { period } = await c.req.json() as { period?: string };
+    const range = periodToRange(period);
+
+    const { inserted, updated } = await generateStatements(c.env.DB, range.start, range.end);
+
+    const confirmed = await c.env.DB.prepare(`
+      UPDATE payout_statements
+      SET status = 'CONFIRMED', updated_at = datetime('now')
+      WHERE status = 'DRAFT' AND period_start = ? AND period_end = ?
+    `).bind(range.start, range.end).run();
+
+    return c.json({
+      success: true,
+      period_start: range.start,
+      period_end: range.end,
+      generated: inserted + updated,
+      confirmed: confirmed.meta?.changes ?? 0,
+    });
+  } catch (e: unknown) {
+    console.error('[Revenue] settle error:', e);
+    return c.json({ error: '精算処理に失敗しました' }, 500);
+  }
+});
+
+// ============================================
 // 精算書ステータス更新（管理者用）
 // ============================================
 app.patch('/statements/:id', requireAdmin, async (c) => {
@@ -746,7 +1027,8 @@ app.patch('/statements/:id', requireAdmin, async (c) => {
       notes?: string;
     };
 
-    const validStatuses = ['DRAFT', 'CONFIRMED', 'PAID', 'CANCELLED'];
+    // 実効スキーマのCHECK制約は DRAFT / CONFIRMED / PAID のみ（CANCELLEDは不可）
+    const validStatuses = ['DRAFT', 'CONFIRMED', 'PAID'];
     if (!validStatuses.includes(status)) {
       return c.json({ error: '無効なステータスです' }, 400);
     }
@@ -767,16 +1049,15 @@ app.patch('/statements/:id', requireAdmin, async (c) => {
     ).run();
 
     // PAIDになった場合、transaction_splitsのpayout_statusも更新
+    // （実効スキーマにpayout_statement_id/updated_atは存在しない）
     if (status === 'PAID') {
       await c.env.DB.prepare(`
         UPDATE transaction_splits
         SET payout_status = 'PAID',
-            payout_statement_id = ?,
-            paid_at = datetime('now'),
-            updated_at = datetime('now')
+            paid_at = datetime('now')
         WHERE user_id = (SELECT user_id FROM payout_statements WHERE id = ?)
           AND payout_status = 'PENDING'
-      `).bind(id, id).run();
+      `).bind(id).run();
     }
 
     return c.json({ success: true });
@@ -816,6 +1097,7 @@ app.post('/rules', requireAdmin, async (c) => {
       booking_type?: string;
       office_id?: string;
       priority?: number;
+      notes?: string;
     };
 
     const promotion_rate = (body as { promotion_rate?: number }).promotion_rate || 0;
@@ -831,11 +1113,13 @@ app.post('/rules', requireAdmin, async (c) => {
         id,
         therapist_rate, host_rate, office_rate, platform_rate, promotion_rate,
         booking_type, office_id, priority, is_active,
+        notes, created_by,
         created_at, updated_at
       ) VALUES (
         ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, 1,
+        ?, ?,
         datetime('now'), datetime('now')
       )
     `).bind(
@@ -847,7 +1131,9 @@ app.post('/rules', requireAdmin, async (c) => {
       promotion_rate,
       body.booking_type || null,
       body.office_id || null,
-      body.priority || 0
+      body.priority || 0,
+      body.notes || null,
+      (c.get('userId') as string) || null
     ).run();
 
     return c.json({ success: true, id }, 201);
@@ -955,22 +1241,25 @@ app.get('/summary', requireAdmin, async (c) => {
     const params: string[] = [];
 
     if (month) {
-      dateFilter = `AND strftime('%Y-%m', t.paid_at) = ?`;
+      dateFilter = `AND strftime('%Y-%m', COALESCE(t.processed_at, t.created_at)) = ?`;
       params.push(month);
     }
 
+    // total_grossはJOINすると分割行数分だけ重複集計されるためサブクエリで算出する
     const summary = await c.env.DB.prepare(`
       SELECT
         COUNT(DISTINCT t.id) as total_transactions,
-        SUM(t.gross_amount) as total_gross,
+        (SELECT SUM(amount) FROM transactions t2
+          WHERE t2.status = 'COMPLETED' AND t2.type = 'CHARGE'
+          ${dateFilter.replace(/t\./g, 't2.')}) as total_gross,
         SUM(CASE WHEN ts.role = 'THERAPIST' THEN ts.amount ELSE 0 END) as therapist_total,
         SUM(CASE WHEN ts.role = 'HOST' THEN ts.amount ELSE 0 END) as host_total,
-        SUM(CASE WHEN ts.role = 'THERAPIST_OFFICE' THEN ts.amount ELSE 0 END) as office_total,
+        SUM(CASE WHEN ts.role = 'OFFICE' THEN ts.amount ELSE 0 END) as office_total,
         SUM(CASE WHEN ts.role = 'PLATFORM' THEN ts.amount ELSE 0 END) as platform_total
       FROM transactions t
       LEFT JOIN transaction_splits ts ON t.id = ts.transaction_id
-      WHERE t.status = 'SUCCEEDED' ${dateFilter}
-    `).bind(...params).first<{
+      WHERE t.status = 'COMPLETED' AND t.type = 'CHARGE' ${dateFilter}
+    `).bind(...(month ? [month, month] : [])).first<{
       total_transactions: number;
       total_gross: number;
       therapist_total: number;
