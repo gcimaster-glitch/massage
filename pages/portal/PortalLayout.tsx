@@ -203,7 +203,7 @@ const PortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           </div>
           <div className="mt-20 pt-10 border-t border-white/5 text-center">
             <p className="text-[9px] text-gray-600 font-black uppercase tracking-[1em]">
-              © 2025 HOGUSY. All Rights Reserved.
+              © 2026 ホグシー株式会社 / HOGUSY Inc. All Rights Reserved.
             </p>
           </div>
         </div>

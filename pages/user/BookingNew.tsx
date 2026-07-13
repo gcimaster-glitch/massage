@@ -216,7 +216,7 @@ const BookingNew: React.FC<BookingNewProps> = ({ onAutoLogin }) => {
               <div className="flex-1 space-y-4 relative z-10">
                  <div className="flex flex-wrap items-center gap-2">
                     <span className="bg-teal-50 text-teal-600 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-teal-100 shadow-sm flex items-center gap-2">
-                       <ShieldCheck size={12}/> Soothe Certified
+                       <ShieldCheck size={12}/> HOGUSY Certified
                     </span>
                     {!isAutoMatch && targetTherapist?.categories.includes('LICENSED') && (
                        <span className="bg-indigo-50 text-indigo-600 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-indigo-100 shadow-sm">国家資格保有者</span>

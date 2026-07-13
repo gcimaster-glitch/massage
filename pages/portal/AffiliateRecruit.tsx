@@ -21,7 +21,7 @@ const AffiliateRecruit: React.FC = () => {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">ウェルネスの力へ。</span>
           </h1>
           <p className="text-slate-400 text-lg md:text-2xl max-w-3xl mx-auto font-medium leading-relaxed">
-            Soothe アフィリエイトプログラム。紹介したユーザーが予約するたびに、<br className="hidden md:block"/>業界最高水準の成果報酬を継続的にお支払いします。
+            HOGUSY アフィリエイトプログラム。紹介したユーザーが予約するたびに、<br className="hidden md:block"/>業界最高水準の成果報酬を継続的にお支払いします。
           </p>
           <div className="flex flex-wrap justify-center gap-6 pt-8">
              <button onClick={() => navigate('/auth/signup/user')} className="bg-white text-slate-950 px-12 py-6 rounded-[32px] font-black text-lg uppercase tracking-widest hover:bg-purple-400 hover:text-white transition-all shadow-[0_20px_50px_rgba(255,255,255,0.1)] active:scale-95 flex items-center gap-4">

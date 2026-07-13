@@ -94,7 +94,7 @@ const BookingSuccess: React.FC = () => {
                       <h2 className="text-3xl font-black tracking-tight">アカウントを完成させてください</h2>
                    </div>
                    <p className="text-indigo-200 font-bold leading-relaxed">
-                      Sootheは「信頼」で成り立つコミュニティです。事前に情報を補完することで、より安全でパーソナライズされた体験を提供できます。
+                      HOGUSYは「信頼」で成り立つコミュニティです。事前に情報を補完することで、より安全でパーソナライズされた体験を提供できます。
                    </p>
                 </div>
 

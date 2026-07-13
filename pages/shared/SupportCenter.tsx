@@ -36,7 +36,7 @@ const SupportCenter: React.FC = () => {
           </button>
           <div>
              <h1 className="text-3xl font-black tracking-tighter">サポートセンター</h1>
-             <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">Soothe Trust & Help</p>
+             <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">HOGUSY Trust & Help</p>
           </div>
         </div>
         

@@ -164,7 +164,7 @@ const TherapistListPage: React.FC = () => {
         <section className="bg-white border-b border-gray-200 sticky top-[72px] z-40 shadow-sm">
            <div className="max-w-7xl mx-auto px-4">
               <div className="py-2 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest overflow-hidden">
-                 <Link to="/" className="hover:text-teal-600 transition-colors">Soothe</Link>
+                 <Link to="/" className="hover:text-teal-600 transition-colors">HOGUSY</Link>
                  <ChevronRightIcon size={10} />
                  <Link to="/therapists" className="hover:text-teal-600 transition-colors">リラク・マッサージ</Link>
                  <ChevronRightIcon size={10} />

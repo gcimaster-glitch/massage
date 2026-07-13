@@ -133,7 +133,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </button>
 
         <div className="text-center mb-12 mt-10">
-          <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tighter">Soothe ログイン</h1>
+          <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tighter">HOGUSY ログイン</h1>
           <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em]">Welcome Back</p>
         </div>
 

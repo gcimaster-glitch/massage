@@ -5,7 +5,7 @@ import SimpleLayout from '../../components/SimpleLayout';
 
 const AdminEmailSettings: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState('booking_confirmed');
-  const [subject, setSubject] = useState('【Soothe】ご予約が確定しました');
+  const [subject, setSubject] = useState('【HOGUSY】ご予約が確定しました');
   const [body, setBody] = useState(`{{user_name}} 様
 
 HOGUSYをご利用いただきありがとうございます。

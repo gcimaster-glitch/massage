@@ -169,7 +169,7 @@ const Gifting: React.FC = () => {
               <div className="absolute top-0 right-0 p-8 opacity-10"><Sparkles size={80}/></div>
               <h4 className="text-xs font-black uppercase tracking-widest text-teal-400 mb-6 flex items-center gap-2"><Clock size={14}/> 有効期限: 180日間</h4>
               <p className="text-sm font-bold text-indigo-100 leading-relaxed italic opacity-90">
-                 「受け取った方は、Sootheアプリからお好きなセラピストや CARE CUBE を選んで予約いただけます。」
+                 「受け取った方は、HOGUSYアプリからお好きなセラピストや CARE CUBE を選んで予約いただけます。」
               </p>
            </div>
 

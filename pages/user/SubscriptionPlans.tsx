@@ -16,7 +16,7 @@ const SubscriptionPlans: React.FC = () => {
   return (
     <div className="space-y-12 pb-40 animate-fade-in text-gray-900 font-sans max-w-6xl mx-auto px-4 pt-10">
       <div className="text-center space-y-6">
-         <span className="inline-block bg-teal-50 text-teal-600 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.4em] border border-teal-100 shadow-sm mb-4">Soothe Pass</span>
+         <span className="inline-block bg-teal-50 text-teal-600 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.4em] border border-teal-100 shadow-sm mb-4">HOGUSY Pass</span>
          <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none">癒やしを、日常のインフラへ。</h1>
          <p className="text-gray-500 font-bold text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
             サブスクリプションなら、もっと手軽に、もっとお得に。<br className="hidden md:block"/>
@@ -78,7 +78,7 @@ const SubscriptionPlans: React.FC = () => {
                <h3 className="text-3xl font-black tracking-tighter italic">Corporate Wellness Program</h3>
             </div>
             <p className="text-lg font-bold text-indigo-100 leading-relaxed opacity-90">
-               企業の福利厚生としてSootheを導入しませんか？<br/>
+               企業の福利厚生としてHOGUSYを導入しませんか？<br/>
                社員の健康維持（肩こり・腰痛ケア）は、生産性向上の鍵となります。
             </p>
          </div>

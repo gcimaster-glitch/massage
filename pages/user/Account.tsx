@@ -115,7 +115,7 @@ const Account: React.FC = ({ onLogout }: any) => {
                  </div>
 
                  <div className="relative z-10 mt-12 pt-8 border-t border-white/5 text-center">
-                    <p className="text-[9px] text-gray-600 font-black uppercase tracking-[0.6em]">Soothe Body Analytics v4.5</p>
+                    <p className="text-[9px] text-gray-600 font-black uppercase tracking-[0.6em]">HOGUSY Analytics v4.5</p>
                  </div>
               </section>
            </div>

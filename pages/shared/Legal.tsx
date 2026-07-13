@@ -61,7 +61,7 @@ const TermsOfService = () => (
     <section className="space-y-4">
        <h3 className="text-xl font-black flex items-center gap-3"><span className="w-1.5 h-6 bg-teal-600 rounded-full"></span>第1条（目的）</h3>
        <p className="font-medium text-gray-600 leading-relaxed">
-          本規約は、株式会社Soothe（以下「当社」）が提供するウェルネスプラットフォーム（以下「本サービス」）において、施術を希望する利用者（以下「ユーザー」）と、施術を提供するパートナー（以下「セラピスト」）との間の権利義務関係を定めるものです。
+          本規約は、ホグシー株式会社（以下「当社」）が提供するウェルネスプラットフォーム（以下「本サービス」）において、施術を希望する利用者（以下「ユーザー」）と、施術を提供するパートナー（以下「セラピスト」）との間の権利義務関係を定めるものです。
        </p>
     </section>
 
@@ -223,7 +223,7 @@ const SafetyProtocol = () => (
     </section>
 
     <div className="text-center py-6">
-       <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em]">© 2025 HOGUSY Compliance & Trust</p>
+       <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em]">© 2026 ホグシー株式会社 / HOGUSY Inc. All Rights Reserved.</p>
     </div>
   </div>
 );
